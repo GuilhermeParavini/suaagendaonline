@@ -44,6 +44,118 @@ function setHourMinute(date: Date, hour: number, minute: number): string {
   return d.toISOString();
 }
 
+type CleanSummary = {
+  financeiro: number;
+  agendamentos: number;
+  responsaveis: number;
+  pacientes: number;
+  procedimentos: number;
+  horarios: number;
+};
+
+export async function cleanSeed(): Promise<
+  { ok: true; deleted: CleanSummary } | { ok: false; error: string }
+> {
+  const supabase = createAdminClient();
+
+  const { data: prof, error: profError } = await supabase
+    .from('profissionais')
+    .select('id')
+    .eq('user_id', USER_ID)
+    .eq('tenant_id', TENANT_ID)
+    .maybeSingle();
+  if (profError) return { ok: false, error: `cleanSeed prof: ${profError.message}` };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado para limpeza.' };
+
+  const profissionalId = prof.id as string;
+
+  const deleted: CleanSummary = {
+    financeiro: 0,
+    agendamentos: 0,
+    responsaveis: 0,
+    pacientes: 0,
+    procedimentos: 0,
+    horarios: 0,
+  };
+
+  // 1. Financeiro do tenant
+  {
+    const { data, error } = await supabase
+      .from('financeiro')
+      .delete()
+      .eq('tenant_id', TENANT_ID)
+      .select('id');
+    if (error) return { ok: false, error: `cleanSeed financeiro: ${error.message}` };
+    deleted.financeiro = data?.length ?? 0;
+  }
+
+  // 2. Agendamentos do tenant
+  {
+    const { data, error } = await supabase
+      .from('agendamentos')
+      .delete()
+      .eq('tenant_id', TENANT_ID)
+      .select('id');
+    if (error) return { ok: false, error: `cleanSeed agendamentos: ${error.message}` };
+    deleted.agendamentos = data?.length ?? 0;
+  }
+
+  // 3. Responsaveis (via paciente_id no tenant)
+  {
+    const { data: pacientes, error: pacErr } = await supabase
+      .from('pacientes')
+      .select('id')
+      .eq('tenant_id', TENANT_ID);
+    if (pacErr) return { ok: false, error: `cleanSeed pacientes lookup: ${pacErr.message}` };
+
+    if (pacientes && pacientes.length > 0) {
+      const ids = pacientes.map((p) => p.id as string);
+      const { data, error } = await supabase
+        .from('responsaveis')
+        .delete()
+        .in('paciente_id', ids)
+        .select('id');
+      if (error) return { ok: false, error: `cleanSeed responsaveis: ${error.message}` };
+      deleted.responsaveis = data?.length ?? 0;
+    }
+  }
+
+  // 4. Pacientes do tenant
+  {
+    const { data, error } = await supabase
+      .from('pacientes')
+      .delete()
+      .eq('tenant_id', TENANT_ID)
+      .select('id');
+    if (error) return { ok: false, error: `cleanSeed pacientes: ${error.message}` };
+    deleted.pacientes = data?.length ?? 0;
+  }
+
+  // 5. Procedimentos do tenant
+  {
+    const { data, error } = await supabase
+      .from('procedimentos')
+      .delete()
+      .eq('tenant_id', TENANT_ID)
+      .select('id');
+    if (error) return { ok: false, error: `cleanSeed procedimentos: ${error.message}` };
+    deleted.procedimentos = data?.length ?? 0;
+  }
+
+  // 6. Horarios disponiveis do profissional
+  {
+    const { data, error } = await supabase
+      .from('horarios_disponiveis')
+      .delete()
+      .eq('profissional_id', profissionalId)
+      .select('id');
+    if (error) return { ok: false, error: `cleanSeed horarios: ${error.message}` };
+    deleted.horarios = data?.length ?? 0;
+  }
+
+  return { ok: true, deleted };
+}
+
 export async function seedDatabase(): Promise<
   { ok: true; summary: SeedSummary } | { ok: false; error: string }
 > {
@@ -111,8 +223,8 @@ export async function seedDatabase(): Promise<
 
   // 3. Procedimentos
   const procedimentosBase = [
-    { nome: 'Avaliacao fisioterapeutica', duracao_min: 60, valor: 200 },
-    { nome: 'Sessao de fisioterapia', duracao_min: 45, valor: 150 },
+    { nome: 'Avaliação fisioterapêutica', duracao_min: 60, valor: 200 },
+    { nome: 'Sessão de fisioterapia', duracao_min: 45, valor: 150 },
     { nome: 'RPG', duracao_min: 50, valor: 180 },
   ];
 
@@ -171,7 +283,7 @@ export async function seedDatabase(): Promise<
 
   const pacientesBase: PacienteSeed[] = [
     { key: 'maria', nome: 'Maria Silva', cpfPrefix: '111222333', data_nascimento: '1981-03-15', genero: 'feminino', telefone: '47999001001' },
-    { key: 'joao', nome: 'Joao Santos', cpfPrefix: '222333444', data_nascimento: '1994-07-22', genero: 'masculino', telefone: '47999002002' },
+    { key: 'joao', nome: 'João Santos', cpfPrefix: '222333444', data_nascimento: '1994-07-22', genero: 'masculino', telefone: '47999002002' },
     { key: 'ana', nome: 'Ana Oliveira', cpfPrefix: '333444555', data_nascimento: '1998-01-10', genero: 'feminino', telefone: '47999003003' },
     {
       key: 'pedro',
@@ -182,7 +294,7 @@ export async function seedDatabase(): Promise<
       telefone: '47999004004',
       responsavel: { nome: 'Carla Costa', cpfPrefix: '555666777', telefone: '47999004004', grau: 'mae' },
     },
-    { key: 'lucia', nome: 'Lucia Ferreira', cpfPrefix: '666777888', data_nascimento: '1959-06-30', genero: 'feminino', telefone: '47999005005' },
+    { key: 'lucia', nome: 'Lúcia Ferreira', cpfPrefix: '666777888', data_nascimento: '1959-06-30', genero: 'feminino', telefone: '47999005005' },
   ];
 
   const pacientesComCpf = pacientesBase.map((p) => ({ ...p, cpf: computeCpf(p.cpfPrefix) }));
@@ -262,8 +374,8 @@ export async function seedDatabase(): Promise<
   const amanha = new Date(hoje);
   amanha.setUTCDate(amanha.getUTCDate() + 1);
 
-  const procAvaliacao = procedimentoIdByNome.get('Avaliacao fisioterapeutica')!;
-  const procSessao = procedimentoIdByNome.get('Sessao de fisioterapia')!;
+  const procAvaliacao = procedimentoIdByNome.get('Avaliação fisioterapêutica')!;
+  const procSessao = procedimentoIdByNome.get('Sessão de fisioterapia')!;
   const procRpg = procedimentoIdByNome.get('RPG')!;
 
   const agendamentosBase = [
@@ -359,7 +471,7 @@ export async function seedDatabase(): Promise<
         agendamento_id: findAgendamentoId(c1.paciente, c1.dia, c1.hora, c1.min),
         paciente_id: pacienteIdByKey.get(c1.paciente) ?? null,
         tipo: 'receita',
-        descricao: 'Avaliacao fisioterapeutica',
+        descricao: 'Avaliação fisioterapêutica',
         valor: 200,
         forma_pagamento: 'pix',
         data_lancamento: c1.dia.toISOString().slice(0, 10),
@@ -373,7 +485,7 @@ export async function seedDatabase(): Promise<
         agendamento_id: findAgendamentoId(c2.paciente, c2.dia, c2.hora, c2.min),
         paciente_id: pacienteIdByKey.get(c2.paciente) ?? null,
         tipo: 'receita',
-        descricao: 'Sessao de fisioterapia',
+        descricao: 'Sessão de fisioterapia',
         valor: 150,
         forma_pagamento: 'cartao_credito',
         data_lancamento: c2.dia.toISOString().slice(0, 10),
@@ -385,7 +497,7 @@ export async function seedDatabase(): Promise<
         agendamento_id: findAgendamentoId(c2.paciente, c2.dia, c2.hora, c2.min),
         paciente_id: pacienteIdByKey.get(c2.paciente) ?? null,
         tipo: 'receita',
-        descricao: 'Sessao de fisioterapia (complemento)',
+        descricao: 'Sessão de fisioterapia (complemento)',
         valor: 50,
         forma_pagamento: 'dinheiro',
         data_lancamento: c2.dia.toISOString().slice(0, 10),

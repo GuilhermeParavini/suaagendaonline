@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { seedDatabase } from '@/actions/seed';
+import { seedDatabase, cleanSeed } from '@/actions/seed';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +17,28 @@ export async function GET(request: Request) {
     );
   }
 
+  const shouldClean = url.searchParams.get('clean') === '1';
+  let cleanResult: Awaited<ReturnType<typeof cleanSeed>> | null = null;
+
+  if (shouldClean) {
+    cleanResult = await cleanSeed();
+    if (!cleanResult.ok) {
+      return NextResponse.json(cleanResult, { status: 400 });
+    }
+  }
+
   const result = await seedDatabase();
 
   if (!result.ok) {
-    return NextResponse.json(result, { status: 400 });
+    return NextResponse.json(
+      cleanResult ? { ...result, cleaned: cleanResult.deleted } : result,
+      { status: 400 },
+    );
   }
 
-  return NextResponse.json(result);
+  return NextResponse.json(
+    cleanResult ? { ...result, cleaned: cleanResult.deleted } : result,
+  );
 }
 
 export async function POST(request: Request) {
