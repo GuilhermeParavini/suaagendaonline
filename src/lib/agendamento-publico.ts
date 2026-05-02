@@ -1,0 +1,95 @@
+import { createAdminClient } from '@/lib/supabase/server';
+
+export type Procedimento = {
+  id: string;
+  nome: string;
+  duracao_min: number;
+  valor: number | null;
+};
+
+export type ProfissionalPublico = {
+  tenantId: string;
+  tenantNome: string;
+  profissional: {
+    id: string;
+    nome: string;
+    especialidade: string;
+    duracao_padrao_min: number;
+    tolerancia_atraso_min: number;
+  };
+  procedimentos: Procedimento[];
+};
+
+export async function getProfissionalBySlug(
+  slug: string,
+): Promise<{ ok: true; data: ProfissionalPublico } | { ok: false; error: string }> {
+  const cleanSlug = slug.trim().toLowerCase();
+  if (!cleanSlug || !/^[a-z0-9-]+$/.test(cleanSlug)) {
+    return { ok: false, error: 'Link inválido.' };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: tenant, error: tenantErr } = await admin
+    .from('tenants')
+    .select('id, nome_empresa')
+    .eq('slug', cleanSlug)
+    .maybeSingle();
+  if (tenantErr) return { ok: false, error: tenantErr.message };
+  if (!tenant) return { ok: false, error: 'Profissional não encontrado.' };
+
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select(
+      'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min',
+    )
+    .eq('tenant_id', tenant.id)
+    .eq('ativo', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
+
+  const { data: procs, error: procsErr } = await admin
+    .from('procedimentos')
+    .select('id, nome, duracao_min, valor')
+    .eq('tenant_id', tenant.id)
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+  if (procsErr) return { ok: false, error: procsErr.message };
+
+  return {
+    ok: true,
+    data: {
+      tenantId: tenant.id as string,
+      tenantNome: tenant.nome_empresa as string,
+      profissional: {
+        id: prof.id as string,
+        nome: prof.nome as string,
+        especialidade: prof.especialidade as string,
+        duracao_padrao_min: (prof.duracao_padrao_min as number) ?? 30,
+        tolerancia_atraso_min: (prof.tolerancia_atraso_min as number) ?? 5,
+      },
+      procedimentos: (procs ?? []).map((p) => ({
+        id: p.id as string,
+        nome: p.nome as string,
+        duracao_min: p.duracao_min as number,
+        valor: p.valor !== null ? Number(p.valor) : null,
+      })),
+    },
+  };
+}
+
+export async function getDiasSemanaDisponiveis(
+  profissionalId: string,
+): Promise<number[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('horarios_disponiveis')
+    .select('dia_semana')
+    .eq('profissional_id', profissionalId)
+    .eq('ativo', true);
+  if (error) return [];
+  return Array.from(new Set((data ?? []).map((r) => r.dia_semana as number)));
+}

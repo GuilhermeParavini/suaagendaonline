@@ -37,13 +37,14 @@ export async function updateSession(request: NextRequest) {
     pathname === '/onboarding';
   
   // Protected routes (dashboard) - requer autenticação
-  const isDashboardRoute = 
+  // Match exato ou prefixo com '/' para nao colidir com rotas como /agendar
+  const isDashboardRoute =
     pathname === '/' ||
-    pathname.startsWith('/agenda') ||
-    pathname.startsWith('/pacientes') ||
-    pathname.startsWith('/financeiro') ||
-    pathname.startsWith('/configuracoes') ||
-    pathname.startsWith('/menu');
+    pathname === '/agenda' || pathname.startsWith('/agenda/') ||
+    pathname === '/pacientes' || pathname.startsWith('/pacientes/') ||
+    pathname === '/financeiro' || pathname.startsWith('/financeiro/') ||
+    pathname === '/configuracoes' || pathname.startsWith('/configuracoes/') ||
+    pathname === '/menu' || pathname.startsWith('/menu/');
 
   // Se usuario NAO esta autenticado
   if (!user) {
