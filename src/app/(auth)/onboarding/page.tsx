@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/actions/auth';
+import { cleanPhone, formatPhone } from '@/lib/masks';
 
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -24,38 +25,44 @@ const specialties = [
   'Outra',
 ];
 
-const step1Schema = z.object({
-  fullName: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  specialty: z.string().min(1, 'Selecione uma especialidade'),
-  professionalRegistry: z.string().optional(),
-  phone: z.string().min(10, 'Telefone inválido'),
-  companyName: z.string().optional(),
-  companyPhone: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-});
+const registryPlaceholders: Record<string, string> = {
+  Fisioterapia: 'Ex: CREFITO-10/12345',
+  Podologia: 'Ex: Certificação livre',
+  Nutrição: 'Ex: CRN-10/12345',
+  Psicologia: 'Ex: CRP-12/12345',
+  Fonoaudiologia: 'Ex: CRFa 12345',
+  Cardiologia: 'Ex: CRM-SC 12345',
+  Outra: 'Registro profissional (se aplicável)',
+};
 
-const step2Schema = z.object({
-  fullName: z.string().optional(),
-  specialty: z.string().optional(),
-  professionalRegistry: z.string().optional(),
-  phone: z.string().optional(),
-  companyName: z.string().min(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
-  companyPhone: z.string().optional(),
-  city: z.string().min(2, 'Cidade deve ter no mínimo 2 caracteres'),
-  state: z.string().min(2, 'Selecione um estado'),
-});
+const defaultRegistryPlaceholder = 'Ex: CRM 123456/SP';
 
 const trimmedString = (min: number, msg: string) =>
   z.string().transform((s) => s.trim()).refine((s) => s.length >= min, { message: msg });
+
+const phoneSchema = z
+  .string()
+  .refine((s) => {
+    const digits = cleanPhone(s);
+    return digits.length === 10 || digits.length === 11;
+  }, { message: 'Telefone inválido' });
+
+const optionalPhoneSchema = z
+  .string()
+  .optional()
+  .refine((s) => {
+    if (!s) return true;
+    const digits = cleanPhone(s);
+    return digits.length === 0 || digits.length === 10 || digits.length === 11;
+  }, { message: 'Telefone inválido' });
 
 const fullSchema = z.object({
   fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
   specialty: trimmedString(1, 'Selecione uma especialidade'),
   professionalRegistry: z.string().optional(),
-  phone: trimmedString(10, 'Telefone inválido'),
+  phone: phoneSchema,
   companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
-  companyPhone: z.string().optional(),
+  companyPhone: optionalPhoneSchema,
   city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
   state: trimmedString(2, 'Selecione um estado'),
 });
@@ -73,7 +80,8 @@ export default function OnboardingPage() {
     register,
     handleSubmit,
     formState: { errors },
-    getValues,
+    setValue,
+    watch,
     trigger,
   } = useForm<OnboardingFormData>({
     resolver: zodResolver(fullSchema),
@@ -89,6 +97,18 @@ export default function OnboardingPage() {
       state: '',
     },
   });
+
+  const selectedSpecialty = watch('specialty');
+  const registryPlaceholder =
+    registryPlaceholders[selectedSpecialty ?? ''] ?? defaultRegistryPlaceholder;
+
+  const handlePhoneChange = (
+    field: 'phone' | 'companyPhone',
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const formatted = formatPhone(e.target.value);
+    setValue(field, formatted, { shouldValidate: false, shouldDirty: true });
+  };
 
   const handleNextStep = async () => {
     setApiError('');
@@ -119,9 +139,9 @@ export default function OnboardingPage() {
         fullName: data.fullName,
         specialty: data.specialty,
         professionalRegistry: data.professionalRegistry,
-        phone: data.phone,
+        phone: cleanPhone(data.phone),
         companyName: data.companyName,
-        companyPhone: data.companyPhone,
+        companyPhone: data.companyPhone ? cleanPhone(data.companyPhone) : undefined,
         city: data.city,
         state: data.state,
       });
@@ -205,7 +225,7 @@ export default function OnboardingPage() {
                 {...register('professionalRegistry')}
                 type="text"
                 autoComplete="off"
-                placeholder="Ex: CRM 123456/SP"
+                placeholder={registryPlaceholder}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
               />
               {errors.professionalRegistry && (
@@ -219,9 +239,13 @@ export default function OnboardingPage() {
                 Telefone
               </label>
               <input
-                {...register('phone')}
+                {...register('phone', {
+                  onChange: (e) => handlePhoneChange('phone', e),
+                })}
                 type="tel"
+                inputMode="tel"
                 autoComplete="tel"
+                maxLength={15}
                 placeholder="(11) 99999-9999"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
               />
@@ -255,12 +279,19 @@ export default function OnboardingPage() {
                 Telefone do consultório (opcional)
               </label>
               <input
-                {...register('companyPhone')}
+                {...register('companyPhone', {
+                  onChange: (e) => handlePhoneChange('companyPhone', e),
+                })}
                 type="tel"
+                inputMode="tel"
                 autoComplete="tel"
+                maxLength={15}
                 placeholder="(11) 3333-3333"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
               />
+              {errors.companyPhone && (
+                <p className="text-xs text-red-500">{errors.companyPhone.message}</p>
+              )}
             </div>
 
             {/* City */}

@@ -22,7 +22,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Navegacao principal"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)]"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="flex h-14">
         {items.map(({ href, label, Icon }) => {

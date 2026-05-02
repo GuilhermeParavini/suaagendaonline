@@ -4,17 +4,24 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 
+export const dynamic = "force-dynamic";
+
 async function getProfissionalNome(): Promise<string | undefined> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return undefined;
 
   const admin = createAdminClient();
-  const { data: prof } = await admin
+  const { data: prof, error } = await admin
     .from("profissionais")
     .select("nome")
     .eq("user_id", user.id)
     .maybeSingle();
+
+  if (error) {
+    console.error("[DashboardLayout] Erro ao buscar profissional:", error.message);
+    return undefined;
+  }
 
   return prof?.nome ?? undefined;
 }

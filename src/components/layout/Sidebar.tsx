@@ -25,8 +25,8 @@ const items: SidebarItem[] = [
   { href: "/agenda", label: "Agenda", Icon: Calendar },
   { href: "/pacientes", label: "Pacientes", Icon: Users },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
-  { href: "/relatorios", label: "Relatorios", Icon: BarChart3 },
-  { href: "/configuracoes", label: "Configuracoes", Icon: Settings },
+  { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
+  { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -10,8 +10,37 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SuaAgendaOnline",
+  title: {
+    default: "Sua Agenda Online",
+    template: "%s | Sua Agenda Online",
+  },
   description: "Sistema de agendamento e gestao para profissionais da saude",
+  applicationName: "Sua Agenda Online",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SuaAgenda",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.svg", type: "image/svg+xml" },
+    ],
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0D9488",
+  colorScheme: "light",
 };
 
 export default function RootLayout({
