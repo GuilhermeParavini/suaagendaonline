@@ -1,11 +1,15 @@
 import { Bell } from "lucide-react";
 
-function Header() {
+interface HeaderProps {
+  userName?: string;
+}
+
+function Header({ userName = "Profissional" }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
       <div className="flex items-center justify-between h-14 px-4 lg:px-6">
         <p className="text-base font-medium text-slate-900 lg:hidden">
-          Olá, Profissional
+          Olá, {userName}
         </p>
         <div className="hidden lg:block" aria-hidden="true" />
         <button

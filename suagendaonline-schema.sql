@@ -465,6 +465,13 @@ create policy "Admin pode atualizar tenant"
   using (id = public.get_user_tenant_id());
 
 -- PROFISSIONAIS
+-- Policy que permite ao usuario ver o proprio registro.
+-- Necessaria pois get_user_tenant_id() consulta a propria tabela profissionais,
+-- causando recursao circular sob RLS na primeira leitura (logo apos onboarding).
+create policy "Usuario ve proprio profissional"
+  on public.profissionais for select
+  using (user_id = auth.uid());
+
 create policy "Profissionais do mesmo tenant"
   on public.profissionais for select
   using (tenant_id = public.get_user_tenant_id());
