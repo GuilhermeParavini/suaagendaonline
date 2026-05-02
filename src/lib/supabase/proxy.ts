@@ -30,11 +30,14 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Auth routes (login, cadastro)
-  const isAuthRoute = pathname === '/login' || pathname === '/cadastro';
+  // Auth routes (login, cadastro, onboarding) - público
+  const isAuthRoute = 
+    pathname === '/login' || 
+    pathname === '/cadastro' || 
+    pathname === '/onboarding';
   
-  // Protected routes (requires authentication)
-  const isProtectedRoute = 
+  // Protected routes (dashboard) - requer autenticação
+  const isDashboardRoute = 
     pathname === '/' ||
     pathname.startsWith('/agenda') ||
     pathname.startsWith('/pacientes') ||
@@ -42,14 +45,25 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/configuracoes') ||
     pathname.startsWith('/menu');
 
-  // If user is not authenticated and tries to access protected route
-  if (!user && isProtectedRoute) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Se usuario NAO esta autenticado
+  if (!user) {
+    // Redirecionar para login se tentar acessar dashboard
+    if (isDashboardRoute) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    // Permitir acesso a rotas publicas (login, cadastro, onboarding)
+    return supabaseResponse;
   }
 
-  // If user is authenticated and tries to access auth routes
-  if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Usuario JA esta autenticado
+  if (isAuthRoute) {
+    // Nao redirecionar ainda - deixar a pagina de onboarding lidar
+    // Se for /login ou /cadastro, redirecionar para /
+    if (pathname === '/login' || pathname === '/cadastro') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    // Se for /onboarding, permitir acesso (a pagina raiz fara o redirecionamento se necessario)
+    return supabaseResponse;
   }
 
   return supabaseResponse;
