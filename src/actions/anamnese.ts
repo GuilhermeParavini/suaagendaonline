@@ -443,6 +443,60 @@ export async function criarAnamnese(
 }
 
 // ============================================================
+// UPLOAD DE FOTO DE CAMPO upload_foto
+// ============================================================
+
+const ANAMNESE_FOTO_BUCKET = 'anamnese-fotos';
+const MAX_FOTO_BYTES = 5 * 1024 * 1024;
+const TIPOS_FOTO_VALIDOS = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
+export async function uploadFotoAnamnese(
+  formData: FormData,
+): Promise<Result<{ url: string }>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const arquivo = formData.get('arquivo');
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { ok: false, error: 'Arquivo invalido.' };
+  }
+  if (arquivo.size > MAX_FOTO_BYTES) {
+    return { ok: false, error: 'Imagem acima de 5MB.' };
+  }
+  if (!TIPOS_FOTO_VALIDOS.includes(arquivo.type)) {
+    return { ok: false, error: 'Use PNG, JPG ou WebP.' };
+  }
+
+  const ext =
+    arquivo.type === 'image/png'
+      ? 'png'
+      : arquivo.type === 'image/webp'
+        ? 'webp'
+        : 'jpg';
+  const path = `${ctx.tenantId}/${ctx.profissionalId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+  const buffer = new Uint8Array(await arquivo.arrayBuffer());
+  const admin = createAdminClient();
+  const { error: upErr } = await admin.storage
+    .from(ANAMNESE_FOTO_BUCKET)
+    .upload(path, buffer, {
+      contentType: arquivo.type,
+      upsert: false,
+    });
+  if (upErr) {
+    return { ok: false, error: `Falha no upload: ${upErr.message}` };
+  }
+
+  const { data: pub } = admin.storage
+    .from(ANAMNESE_FOTO_BUCKET)
+    .getPublicUrl(path);
+  const url = pub?.publicUrl ?? null;
+  if (!url) return { ok: false, error: 'Falha ao gerar URL publica.' };
+
+  return { ok: true, data: { url } };
+}
+
+// ============================================================
 // SEED DE TEMPLATES PADRAO POR ESPECIALIDADE
 // ============================================================
 

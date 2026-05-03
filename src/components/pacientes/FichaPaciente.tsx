@@ -1,9 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import * as Tabs from "@radix-ui/react-tabs";
-import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  ClipboardList,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Avatar from "@/components/ui/Avatar";
@@ -11,8 +18,11 @@ import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
 import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
+import { getAnamneses, type Anamnese } from "@/actions/anamnese";
 import EditarPacienteModal from "./EditarPacienteModal";
 import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
+import TabAnamnesePaciente from "./TabAnamnesePaciente";
+import AnamneseDetalhe from "./AnamneseDetalhe";
 
 export type PacienteDetalhe = {
   id: string;
@@ -96,10 +106,58 @@ function DadoLinha({
 function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps) {
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
+  const [anamneses, setAnamneses] = useState<Anamnese[]>([]);
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [, startTransition] = useTransition();
+
+  const recarregarAnamneses = useCallback(() => {
+    startTransition(async () => {
+      const r = await getAnamneses(paciente.id);
+      if (r.ok) setAnamneses(r.data);
+    });
+  }, [paciente.id]);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await getAnamneses(paciente.id);
+      if (!cancelado && r.ok) setAnamneses(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [paciente.id]);
+
+  const toggleExpandido = (id: string) => {
+    setExpandidos((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(id)) novo.delete(id);
+      else novo.add(id);
+      return novo;
+    });
+  };
+
   const idade = calculateAge(paciente.data_nascimento);
   const concluidos = historico.filter((h) => h.status === "concluido");
   const isRetorno = concluidos.length > 0;
   const ultimaConsulta = concluidos[0]?.data_hora ?? null;
+
+  type ItemHistorico =
+    | { tipo: "agendamento"; data: string; agendamento: AgendamentoHistorico }
+    | { tipo: "anamnese"; data: string; anamnese: Anamnese };
+
+  const historicoMesclado: ItemHistorico[] = [
+    ...historico.map((ag) => ({
+      tipo: "agendamento" as const,
+      data: ag.data_hora,
+      agendamento: ag,
+    })),
+    ...anamneses.map((a) => ({
+      tipo: "anamnese" as const,
+      data: a.created_at,
+      anamnese: a,
+    })),
+  ].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
 
   const enderecoCompleto = [
     paciente.endereco,
@@ -187,6 +245,18 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
             Dados
           </Tabs.Trigger>
           <Tabs.Trigger
+            value="anamnese"
+            className={cn(
+              "relative px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors",
+              "data-[state=active]:text-primary-dark",
+              "after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-transparent",
+              "data-[state=active]:after:bg-primary",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-t",
+            )}
+          >
+            Anamnese
+          </Tabs.Trigger>
+          <Tabs.Trigger
             value="historico"
             className={cn(
               "relative px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors",
@@ -268,29 +338,84 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
           </div>
         </Tabs.Content>
 
+        <Tabs.Content value="anamnese" className="pt-4 focus-visible:outline-none">
+          <TabAnamnesePaciente
+            pacienteId={paciente.id}
+            onAnamneseCriada={recarregarAnamneses}
+          />
+        </Tabs.Content>
+
         <Tabs.Content value="historico" className="pt-4 focus-visible:outline-none">
-          {historico.length === 0 ? (
+          {historicoMesclado.length === 0 ? (
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
               <p className="text-sm text-slate-500">
-                Nenhum histórico de consultas.
+                Nenhum histórico para este paciente.
               </p>
             </div>
           ) : (
             <ul className="space-y-2">
-              {historico.map((ag) => {
-                const status: StatusVariant = isStatusVariant(ag.status)
-                  ? ag.status
-                  : "agendado";
-                const dt = new Date(ag.data_hora);
+              {historicoMesclado.map((item) => {
+                if (item.tipo === "agendamento") {
+                  const ag = item.agendamento;
+                  const status: StatusVariant = isStatusVariant(ag.status)
+                    ? ag.status
+                    : "agendado";
+                  const dt = new Date(ag.data_hora);
+                  const dataLabel = format(dt, "dd MMM yyyy", { locale: ptBR });
+                  const horaLabel = format(dt, "HH:mm", { locale: ptBR });
+
+                  return (
+                    <li
+                      key={`ag-${ag.id}`}
+                      className="rounded-lg border border-slate-200 bg-white p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-sm font-medium text-slate-900">
+                            {dataLabel}
+                            <span className="text-slate-400">·</span>
+                            <span className="text-slate-600 ml-1">
+                              {horaLabel}
+                            </span>
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            {ag.procedimento_nome ?? "Procedimento"}
+                            {ag.profissional_nome ? (
+                              <>
+                                <span className="mx-1 text-slate-400">·</span>
+                                {ag.profissional_nome}
+                              </>
+                            ) : null}
+                          </p>
+                        </div>
+                        <StatusPill status={status} className="shrink-0" />
+                      </div>
+                    </li>
+                  );
+                }
+
+                const a = item.anamnese;
+                const expandido = expandidos.has(a.id);
+                const dt = new Date(a.created_at);
                 const dataLabel = format(dt, "dd MMM yyyy", { locale: ptBR });
                 const horaLabel = format(dt, "HH:mm", { locale: ptBR });
 
                 return (
                   <li
-                    key={ag.id}
-                    className="rounded-lg border border-slate-200 bg-white p-3"
+                    key={`an-${a.id}`}
+                    className="rounded-lg border border-slate-200 bg-white"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandido(a.id)}
+                      className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-slate-50 transition-colors rounded-lg"
+                    >
+                      <ClipboardList
+                        size={18}
+                        strokeWidth={1.5}
+                        className="shrink-0 text-primary"
+                        aria-hidden="true"
+                      />
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="text-sm font-medium text-slate-900">
                           {dataLabel}
@@ -298,17 +423,30 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                           <span className="text-slate-600 ml-1">{horaLabel}</span>
                         </p>
                         <p className="text-xs text-slate-500 truncate">
-                          {ag.procedimento_nome ?? "Procedimento"}
-                          {ag.profissional_nome ? (
-                            <>
-                              <span className="mx-1 text-slate-400">·</span>
-                              {ag.profissional_nome}
-                            </>
-                          ) : null}
+                          Anamnese: {a.template_nome ?? "Sem template"}
                         </p>
                       </div>
-                      <StatusPill status={status} className="shrink-0" />
-                    </div>
+                      {expandido ? (
+                        <ChevronUp
+                          size={16}
+                          strokeWidth={1.5}
+                          className="text-slate-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      ) : (
+                        <ChevronDown
+                          size={16}
+                          strokeWidth={1.5}
+                          className="text-slate-400 shrink-0"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </button>
+                    {expandido ? (
+                      <div className="border-t border-slate-100 px-3 py-3">
+                        <AnamneseDetalhe anamnese={a} />
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}
