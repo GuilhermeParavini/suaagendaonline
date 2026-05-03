@@ -353,16 +353,21 @@ export async function listarPacientesOptions(): Promise<Result<PacienteOption[]>
   };
 }
 
+export type ReciboProfissional = {
+  nome: string;
+  especialidade: string;
+  registro_profissional: string | null;
+  email: string;
+  telefone: string | null;
+  assinatura_tipo: 'fonte' | 'imagem' | null;
+  assinatura_fonte: string | null;
+  assinatura_url: string | null;
+};
+
 type ReciboData = {
   lancamento: Lancamento;
   pacienteEmail: string | null;
-  profissional: {
-    nome: string;
-    especialidade: string;
-    registro_profissional: string | null;
-    email: string;
-    telefone: string | null;
-  };
+  profissional: ReciboProfissional;
   tenant: {
     nome_empresa: string;
     endereco: string | null;
@@ -409,7 +414,9 @@ async function montarReciboData(
 
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('nome, especialidade, registro_profissional, email, telefone')
+    .select(
+      'nome, especialidade, registro_profissional, email, telefone, assinatura_tipo, assinatura_fonte, assinatura_url',
+    )
     .eq('id', row.profissional_id)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
@@ -451,6 +458,10 @@ async function montarReciboData(
         registro_profissional: (prof.registro_profissional as string | null) ?? null,
         email: prof.email as string,
         telefone: (prof.telefone as string | null) ?? null,
+        assinatura_tipo:
+          (prof.assinatura_tipo as 'fonte' | 'imagem' | null) ?? null,
+        assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
+        assinatura_url: (prof.assinatura_url as string | null) ?? null,
       },
       tenant: {
         nome_empresa: tenant.nome_empresa as string,

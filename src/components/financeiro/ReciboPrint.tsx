@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Mail, MessageCircle, Printer } from "lucide-react";
+import AssinaturaRecibo from "./AssinaturaRecibo";
 
 interface ReciboPrintProps {
   id: string;
@@ -17,6 +18,9 @@ interface ReciboPrintProps {
     registro_profissional: string | null;
     email: string;
     telefone: string | null;
+    assinatura_tipo: "fonte" | "imagem" | null;
+    assinatura_fonte: string | null;
+    assinatura_url: string | null;
   };
   paciente: { id: string; nome: string } | null;
   descricao: string;
@@ -180,21 +184,16 @@ function ReciboPrint({
             </div>
           </section>
 
-          <section className="mt-12 text-center text-sm">
-            <div className="mx-auto w-72 border-t border-slate-400 pt-2">
-              <p className="font-medium">{profissional.nome}</p>
-              <p className="text-xs text-slate-600">
-                {profissional.especialidade}
-                {profissional.registro_profissional
-                  ? ` - ${profissional.registro_profissional}`
-                  : ""}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {profissional.email}
-                {profissional.telefone ? ` - ${profissional.telefone}` : ""}
-              </p>
-            </div>
-          </section>
+          <AssinaturaRecibo
+            nome={profissional.nome}
+            especialidade={profissional.especialidade}
+            registroProfissional={profissional.registro_profissional}
+            email={profissional.email}
+            telefone={profissional.telefone}
+            assinaturaTipo={profissional.assinatura_tipo}
+            assinaturaFonte={profissional.assinatura_fonte}
+            assinaturaUrl={profissional.assinatura_url}
+          />
         </article>
 
         <div className="no-print mx-auto max-w-[680px] space-y-2 pt-2">

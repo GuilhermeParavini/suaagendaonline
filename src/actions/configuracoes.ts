@@ -6,6 +6,9 @@ import { cleanPhone } from '@/lib/masks';
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
+export type AssinaturaTipo = 'fonte' | 'imagem';
+export type AssinaturaFonte = 'Dancing Script' | 'Great Vibes' | 'Pacifico';
+
 export type ProfissionalConfig = {
   id: string;
   tenant_id: string;
@@ -16,6 +19,9 @@ export type ProfissionalConfig = {
   telefone: string | null;
   bio: string | null;
   role: string;
+  assinatura_tipo: AssinaturaTipo | null;
+  assinatura_fonte: string | null;
+  assinatura_url: string | null;
 };
 
 export type TenantConfig = {
@@ -85,7 +91,7 @@ export async function getConfiguracoes(): Promise<
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role',
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url',
     )
     .eq('id', ctx.profissionalId)
     .maybeSingle();
@@ -143,6 +149,9 @@ export async function getConfiguracoes(): Promise<
         telefone: (prof.telefone as string | null) ?? null,
         bio: (prof.bio as string | null) ?? null,
         role: prof.role as string,
+        assinatura_tipo: (prof.assinatura_tipo as AssinaturaTipo | null) ?? null,
+        assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
+        assinatura_url: (prof.assinatura_url as string | null) ?? null,
       },
       tenant: {
         id: tenant.id as string,
@@ -205,6 +214,152 @@ export async function atualizarProfissional(
 
   revalidatePath('/configuracoes');
   return { ok: true, data: null };
+}
+
+const FONTES_VALIDAS: AssinaturaFonte[] = [
+  'Dancing Script',
+  'Great Vibes',
+  'Pacifico',
+];
+
+const ASSINATURA_BUCKET = 'assinaturas';
+const MAX_ASSINATURA_BYTES = 500 * 1024;
+const TIPOS_IMAGEM_VALIDOS = ['image/png', 'image/jpeg', 'image/jpg'];
+
+export async function salvarAssinatura(
+  formData: FormData,
+): Promise<Result<{ tipo: AssinaturaTipo; fonte: string | null; url: string | null }>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const tipo = formData.get('tipo');
+  if (tipo !== 'fonte' && tipo !== 'imagem') {
+    return { ok: false, error: 'Tipo de assinatura invalido.' };
+  }
+
+  const admin = createAdminClient();
+
+  if (tipo === 'fonte') {
+    const fonteRaw = (formData.get('fonte') as string | null)?.trim() ?? '';
+    if (!FONTES_VALIDAS.includes(fonteRaw as AssinaturaFonte)) {
+      return { ok: false, error: 'Fonte invalida.' };
+    }
+
+    const { error } = await admin
+      .from('profissionais')
+      .update({
+        assinatura_tipo: 'fonte',
+        assinatura_fonte: fonteRaw,
+        assinatura_url: null,
+      })
+      .eq('id', ctx.profissionalId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath('/configuracoes');
+    return {
+      ok: true,
+      data: { tipo: 'fonte', fonte: fonteRaw, url: null },
+    };
+  }
+
+  // tipo === 'imagem'
+  const arquivo = formData.get('arquivo');
+  const usarExistente = formData.get('usarExistente') === 'true';
+
+  if (usarExistente) {
+    // Mantem URL atual e apenas troca o tipo se necessario
+    const { data: prof, error: profErr } = await admin
+      .from('profissionais')
+      .select('assinatura_url')
+      .eq('id', ctx.profissionalId)
+      .maybeSingle();
+    if (profErr) return { ok: false, error: profErr.message };
+    const urlAtual = (prof?.assinatura_url as string | null) ?? null;
+    if (!urlAtual) {
+      return { ok: false, error: 'Envie uma imagem de assinatura.' };
+    }
+    const { error } = await admin
+      .from('profissionais')
+      .update({
+        assinatura_tipo: 'imagem',
+        assinatura_fonte: null,
+      })
+      .eq('id', ctx.profissionalId);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath('/configuracoes');
+    return { ok: true, data: { tipo: 'imagem', fonte: null, url: urlAtual } };
+  }
+
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { ok: false, error: 'Arquivo de assinatura obrigatorio.' };
+  }
+  if (arquivo.size > MAX_ASSINATURA_BYTES) {
+    return { ok: false, error: 'Imagem acima de 500KB.' };
+  }
+  if (!TIPOS_IMAGEM_VALIDOS.includes(arquivo.type)) {
+    return { ok: false, error: 'Use PNG ou JPG.' };
+  }
+
+  const ext =
+    arquivo.type === 'image/png'
+      ? 'png'
+      : arquivo.type === 'image/jpeg' || arquivo.type === 'image/jpg'
+        ? 'jpg'
+        : 'png';
+  const path = `${ctx.tenantId}/${ctx.profissionalId}/assinatura-${Date.now()}.${ext}`;
+
+  const arrayBuffer = await arquivo.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+
+  const { error: upErr } = await admin.storage
+    .from(ASSINATURA_BUCKET)
+    .upload(path, bytes, {
+      contentType: arquivo.type,
+      upsert: true,
+    });
+  if (upErr) {
+    return { ok: false, error: `Falha no upload: ${upErr.message}` };
+  }
+
+  const { data: pub } = admin.storage.from(ASSINATURA_BUCKET).getPublicUrl(path);
+  const url = pub?.publicUrl ?? null;
+  if (!url) return { ok: false, error: 'Falha ao gerar URL publica.' };
+
+  // Apaga URL antiga (best-effort) se existir
+  try {
+    const { data: profAtual } = await admin
+      .from('profissionais')
+      .select('assinatura_url')
+      .eq('id', ctx.profissionalId)
+      .maybeSingle();
+    const antiga = (profAtual?.assinatura_url as string | null) ?? null;
+    if (antiga) {
+      const marker = `/${ASSINATURA_BUCKET}/`;
+      const idx = antiga.indexOf(marker);
+      if (idx !== -1) {
+        const oldPath = antiga.slice(idx + marker.length);
+        if (oldPath && oldPath !== path) {
+          await admin.storage.from(ASSINATURA_BUCKET).remove([oldPath]);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[salvarAssinatura] limpeza antiga falhou:', e);
+  }
+
+  const { error: updErr } = await admin
+    .from('profissionais')
+    .update({
+      assinatura_tipo: 'imagem',
+      assinatura_fonte: null,
+      assinatura_url: url,
+    })
+    .eq('id', ctx.profissionalId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: { tipo: 'imagem', fonte: null, url } };
 }
 
 export type AtualizarTenantInput = {

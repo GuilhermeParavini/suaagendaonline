@@ -12,6 +12,7 @@ import {
 } from "@/actions/configuracoes";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import LinkAgendamento from "./LinkAgendamento";
+import SecaoAssinatura from "./SecaoAssinatura";
 
 const ESPECIALIDADES = [
   "Podologia",
@@ -339,6 +340,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
           ) : null}
         </form>
       </section>
+
+      <SecaoAssinatura profissional={profissional} onSaved={onSaved} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <header className="flex items-center justify-between gap-2">
