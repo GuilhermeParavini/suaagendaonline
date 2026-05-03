@@ -42,10 +42,28 @@ export default function RedefinirSenhaPage() {
   useEffect(() => {
     let cancelado = false;
     (async () => {
-      // O /auth/callback ja trocou o code por sessao antes de chegar aqui.
-      // Apenas verificamos se ha sessao ativa.
+      // Cenarios possiveis:
+      // 1. Veio do /auth/callback: sessao ja gravada em cookie -> getUser ok.
+      // 2. Veio com ?code=... (caso /auth/callback nao tenha rodado): troca aqui.
+      // 3. Veio com #access_token=... (fluxo implicit): @supabase/ssr browser
+      //    client detecta automaticamente via detectSessionInUrl.
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (code) {
+          await supabase.auth
+            .exchangeCodeForSession(code)
+            .catch((e) =>
+              console.error('[redefinir-senha] exchangeCodeForSession falhou', e),
+            );
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('code');
+          window.history.replaceState({}, '', cleanUrl.toString());
+        }
+      }
       const { data } = await supabase.auth.getUser();
       if (cancelado) return;
+      console.log('[redefinir-senha] sessaoOk?', !!data.user);
       setSessaoOk(!!data.user);
     })();
     return () => {

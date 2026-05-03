@@ -19,30 +19,48 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get('token_hash');
   const typeParam = url.searchParams.get('type') as EmailOtpType | null;
   const nextParam = url.searchParams.get('next') ?? '/';
-  const nextSafe = nextParam.startsWith('/') ? nextParam : '/';
-
-  // Para fluxo de recovery, sempre garantir que cai em /redefinir-senha
-  const next =
-    typeParam === 'recovery'
-      ? '/redefinir-senha'
-      : nextParam === '/' && nextSafe === '/' && nextParam.includes('redefinir-senha')
-        ? '/redefinir-senha'
-        : nextSafe;
-
   const errorParam = url.searchParams.get('error');
+  const errorDescription = url.searchParams.get('error_description');
+
+  const allParams = Object.fromEntries(url.searchParams.entries());
+  console.log('[auth/callback] entrada', {
+    url: url.toString(),
+    code: code ? `${code.slice(0, 8)}...` : null,
+    tokenHash: tokenHash ? `${tokenHash.slice(0, 8)}...` : null,
+    type: typeParam,
+    next: nextParam,
+    error: errorParam,
+    errorDescription,
+    todosParams: Object.keys(allParams),
+  });
+
+  const nextSafe = nextParam.startsWith('/') ? nextParam : '/';
+  // Recovery sempre cai em /redefinir-senha, ignorando next se necessario.
+  const isRecovery =
+    typeParam === 'recovery' || nextSafe.startsWith('/redefinir-senha');
+  const next = isRecovery ? '/redefinir-senha' : nextSafe;
+
   if (errorParam) {
-    const description = url.searchParams.get('error_description');
+    console.error('[auth/callback] erro Supabase no redirect', {
+      errorParam,
+      errorDescription,
+    });
     const target = new URL('/login', url.origin);
-    target.searchParams.set('error', description ?? errorParam);
+    target.searchParams.set('error', errorDescription ?? errorParam);
     return NextResponse.redirect(target);
   }
 
   const supabase = await createClient();
 
   if (tokenHash && typeParam && OTP_TYPES.includes(typeParam)) {
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: typeParam,
+    });
+    console.log('[auth/callback] verifyOtp resultado', {
+      ok: !error,
+      userId: data?.user?.id ?? null,
+      error: error?.message ?? null,
     });
     if (error) {
       const target = new URL('/login', url.origin);
@@ -50,13 +68,27 @@ export async function GET(request: Request) {
       return NextResponse.redirect(target);
     }
   } else if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    console.log('[auth/callback] exchangeCodeForSession resultado', {
+      ok: !error,
+      userId: data?.user?.id ?? null,
+      error: error?.message ?? null,
+    });
     if (error) {
       const target = new URL('/login', url.origin);
       target.searchParams.set('error', error.message);
       return NextResponse.redirect(target);
     }
+  } else {
+    // Nao chegou code nem token_hash: provavelmente o token veio no hash da URL
+    // (#access_token=...). O servidor nao recebe o hash, mas o cliente JS na
+    // proxima pagina detecta. Para recovery, deixar /redefinir-senha tratar.
+    console.warn('[auth/callback] sem code/tokenHash', {
+      typeParam,
+      nextParam,
+    });
   }
 
+  console.log('[auth/callback] redirecionando', { next });
   return NextResponse.redirect(new URL(next, url.origin));
 }

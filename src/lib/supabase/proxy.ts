@@ -2,6 +2,19 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const pathnameInicial = request.nextUrl.pathname;
+
+  // Rotas publicas relacionadas a auth nao devem passar por getUser/redirect
+  // (callback de OAuth/recovery, paginas de senha, cadastro publico).
+  const isRotaAuthPublica =
+    pathnameInicial.startsWith('/auth/callback') ||
+    pathnameInicial.startsWith('/auth/confirm') ||
+    pathnameInicial === '/esqueci-senha' ||
+    pathnameInicial === '/redefinir-senha';
+  if (isRotaAuthPublica) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
