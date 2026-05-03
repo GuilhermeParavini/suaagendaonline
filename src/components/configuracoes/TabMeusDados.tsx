@@ -302,7 +302,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
               rows={3}
               maxLength={300}
               disabled={!editandoProf}
-              placeholder="Apresentacao breve para o agendamento online"
+              placeholder="Apresentação breve para o agendamento online"
               className={`${inputClass} resize-none`}
             />
             {profForm.formState.errors.bio ? (
@@ -344,7 +344,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
         <header className="flex items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold text-slate-900">
-              Dados da clinica
+              Dados da clínica
             </h2>
             {!podeEditarTenant ? (
               <p className="text-xs text-slate-500">

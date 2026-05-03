@@ -50,21 +50,21 @@ function ConfiguracoesClient({
     <div className="space-y-5">
       <header className="space-y-1">
         <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
-          Configuracoes
+          Configurações
         </h1>
         <p className="text-sm text-slate-500">
-          Gerencie seus dados, horarios e procedimentos.
+          Gerencie seus dados, horários e procedimentos.
         </p>
       </header>
 
       <Tabs.Root defaultValue="dados" className="space-y-5">
         <Tabs.List
-          aria-label="Configuracoes"
+          aria-label="Configurações"
           className="flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-white p-1"
         >
           {[
             { value: "dados", label: "Meus dados" },
-            { value: "horarios", label: "Horarios" },
+            { value: "horarios", label: "Horários" },
             { value: "procedimentos", label: "Procedimentos" },
           ].map((t) => (
             <Tabs.Trigger

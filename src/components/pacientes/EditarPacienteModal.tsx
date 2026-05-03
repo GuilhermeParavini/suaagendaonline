@@ -237,7 +237,7 @@ function EditarPacienteModal({
     setApiError(null);
     const isoNascimento = brDateToIso(data.data_nascimento);
     if (!isoNascimento) {
-      setApiError("Data de nascimento invalida.");
+      setApiError("Data de nascimento inválida.");
       return;
     }
 
@@ -340,7 +340,7 @@ function EditarPacienteModal({
                     className={inputClass}
                   />
                   <p className="text-[11px] text-slate-500">
-                    CPF nao pode ser alterado
+                    CPF não pode ser alterado
                   </p>
                 </div>
 
@@ -376,7 +376,7 @@ function EditarPacienteModal({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className={labelClass}>Genero *</label>
+                  <label className={labelClass}>Gênero *</label>
                   <select {...register("genero")} className={inputClass}>
                     {generoOptions.map((g) => (
                       <option key={g.value} value={g.value}>
@@ -418,7 +418,7 @@ function EditarPacienteModal({
               </div>
 
               <div className="space-y-1">
-                <label className={labelClass}>Convenio</label>
+                <label className={labelClass}>Convênio</label>
                 <input
                   {...register("convenio")}
                   type="text"
@@ -428,7 +428,7 @@ function EditarPacienteModal({
               </div>
 
               <div className="space-y-1">
-                <label className={labelClass}>Observacoes</label>
+                <label className={labelClass}>Observações</label>
                 <textarea
                   {...register("observacoes")}
                   rows={3}
@@ -441,11 +441,11 @@ function EditarPacienteModal({
             {showResponsavel ? (
               <fieldset className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
                 <legend className="px-2 text-[13px] font-medium text-amber-800">
-                  Responsavel legal (paciente menor de idade)
+                  Responsável legal (paciente menor de idade)
                 </legend>
 
                 <div className="space-y-1">
-                  <label className={labelClass}>Nome do responsavel *</label>
+                  <label className={labelClass}>Nome do responsável *</label>
                   <input
                     {...register("resp_nome")}
                     type="text"
@@ -459,7 +459,7 @@ function EditarPacienteModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className={labelClass}>CPF do responsavel *</label>
+                    <label className={labelClass}>CPF do responsável *</label>
                     <input
                       {...register("resp_cpf", {
                         onChange: handleMaskedChange("resp_cpf", formatCPF),
@@ -477,7 +477,7 @@ function EditarPacienteModal({
 
                   <div className="space-y-1">
                     <label className={labelClass}>
-                      Telefone do responsavel *
+                      Telefone do responsável *
                     </label>
                     <input
                       {...register("resp_telefone", {
@@ -502,7 +502,7 @@ function EditarPacienteModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className={labelClass}>E-mail do responsavel</label>
+                    <label className={labelClass}>E-mail do responsável</label>
                     <input
                       {...register("resp_email")}
                       type="email"
@@ -534,15 +534,15 @@ function EditarPacienteModal({
 
             <fieldset className="space-y-3">
               <legend className="text-[13px] font-medium text-slate-500">
-                Endereco
+                Endereço
               </legend>
 
               <div className="space-y-1">
-                <label className={labelClass}>Endereco</label>
+                <label className={labelClass}>Endereço</label>
                 <input
                   {...register("endereco")}
                   type="text"
-                  placeholder="Rua, numero, complemento"
+                  placeholder="Rua, número, complemento"
                   className={inputClass}
                 />
               </div>
@@ -570,7 +570,7 @@ function EditarPacienteModal({
                   <input
                     {...register("cidade")}
                     type="text"
-                    placeholder="Sao Paulo"
+                    placeholder="São Paulo"
                     className={inputClass}
                   />
                 </div>
@@ -593,7 +593,7 @@ function EditarPacienteModal({
               <div className="rounded border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 space-y-2">
                 <p>
                   Este paciente passou a ser maior de idade. Os dados do
-                  responsavel serao removidos. Deseja continuar?
+                  responsável serão removidos. Deseja continuar?
                 </p>
                 <div className="flex gap-2 justify-end">
                   <button

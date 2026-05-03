@@ -50,7 +50,7 @@ function TabProcedimentos({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-slate-500">
-          Cadastre os procedimentos que voce oferece. Pacientes escolhem um
+          Cadastre os procedimentos que você oferece. Pacientes escolhem um
           deles no agendamento online.
         </p>
         <button

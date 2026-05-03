@@ -24,10 +24,10 @@ import { cn } from "@/lib/utils";
 const formaPagamentoOptions: { value: FormaPagamento; label: string }[] = [
   { value: "dinheiro", label: "Dinheiro" },
   { value: "pix", label: "PIX" },
-  { value: "cartao_credito", label: "Cartao Credito" },
-  { value: "cartao_debito", label: "Cartao Debito" },
-  { value: "convenio", label: "Convenio" },
-  { value: "transferencia", label: "Transferencia" },
+  { value: "cartao_credito", label: "Cartão de Crédito" },
+  { value: "cartao_debito", label: "Cartão de Débito" },
+  { value: "convenio", label: "Convênio" },
+  { value: "transferencia", label: "Transferência" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -36,7 +36,7 @@ const formSchema = z.object({
   descricao: z
     .string()
     .transform((s) => s.trim())
-    .refine((s) => s.length >= 2, "Descricao obrigatoria"),
+    .refine((s) => s.length >= 2, "Descrição obrigatória"),
   valor: z
     .string()
     .refine((s) => parseCurrency(s) > 0, "Valor invalido"),
@@ -176,7 +176,7 @@ function FormLancamento({
 
           <div className="flex items-start justify-between gap-3 shrink-0">
             <Dialog.Title className="text-base font-semibold text-slate-900">
-              Novo lancamento
+              Novo lançamento
             </Dialog.Title>
             <Dialog.Close
               aria-label="Fechar"
@@ -218,7 +218,7 @@ function FormLancamento({
             </div>
 
             <div className="space-y-1">
-              <label className={labelClass}>Descricao *</label>
+              <label className={labelClass}>Descrição *</label>
               <input
                 {...register("descricao")}
                 type="text"
@@ -321,7 +321,7 @@ function FormLancamento({
             </label>
 
             <div className="space-y-1">
-              <label className={labelClass}>Observacoes</label>
+              <label className={labelClass}>Observações</label>
               <textarea
                 {...register("observacoes")}
                 rows={2}

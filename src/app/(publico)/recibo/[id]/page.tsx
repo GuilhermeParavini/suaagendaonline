@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 const FORMA_LABELS: Record<string, string> = {
   dinheiro: "Dinheiro",
   pix: "PIX",
-  cartao_credito: "Cartao de Credito",
-  cartao_debito: "Cartao de Debito",
-  convenio: "Convenio",
-  transferencia: "Transferencia",
+  cartao_credito: "Cartão de Crédito",
+  cartao_debito: "Cartão de Débito",
+  convenio: "Convênio",
+  transferencia: "Transferência",
   outro: "Outro",
 };
 

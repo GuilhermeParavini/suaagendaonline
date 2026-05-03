@@ -20,10 +20,10 @@ interface ListaLancamentosProps {
 const formaLabels: Record<FormaPagamento, string> = {
   dinheiro: "Dinheiro",
   pix: "PIX",
-  cartao_credito: "Cartao Credito",
-  cartao_debito: "Cartao Debito",
-  convenio: "Convenio",
-  transferencia: "Transferencia",
+  cartao_credito: "Cartão de Crédito",
+  cartao_debito: "Cartão de Débito",
+  convenio: "Convênio",
+  transferencia: "Transferência",
   outro: "Outro",
 };
 
@@ -40,7 +40,7 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
         <p className="text-sm text-slate-500">
-          Nenhum lancamento neste periodo.
+          Nenhum lançamento neste período.
         </p>
       </div>
     );
@@ -54,7 +54,7 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
   };
 
   const handleExcluir = (id: string) => {
-    if (!window.confirm("Deseja excluir este lancamento?")) return;
+    if (!window.confirm("Deseja excluir este lançamento?")) return;
     startTransition(async () => {
       const result = await excluirLancamento(id);
       if (result.ok) onChanged();
@@ -149,7 +149,7 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
                     type="button"
                     onClick={() => handleExcluir(l.id)}
                     disabled={isPending}
-                    aria-label="Excluir lancamento"
+                    aria-label="Excluir lançamento"
                     className="inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
                   >
                     <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />

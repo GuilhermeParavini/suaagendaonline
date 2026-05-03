@@ -11,12 +11,35 @@ import { cn } from "@/lib/utils";
 const DIAS = [
   "Domingo",
   "Segunda-feira",
-  "Terca-feira",
+  "Terça-feira",
   "Quarta-feira",
   "Quinta-feira",
   "Sexta-feira",
-  "Sabado",
+  "Sábado",
 ];
+
+function formatTime24(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 4);
+  if (digits.length === 0) return "";
+  let hh = digits.slice(0, 2);
+  const mm = digits.slice(2, 4);
+  if (hh.length === 2) {
+    const h = Number(hh);
+    if (h > 23) hh = "23";
+  }
+  if (mm.length === 2) {
+    const m = Number(mm);
+    const minClamped = m > 59 ? "59" : mm;
+    return `${hh}:${minClamped}`;
+  }
+  if (mm.length === 1) {
+    return `${hh}:${mm}`;
+  }
+  if (hh.length === 2) {
+    return `${hh}:`;
+  }
+  return hh;
+}
 
 interface TabHorariosProps {
   horarios: HorarioBloco[];
@@ -119,13 +142,18 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
       const d = estado[dia];
       if (!d.ativo) continue;
       for (const b of d.blocos) {
-        if (!b.hora_inicio || !b.hora_fim) {
-          setErro(`Preencha as horas em ${DIAS[dia]}.`);
+        if (
+          !b.hora_inicio ||
+          !b.hora_fim ||
+          !/^\d{2}:\d{2}$/.test(b.hora_inicio) ||
+          !/^\d{2}:\d{2}$/.test(b.hora_fim)
+        ) {
+          setErro(`Preencha as horas em ${DIAS[dia]} (formato HH:MM).`);
           return;
         }
         if (b.hora_inicio >= b.hora_fim) {
           setErro(
-            `Em ${DIAS[dia]}, a hora de fim deve ser maior que a de inicio.`,
+            `Em ${DIAS[dia]}, a hora de fim deve ser maior que a de início.`,
           );
           return;
         }
@@ -152,13 +180,13 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
-        Defina os dias e horarios em que voce atende. Pacientes verao apenas os
+        Defina os dias e horários em que você atende. Pacientes verão apenas os
         dias ativos no agendamento online.
       </p>
 
       {okMsg ? (
         <p className="rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]">
-          Horarios atualizados
+          Horários atualizados
         </p>
       ) : null}
 
@@ -196,7 +224,7 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                   className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
                 >
                   <Plus size={13} strokeWidth={1.5} aria-hidden="true" />
-                  Adicionar horario
+                  Adicionar horário
                 </button>
               ) : null}
             </div>
@@ -209,26 +237,42 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                     className="flex items-center gap-2"
                   >
                     <input
-                      type="time"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      placeholder="HH:MM"
                       value={b.hora_inicio}
                       onChange={(e) =>
-                        alterarHora(dia, idx, "hora_inicio", e.target.value)
+                        alterarHora(
+                          dia,
+                          idx,
+                          "hora_inicio",
+                          formatTime24(e.target.value),
+                        )
                       }
-                      className="rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-primary focus:outline-none"
+                      className="w-20 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-primary focus:outline-none"
                     />
-                    <span className="text-xs text-slate-400">a</span>
+                    <span className="text-xs text-slate-400">às</span>
                     <input
-                      type="time"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={5}
+                      placeholder="HH:MM"
                       value={b.hora_fim}
                       onChange={(e) =>
-                        alterarHora(dia, idx, "hora_fim", e.target.value)
+                        alterarHora(
+                          dia,
+                          idx,
+                          "hora_fim",
+                          formatTime24(e.target.value),
+                        )
                       }
-                      className="rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-primary focus:outline-none"
+                      className="w-20 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-primary focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => removerBloco(dia, idx)}
-                      aria-label="Remover horario"
+                      aria-label="Remover horário"
                       className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
                       <X size={14} strokeWidth={1.5} aria-hidden="true" />
@@ -254,7 +298,7 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
           disabled={isPending}
           className="rounded bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-dark transition-colors disabled:opacity-50"
         >
-          {isPending ? "Salvando..." : "Salvar horarios"}
+          {isPending ? "Salvando..." : "Salvar horários"}
         </button>
       </div>
     </div>

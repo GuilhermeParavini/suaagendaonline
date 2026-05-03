@@ -34,8 +34,8 @@ const ACOES_POR_STATUS: Record<StatusAgendamento, AcaoStatus[]> = {
   agendado: [
     {
       status: "confirmado",
-      label: "Confirmar presenca",
-      toast: "Presenca confirmada",
+      label: "Confirmar presença",
+      toast: "Presença confirmada",
       className: "bg-primary text-white hover:bg-primary-dark border-transparent",
     },
   ],
@@ -222,7 +222,7 @@ function AgendamentoModal({
 
           {ehFinal ? (
             <p className="mt-5 text-sm text-slate-500">
-              Este agendamento esta em estado final.
+              Este agendamento está em estado final.
             </p>
           ) : confirmandoCancelamento ? (
             <div className="mt-5 space-y-3">

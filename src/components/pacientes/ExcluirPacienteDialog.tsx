@@ -71,7 +71,7 @@ function ExcluirPacienteDialog({
           <Dialog.Description className="mt-3 text-sm text-slate-600">
             Deseja excluir{" "}
             <span className="font-medium text-slate-900">{pacienteNome}</span>?
-            Esta acao nao pode ser desfeita.
+            Esta ação não pode ser desfeita.
           </Dialog.Description>
 
           {erro ? (

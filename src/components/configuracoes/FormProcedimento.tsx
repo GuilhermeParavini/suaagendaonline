@@ -147,7 +147,7 @@ function FormProcedimento({
               <input
                 {...register("nome")}
                 type="text"
-                placeholder="Ex.: Avaliacao fisioterapeutica"
+                placeholder="Ex.: Avaliação fisioterapêutica"
                 className={inputClass}
               />
               {errors.nome ? (
@@ -157,7 +157,7 @@ function FormProcedimento({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className={labelClass}>Duracao (min) *</label>
+                <label className={labelClass}>Duração (min) *</label>
                 <input
                   {...register("duracao_min")}
                   type="number"

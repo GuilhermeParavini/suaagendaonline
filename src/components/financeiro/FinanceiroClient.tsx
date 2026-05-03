@@ -28,7 +28,7 @@ interface FinanceiroClientProps {
 }
 
 const MESES = [
-  "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
@@ -36,10 +36,10 @@ const formaPagamentoOptions: { value: FormaPagamento | "todos"; label: string }[
   { value: "todos", label: "Todas" },
   { value: "dinheiro", label: "Dinheiro" },
   { value: "pix", label: "PIX" },
-  { value: "cartao_credito", label: "Cartao Credito" },
-  { value: "cartao_debito", label: "Cartao Debito" },
-  { value: "convenio", label: "Convenio" },
-  { value: "transferencia", label: "Transferencia" },
+  { value: "cartao_credito", label: "Cartão de Crédito" },
+  { value: "cartao_debito", label: "Cartão de Débito" },
+  { value: "convenio", label: "Convênio" },
+  { value: "transferencia", label: "Transferência" },
   { value: "outro", label: "Outro" },
 ];
 
@@ -188,7 +188,7 @@ function FinanceiroClient({
 
       <div className="grid grid-cols-3 gap-2 md:gap-3">
         <MetricCard
-          label="Receita do mes"
+          label="Receita do mês"
           value={
             <span className="text-[#16A34A]">
               {formatCurrency(resumo.receita)}
@@ -213,7 +213,7 @@ function FinanceiroClient({
         <Tabs.Root value={tipo} onValueChange={handleTipoChange} className="flex-1">
           <Tabs.List
             className="inline-flex w-full rounded-lg border border-slate-200 bg-white p-1"
-            aria-label="Tipo de lancamento"
+            aria-label="Tipo de lançamento"
           >
             <Tabs.Trigger
               value="receita"
@@ -256,7 +256,7 @@ function FinanceiroClient({
         <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
             <label className="block text-[13px] font-medium text-slate-700">
-              Mes
+              Mês
             </label>
             <select
               value={mes}
@@ -354,7 +354,7 @@ function FinanceiroClient({
 
       <button
         type="button"
-        aria-label="Novo lancamento"
+        aria-label="Novo lançamento"
         onClick={() => setModalAberto(true)}
         className="fixed right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] lg:bottom-6 lg:right-6 h-14 w-14 rounded-full bg-primary text-white shadow-md hover:shadow-lg hover:bg-primary-dark transition flex items-center justify-center z-40"
       >

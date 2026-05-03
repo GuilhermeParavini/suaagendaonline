@@ -47,7 +47,7 @@ function Sidebar() {
           Sua Agenda Online
         </Link>
       </div>
-      <nav aria-label="Navegacao lateral" className="flex-1 px-3 py-4">
+      <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
           {items.map(({ href, label, Icon, exact }) => {
             const active = isActive(pathname, href, exact);

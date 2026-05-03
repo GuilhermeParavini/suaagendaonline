@@ -48,15 +48,15 @@ function ReciboPublico({
         <p>
           Recebi de{" "}
           <span className="font-semibold">
-            {paciente?.nome ?? "(nao informado)"}
+            {paciente?.nome ?? "(não informado)"}
           </span>{" "}
-          a importancia de{" "}
+          a importância de{" "}
           <span className="font-semibold">{valorFormatado}</span> (
           <span className="italic">{valorExtenso}</span>) referente a{" "}
           <span className="font-medium">{descricao}</span>
           {formaPagamento ? (
             <>
-              , pago atraves de{" "}
+              , pago através de{" "}
               <span className="font-medium">{formaPagamento}</span>
             </>
           ) : null}
@@ -64,7 +64,7 @@ function ReciboPublico({
         </p>
         <p>
           Para clareza firmo o presente recibo, dando plena, geral e
-          irrevogavel quitacao do valor recebido.
+          irrevogável quitação do valor recebido.
         </p>
       </section>
 
