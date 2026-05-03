@@ -19,7 +19,7 @@ import {
   type ProcedimentoOpcao,
   type SlotPainel,
 } from "@/actions/agendamentos";
-import { formatCPF } from "@/lib/masks";
+import { formatPhone } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import CalendarioMensal from "@/components/agendamento-publico/CalendarioMensal";
 import { addMonths, endOfMonth, startOfMonth, format } from "date-fns";
@@ -286,9 +286,11 @@ function NovoAgendamentoModal({
                     <p className="text-sm font-medium text-slate-900 truncate">
                       {pacienteSelecionado.nome}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {formatCPF(pacienteSelecionado.cpf)}
-                    </p>
+                    {pacienteSelecionado.telefone ? (
+                      <p className="text-xs text-slate-500">
+                        {formatPhone(pacienteSelecionado.telefone)}
+                      </p>
+                    ) : null}
                   </div>
                   <button
                     type="button"
@@ -311,7 +313,7 @@ function NovoAgendamentoModal({
                       type="text"
                       value={termoBusca}
                       onChange={(e) => handleBuscaChange(e.target.value)}
-                      placeholder="Buscar por nome ou CPF"
+                      placeholder="Buscar por nome ou telefone"
                       className={`${inputClass} pl-9`}
                     />
                   </div>
@@ -352,9 +354,11 @@ function NovoAgendamentoModal({
                               <p className="text-sm font-medium text-slate-900 truncate">
                                 {p.nome}
                               </p>
-                              <p className="text-xs text-slate-500">
-                                {formatCPF(p.cpf)}
-                              </p>
+                              {p.telefone ? (
+                                <p className="text-xs text-slate-500">
+                                  {formatPhone(p.telefone)}
+                                </p>
+                              ) : null}
                             </div>
                           </button>
                         </li>

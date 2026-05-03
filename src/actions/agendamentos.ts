@@ -290,7 +290,7 @@ export async function atualizarStatusAgendamento(
 export type PacienteOpcao = {
   id: string;
   nome: string;
-  cpf: string;
+  telefone: string;
   email: string | null;
 };
 
@@ -373,16 +373,17 @@ export async function buscarPacientesPainel(
   // PostgREST .or() nao aceita virgulas nem caracteres especiais sem escape;
   // dentro de or() ilike espera asterisco (*) como wildcard.
   const safe = t.replace(/[,()*]/g, ' ').trim();
-  const cpfDigits = t.replace(/\D/g, '');
+  const digits = t.replace(/\D/g, '');
 
   let query = admin
     .from('pacientes')
-    .select('id, nome, cpf, email')
+    .select('id, nome, telefone, email')
     .eq('tenant_id', prof.tenant_id as string)
     .eq('ativo', true);
 
-  if (cpfDigits.length >= 3) {
-    query = query.or(`nome.ilike.*${safe}*,cpf.ilike.*${cpfDigits}*`);
+  if (digits.length >= 3) {
+    // Busca por nome ou telefone (LGPD: nao buscamos por CPF)
+    query = query.or(`nome.ilike.*${safe}*,telefone.ilike.*${digits}*`);
   } else {
     query = query.ilike('nome', `%${safe}%`);
   }
@@ -397,7 +398,7 @@ export async function buscarPacientesPainel(
     data: (data ?? []).map((r) => ({
       id: r.id as string,
       nome: r.nome as string,
-      cpf: r.cpf as string,
+      telefone: (r.telefone as string) ?? '',
       email: (r.email as string | null) ?? null,
     })),
   };

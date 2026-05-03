@@ -42,6 +42,19 @@ export default function RedefinirSenhaPage() {
   useEffect(() => {
     let cancelado = false;
     (async () => {
+      // Se a URL trouxer ?code=..., faz a troca por sessao manualmente.
+      // Importante para o fluxo PKCE quando o link nao passou pelo /auth/callback.
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code).catch(() => {});
+          // Limpa o code da URL para nao re-processar
+          const url = new URL(window.location.href);
+          url.searchParams.delete('code');
+          window.history.replaceState({}, '', url.toString());
+        }
+      }
       const { data } = await supabase.auth.getUser();
       if (cancelado) return;
       setSessaoOk(!!data.user);
