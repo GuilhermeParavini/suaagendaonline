@@ -353,51 +353,64 @@ export async function listarPacientesOptions(): Promise<Result<PacienteOption[]>
   };
 }
 
-export async function getReciboData(id: string): Promise<
-  Result<{
-    lancamento: Lancamento;
-    profissional: {
-      nome: string;
-      especialidade: string;
-      registro_profissional: string | null;
-      email: string;
-      telefone: string | null;
-    };
-    tenant: {
-      nome_empresa: string;
-      endereco: string | null;
-      cidade: string | null;
-      estado: string | null;
-    };
-  }>
-> {
-  const ctx = await obterTenant();
-  if (!ctx.ok) return ctx;
+type ReciboData = {
+  lancamento: Lancamento;
+  pacienteEmail: string | null;
+  profissional: {
+    nome: string;
+    especialidade: string;
+    registro_profissional: string | null;
+    email: string;
+    telefone: string | null;
+  };
+  tenant: {
+    nome_empresa: string;
+    endereco: string | null;
+    cidade: string | null;
+    estado: string | null;
+  };
+};
 
-  const admin = createAdminClient();
-  const { data: row, error } = await admin
-    .from('financeiro')
-    .select(
-      'id, tipo, descricao, valor, forma_pagamento, data_lancamento, data_pagamento, pago, categoria, observacoes, agendamento_id, tenant_id, pacientes(id, nome)',
-    )
-    .eq('id', id)
-    .maybeSingle();
-  if (error) return { ok: false, error: error.message };
-  if (!row) return { ok: false, error: 'Lancamento nao encontrado.' };
-  if (row.tenant_id !== ctx.tenantId) {
-    return { ok: false, error: 'Sem permissao.' };
+async function montarReciboData(
+  admin: ReturnType<typeof createAdminClient>,
+  row: {
+    id: string;
+    tipo: string;
+    descricao: string;
+    valor: unknown;
+    forma_pagamento: string | null;
+    data_lancamento: string;
+    data_pagamento: string | null;
+    pago: boolean;
+    categoria: string | null;
+    observacoes: string | null;
+    agendamento_id: string | null;
+    tenant_id: string;
+    profissional_id: string | null;
+    paciente_id: string | null;
+    pacientes: { id: string; nome: string } | { id: string; nome: string }[] | null;
+  },
+): Promise<Result<ReciboData>> {
+  const paciente = Array.isArray(row.pacientes) ? row.pacientes[0] : row.pacientes;
+
+  let pacienteEmail: string | null = null;
+  if (row.paciente_id) {
+    const { data: pac } = await admin
+      .from('pacientes')
+      .select('email')
+      .eq('id', row.paciente_id)
+      .maybeSingle();
+    pacienteEmail = (pac?.email as string | null) ?? null;
   }
-  if (row.tipo !== 'receita') {
-    return { ok: false, error: 'Recibo disponivel apenas para receitas.' };
-  }
-  if (!row.pago) {
-    return { ok: false, error: 'Recibo disponivel apenas para lancamentos pagos.' };
+
+  if (!row.profissional_id) {
+    return { ok: false, error: 'Profissional do lancamento nao encontrado.' };
   }
 
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select('nome, especialidade, registro_profissional, email, telefone')
-    .eq('id', ctx.profissionalId)
+    .eq('id', row.profissional_id)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
@@ -405,25 +418,23 @@ export async function getReciboData(id: string): Promise<
   const { data: tenant, error: tenantErr } = await admin
     .from('tenants')
     .select('nome_empresa, endereco, cidade, estado')
-    .eq('id', ctx.tenantId)
+    .eq('id', row.tenant_id)
     .maybeSingle();
   if (tenantErr) return { ok: false, error: tenantErr.message };
   if (!tenant) return { ok: false, error: 'Tenant nao encontrado.' };
 
-  const paciente = Array.isArray(row.pacientes) ? row.pacientes[0] : row.pacientes;
-
   const lancamento: Lancamento = {
-    id: row.id as string,
+    id: row.id,
     tipo: row.tipo as FinanceiroTipo,
-    descricao: row.descricao as string,
+    descricao: row.descricao,
     valor: Number(row.valor) || 0,
     forma_pagamento: (row.forma_pagamento as FormaPagamento | null) ?? null,
-    data_lancamento: row.data_lancamento as string,
-    data_pagamento: (row.data_pagamento as string | null) ?? null,
+    data_lancamento: row.data_lancamento,
+    data_pagamento: row.data_pagamento,
     pago: Boolean(row.pago),
-    categoria: (row.categoria as string | null) ?? null,
-    observacoes: (row.observacoes as string | null) ?? null,
-    agendamento_id: (row.agendamento_id as string | null) ?? null,
+    categoria: row.categoria,
+    observacoes: row.observacoes,
+    agendamento_id: row.agendamento_id,
     paciente: paciente
       ? { id: paciente.id as string, nome: paciente.nome as string }
       : null,
@@ -433,6 +444,7 @@ export async function getReciboData(id: string): Promise<
     ok: true,
     data: {
       lancamento,
+      pacienteEmail,
       profissional: {
         nome: prof.nome as string,
         especialidade: prof.especialidade as string,
@@ -448,4 +460,94 @@ export async function getReciboData(id: string): Promise<
       },
     },
   };
+}
+
+export async function getReciboPublico(id: string): Promise<Result<ReciboData>> {
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'Recibo invalido.' };
+  }
+
+  const admin = createAdminClient();
+  const { data: row, error } = await admin
+    .from('financeiro')
+    .select(
+      'id, tipo, descricao, valor, forma_pagamento, data_lancamento, data_pagamento, pago, categoria, observacoes, agendamento_id, tenant_id, profissional_id, paciente_id, pacientes(id, nome)',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!row) return { ok: false, error: 'Recibo nao encontrado.' };
+  if (row.tipo !== 'receita') {
+    return { ok: false, error: 'Recibo disponivel apenas para receitas.' };
+  }
+  if (!row.pago) {
+    return { ok: false, error: 'Recibo disponivel apenas para lancamentos pagos.' };
+  }
+
+  return montarReciboData(admin, {
+    id: row.id as string,
+    tipo: row.tipo as string,
+    descricao: row.descricao as string,
+    valor: row.valor,
+    forma_pagamento: (row.forma_pagamento as string | null) ?? null,
+    data_lancamento: row.data_lancamento as string,
+    data_pagamento: (row.data_pagamento as string | null) ?? null,
+    pago: Boolean(row.pago),
+    categoria: (row.categoria as string | null) ?? null,
+    observacoes: (row.observacoes as string | null) ?? null,
+    agendamento_id: (row.agendamento_id as string | null) ?? null,
+    tenant_id: row.tenant_id as string,
+    profissional_id: (row.profissional_id as string | null) ?? null,
+    paciente_id: (row.paciente_id as string | null) ?? null,
+    pacientes: (row.pacientes as
+      | { id: string; nome: string }
+      | { id: string; nome: string }[]
+      | null) ?? null,
+  });
+}
+
+export async function getReciboData(id: string): Promise<Result<ReciboData>> {
+  const ctx = await obterTenant();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data: row, error } = await admin
+    .from('financeiro')
+    .select(
+      'id, tipo, descricao, valor, forma_pagamento, data_lancamento, data_pagamento, pago, categoria, observacoes, agendamento_id, tenant_id, profissional_id, paciente_id, pacientes(id, nome)',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!row) return { ok: false, error: 'Lancamento nao encontrado.' };
+  if (row.tenant_id !== ctx.tenantId) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+  if (row.tipo !== 'receita') {
+    return { ok: false, error: 'Recibo disponivel apenas para receitas.' };
+  }
+  if (!row.pago) {
+    return { ok: false, error: 'Recibo disponivel apenas para lancamentos pagos.' };
+  }
+
+  return montarReciboData(admin, {
+    id: row.id as string,
+    tipo: row.tipo as string,
+    descricao: row.descricao as string,
+    valor: row.valor,
+    forma_pagamento: (row.forma_pagamento as string | null) ?? null,
+    data_lancamento: row.data_lancamento as string,
+    data_pagamento: (row.data_pagamento as string | null) ?? null,
+    pago: Boolean(row.pago),
+    categoria: (row.categoria as string | null) ?? null,
+    observacoes: (row.observacoes as string | null) ?? null,
+    agendamento_id: (row.agendamento_id as string | null) ?? null,
+    tenant_id: row.tenant_id as string,
+    profissional_id: (row.profissional_id as string | null) ?? null,
+    paciente_id: (row.paciente_id as string | null) ?? null,
+    pacientes: (row.pacientes as
+      | { id: string; nome: string }
+      | { id: string; nome: string }[]
+      | null) ?? null,
+  });
 }

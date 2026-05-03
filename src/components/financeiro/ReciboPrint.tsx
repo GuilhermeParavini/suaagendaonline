@@ -1,8 +1,11 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { useState } from "react";
+import { Mail, MessageCircle, Printer } from "lucide-react";
 
 interface ReciboPrintProps {
+  id: string;
+  pacienteEmail: string | null;
   tenant: {
     nome_empresa: string;
     endereco: string | null;
@@ -23,7 +26,28 @@ interface ReciboPrintProps {
   formaPagamento: string | null;
 }
 
+function montarMensagem(params: {
+  profissionalNome: string;
+  valor: string;
+  data: string;
+  descricao: string;
+  url: string;
+}) {
+  return [
+    "Ola! Segue seu recibo de pagamento:",
+    "",
+    `Profissional: ${params.profissionalNome}`,
+    `Valor: ${params.valor}`,
+    `Data: ${params.data}`,
+    `Referente a: ${params.descricao}`,
+    "",
+    `Acesse o recibo completo: ${params.url}`,
+  ].join("\n");
+}
+
 function ReciboPrint({
+  id,
+  pacienteEmail,
   tenant,
   profissional,
   paciente,
@@ -33,8 +57,52 @@ function ReciboPrint({
   dataPagamento,
   formaPagamento,
 }: ReciboPrintProps) {
+  const [copiado, setCopiado] = useState(false);
+
+  const buildUrlPublica = () => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/recibo/${id}`;
+  };
+
+  const buildMensagem = () => {
+    return montarMensagem({
+      profissionalNome: profissional.nome,
+      valor: valorFormatado,
+      data: dataPagamento,
+      descricao,
+      url: buildUrlPublica(),
+    });
+  };
+
+  const handleWhatsApp = () => {
+    const texto = encodeURIComponent(buildMensagem());
+    window.open(`https://wa.me/?text=${texto}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleEmail = () => {
+    // TODO: trocar para envio via Resend quando implementado
+    const assunto = encodeURIComponent(
+      `Recibo - ${profissional.nome} - ${dataPagamento}`,
+    );
+    const corpo = encodeURIComponent(buildMensagem());
+    const destino = pacienteEmail ?? "";
+    window.location.href = `mailto:${destino}?subject=${assunto}&body=${corpo}`;
+  };
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleCopiarLink = async () => {
+    const url = buildUrlPublica();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // ignora
+    }
   };
 
   return (
@@ -59,14 +127,6 @@ function ReciboPrint({
           <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
             Recibo
           </h1>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
-          >
-            <Printer size={16} strokeWidth={1.5} aria-hidden="true" />
-            Imprimir
-          </button>
         </div>
 
         <article className="recibo-page mx-auto max-w-[680px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-10 text-slate-900">
@@ -136,6 +196,44 @@ function ReciboPrint({
             </div>
           </section>
         </article>
+
+        <div className="no-print mx-auto max-w-[680px] space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={handleWhatsApp}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-medium text-white hover:bg-[#1ebe5a] transition-colors active:scale-[0.99]"
+          >
+            <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" />
+            Enviar por WhatsApp
+          </button>
+
+          <button
+            type="button"
+            onClick={handleEmail}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent px-5 py-3 text-sm font-medium text-primary hover:bg-primary-surface transition-colors active:scale-[0.99]"
+          >
+            <Mail size={16} strokeWidth={1.5} aria-hidden="true" />
+            Enviar por e-mail
+          </button>
+
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCopiarLink}
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              {copiado ? "Link copiado" : "Copiar link"}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+            >
+              <Printer size={13} strokeWidth={1.5} aria-hidden="true" />
+              Imprimir
+            </button>
+          </div>
+        </div>
       </div>
     </>
   );

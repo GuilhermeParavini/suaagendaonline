@@ -1,8 +1,6 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getReciboData } from "@/actions/financeiro";
+import { getReciboPublico } from "@/actions/financeiro";
 import { formatCurrency, isoToBrDate, valorPorExtenso } from "@/lib/masks";
-import ReciboPrint from "@/components/financeiro/ReciboPrint";
+import ReciboPublico from "@/components/financeiro/ReciboPublico";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +14,15 @@ const FORMA_LABELS: Record<string, string> = {
   outro: "Outro",
 };
 
-interface ReciboPageProps {
+interface ReciboPublicoPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default async function ReciboPage({ params }: ReciboPageProps) {
+export default async function ReciboPublicoPage({
+  params,
+}: ReciboPublicoPageProps) {
   const { id } = await params;
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const result = await getReciboData(id);
+  const result = await getReciboPublico(id);
   if (!result.ok) {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -38,8 +31,9 @@ export default async function ReciboPage({ params }: ReciboPageProps) {
     );
   }
 
-  const { lancamento, profissional, tenant, pacienteEmail } = result.data;
-  const dataReferencia = lancamento.data_pagamento ?? lancamento.data_lancamento;
+  const { lancamento, profissional, tenant } = result.data;
+  const dataReferencia =
+    lancamento.data_pagamento ?? lancamento.data_lancamento;
   const dataPagamento = isoToBrDate(dataReferencia);
   const valorFormatado = formatCurrency(lancamento.valor);
   const valorExtenso = valorPorExtenso(lancamento.valor);
@@ -49,9 +43,7 @@ export default async function ReciboPage({ params }: ReciboPageProps) {
   const cidade = [tenant.cidade, tenant.estado].filter(Boolean).join(" - ");
 
   return (
-    <ReciboPrint
-      id={lancamento.id}
-      pacienteEmail={pacienteEmail}
+    <ReciboPublico
       tenant={{
         nome_empresa: tenant.nome_empresa,
         endereco: tenant.endereco,
