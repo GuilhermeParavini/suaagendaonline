@@ -47,7 +47,12 @@ const schema = z
       .string()
       .transform((s) => s.trim())
       .refine((s) => s.length >= 3, "Informe seu nome completo"),
-    cpf: z.string().refine((s) => validateCPF(cleanCPF(s)), "CPF inválido"),
+    cpf: z
+      .string()
+      .refine(
+        (s) => cleanCPF(s).length === 11,
+        "CPF deve ter 11 dígitos",
+      ),
     data_nascimento: z
       .string()
       .min(1, "Informe sua data de nascimento")

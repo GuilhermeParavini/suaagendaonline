@@ -302,6 +302,53 @@ export type ProcedimentoOpcao = {
 
 export type SlotPainel = { time: string; available: boolean };
 
+export async function getDatasIndisponiveisPainel(
+  dataInicio: string,
+  dataFim: string,
+): Promise<{ ok: true; datas: string[] } | { ok: false; error: string }> {
+  if (!isIsoDate(dataInicio) || !isIsoDate(dataFim)) {
+    return { ok: false, error: 'Periodo invalido.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(prof.tenant_id as string, dataInicio, dataFim),
+      getBloqueiosForProfissional(prof.id as string, dataInicio, dataFim),
+    ]);
+
+    const datas = new Set<string>();
+    for (const f of feriados) datas.add(f.data);
+    for (const b of bloqueios) {
+      const ini = b.data_inicio < dataInicio ? dataInicio : b.data_inicio;
+      const fim = b.data_fim > dataFim ? dataFim : b.data_fim;
+      let cur = ini;
+      while (cur <= fim) {
+        datas.add(cur);
+        const [y, m, d] = cur.split('-').map(Number);
+        const next = new Date(Date.UTC(y, m - 1, d));
+        next.setUTCDate(next.getUTCDate() + 1);
+        cur = next.toISOString().slice(0, 10);
+      }
+    }
+    return { ok: true, datas: Array.from(datas).sort() };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export async function buscarPacientesPainel(
   termo: string,
 ): Promise<{ ok: true; data: PacienteOpcao[] } | { ok: false; error: string }> {
@@ -323,17 +370,24 @@ export async function buscarPacientesPainel(
     return { ok: true, data: [] };
   }
 
-  const escapado = t.replace(/[%_\\]/g, '\\$&');
+  // PostgREST .or() nao aceita virgulas nem caracteres especiais sem escape;
+  // dentro de or() ilike espera asterisco (*) como wildcard.
+  const safe = t.replace(/[,()*]/g, ' ').trim();
   const cpfDigits = t.replace(/\D/g, '');
-  const cpfFilter = cpfDigits.length >= 3 ? `cpf.ilike.%${cpfDigits}%,` : '';
-  const orFilter = `${cpfFilter}nome.ilike.%${escapado}%`;
 
-  const { data, error } = await admin
+  let query = admin
     .from('pacientes')
     .select('id, nome, cpf, email')
     .eq('tenant_id', prof.tenant_id as string)
-    .eq('ativo', true)
-    .or(orFilter)
+    .eq('ativo', true);
+
+  if (cpfDigits.length >= 3) {
+    query = query.or(`nome.ilike.*${safe}*,cpf.ilike.*${cpfDigits}*`);
+  } else {
+    query = query.ilike('nome', `%${safe}%`);
+  }
+
+  const { data, error } = await query
     .order('nome', { ascending: true })
     .limit(10);
   if (error) return { ok: false, error: error.message };

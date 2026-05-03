@@ -12,6 +12,7 @@ import {
 } from "@/actions/configuracoes";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import { getRegistroSugestao } from "@/lib/registro-profissional";
+import RegistroInput from "@/components/ui/RegistroInput";
 import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
 import SecaoAssinatura from "./SecaoAssinatura";
@@ -41,25 +42,37 @@ const inputClass =
 const labelClass = "block text-[13px] font-medium text-slate-700";
 const errorClass = "text-xs text-danger";
 
-const profSchema = z.object({
-  nome: z
-    .string()
-    .transform((s) => s.trim())
-    .refine((s) => s.length >= 3, "Nome deve ter no mínimo 3 caracteres"),
-  especialidade: z
-    .string()
-    .transform((s) => s.trim())
-    .refine((s) => s.length >= 2, "Selecione uma especialidade"),
-  registro_profissional: z.string().optional(),
-  telefone: z.string().refine((s) => {
-    const d = cleanPhone(s);
-    return d.length === 10 || d.length === 11;
-  }, "Telefone inválido"),
-  bio: z
-    .string()
-    .max(300, "Máximo de 300 caracteres")
-    .optional(),
-});
+const profSchema = z
+  .object({
+    nome: z
+      .string()
+      .transform((s) => s.trim())
+      .refine((s) => s.length >= 3, "Nome deve ter no mínimo 3 caracteres"),
+    especialidade: z
+      .string()
+      .transform((s) => s.trim())
+      .refine((s) => s.length >= 2, "Selecione uma especialidade"),
+    registro_profissional: z.string(),
+    telefone: z.string().refine((s) => {
+      const d = cleanPhone(s);
+      return d.length === 10 || d.length === 11;
+    }, "Telefone inválido"),
+    bio: z.string().max(300, "Máximo de 300 caracteres").optional(),
+  })
+  .superRefine((data, ctx) => {
+    const sug = getRegistroSugestao(data.especialidade);
+    const valor = (data.registro_profissional ?? "").trim();
+    const sufixo = valor.startsWith(sug.prefixo)
+      ? valor.slice(sug.prefixo.length).trim()
+      : valor;
+    if (sufixo.length < 2) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["registro_profissional"],
+        message: "Registro profissional obrigatório",
+      });
+    }
+  });
 
 const tenantSchema = z.object({
   nome_empresa: z
@@ -112,7 +125,24 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
   });
 
   const especialidadeAtual = profForm.watch("especialidade");
-  const registroSugestao = getRegistroSugestao(especialidadeAtual);
+  const registroAtual = profForm.watch("registro_profissional") ?? "";
+  // getRegistroSugestao usado para limpar campo ao trocar de especialidade
+  void getRegistroSugestao;
+
+  const handleEspecialidadeChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const nova = e.target.value;
+    profForm.setValue("especialidade", nova, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    // Limpa o registro ao trocar de especialidade (o prefixo muda).
+    profForm.setValue("registro_profissional", "", {
+      shouldValidate: false,
+      shouldDirty: true,
+    });
+  };
 
   const tenantForm = useForm<TenantFormData>({
     resolver: zodResolver(tenantSchema),
@@ -237,7 +267,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
             <div className="space-y-1">
               <label className={labelClass}>Especialidade</label>
               <select
-                {...profForm.register("especialidade")}
+                value={especialidadeAtual ?? ""}
+                onChange={handleEspecialidadeChange}
                 disabled={!editandoProf}
                 className={inputClass}
               >
@@ -257,19 +288,23 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className={labelClass}>{registroSugestao.label}</label>
-              <input
-                {...profForm.register("registro_profissional")}
-                type="text"
+            <div>
+              <RegistroInput
+                especialidade={especialidadeAtual}
+                value={registroAtual}
+                onChange={(v) =>
+                  profForm.setValue("registro_profissional", v, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
                 disabled={!editandoProf}
-                placeholder={registroSugestao.placeholder}
-                className={inputClass}
+                showHelper={editandoProf}
+                required
               />
-              {editandoProf ? (
-                <p className="text-xs text-slate-500">
-                  Conselho sugerido: {registroSugestao.orgao}. Altere se
-                  necessário.
+              {profForm.formState.errors.registro_profissional ? (
+                <p className={`${errorClass} mt-1`}>
+                  {profForm.formState.errors.registro_profissional.message}
                 </p>
               ) : null}
             </div>

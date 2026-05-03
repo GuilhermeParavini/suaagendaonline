@@ -577,6 +577,29 @@ export async function cadastrarPacienteAvulso(
   if (nome.length < 3) return { ok: false, error: 'Nome invalido.' };
 
   const cpf = cleanCPF(input.cpf ?? '');
+  if (cpf.length !== 11) {
+    return { ok: false, error: 'CPF deve ter 11 digitos.' };
+  }
+
+  // Verifica duplicidade ANTES da validacao do digito:
+  // se o CPF ja existe, queremos sempre exibir "Voce ja esta cadastrado",
+  // mesmo que o numero digitado nao passe na validacao do digito verificador.
+  const { data: existing, error: dupErr } = await admin
+    .from('pacientes')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('cpf', cpf)
+    .maybeSingle();
+  if (dupErr) return { ok: false, error: dupErr.message };
+  if (existing) {
+    return {
+      ok: false,
+      error: `Voce ja esta cadastrado com ${profissionalNome}.`,
+      jaCadastrado: true,
+      profissionalNome,
+    };
+  }
+
   if (!validateCPF(cpf)) return { ok: false, error: 'CPF invalido.' };
 
   if (!isValidBirthDate(input.data_nascimento)) {
@@ -640,23 +663,6 @@ export async function cadastrarPacienteAvulso(
       telefone: respTel,
       email: respEmail,
       grau_parentesco: r.grau_parentesco,
-    };
-  }
-
-  // Verifica duplicidade
-  const { data: existing, error: dupErr } = await admin
-    .from('pacientes')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('cpf', cpf)
-    .maybeSingle();
-  if (dupErr) return { ok: false, error: dupErr.message };
-  if (existing) {
-    return {
-      ok: false,
-      error: `Voce ja esta cadastrado com ${profissionalNome}.`,
-      jaCadastrado: true,
-      profissionalNome,
     };
   }
 

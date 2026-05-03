@@ -25,21 +25,43 @@ export async function getFeriadosForTenant(
   dataFim: string,
 ): Promise<FeriadoRow[]> {
   const admin = createAdminClient();
-  let query = admin
+
+  // Busca feriados nacionais (tenant_id IS NULL) + customizados do tenant
+  // em duas queries separadas para evitar problemas com or(is.null,...) no PostgREST.
+  const queryNacional = admin
     .from('feriados')
     .select('*')
+    .is('tenant_id', null)
     .gte('data', dataInicio)
     .lte('data', dataFim);
 
-  if (tenantId) {
-    query = query.or(`tenant_id.is.null,tenant_id.eq.${tenantId}`);
-  } else {
-    query = query.is('tenant_id', null);
+  const queryCustom = tenantId
+    ? admin
+        .from('feriados')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .gte('data', dataInicio)
+        .lte('data', dataFim)
+    : null;
+
+  const [resNacional, resCustom] = await Promise.all([
+    queryNacional,
+    queryCustom ? queryCustom : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  if (resNacional.error) {
+    throw new Error(`getFeriadosForTenant nacional: ${resNacional.error.message}`);
+  }
+  if (resCustom.error) {
+    throw new Error(`getFeriadosForTenant custom: ${resCustom.error.message}`);
   }
 
-  const { data, error } = await query.order('data', { ascending: true });
-  if (error) throw new Error(`getFeriadosForTenant: ${error.message}`);
-  return (data ?? []) as FeriadoRow[];
+  const todos = [
+    ...((resNacional.data ?? []) as FeriadoRow[]),
+    ...((resCustom.data ?? []) as FeriadoRow[]),
+  ];
+  todos.sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  return todos;
 }
 
 export async function getBloqueiosForProfissional(

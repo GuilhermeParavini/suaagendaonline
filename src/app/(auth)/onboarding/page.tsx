@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
+import RegistroInput from '@/components/ui/RegistroInput';
 
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -49,16 +50,31 @@ const optionalPhoneSchema = z
     return digits.length === 0 || digits.length === 10 || digits.length === 11;
   }, { message: 'Telefone inválido' });
 
-const fullSchema = z.object({
-  fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
-  specialty: trimmedString(1, 'Selecione uma especialidade'),
-  professionalRegistry: z.string().optional(),
-  phone: phoneSchema,
-  companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
-  companyPhone: optionalPhoneSchema,
-  city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
-  state: trimmedString(2, 'Selecione um estado'),
-});
+const fullSchema = z
+  .object({
+    fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
+    specialty: trimmedString(1, 'Selecione uma especialidade'),
+    professionalRegistry: z.string(),
+    phone: phoneSchema,
+    companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
+    companyPhone: optionalPhoneSchema,
+    city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
+    state: trimmedString(2, 'Selecione um estado'),
+  })
+  .superRefine((data, ctx) => {
+    const sug = getRegistroSugestao(data.specialty);
+    const valor = (data.professionalRegistry ?? '').trim();
+    const sufixo = valor.startsWith(sug.prefixo)
+      ? valor.slice(sug.prefixo.length).trim()
+      : valor;
+    if (sufixo.length < 2) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['professionalRegistry'],
+        message: 'Registro profissional obrigatório',
+      });
+    }
+  });
 
 type OnboardingFormData = z.infer<typeof fullSchema>;
 
@@ -92,7 +108,21 @@ export default function OnboardingPage() {
   });
 
   const selectedSpecialty = watch('specialty');
-  const registroSugestao = getRegistroSugestao(selectedSpecialty);
+  const professionalRegistry = watch('professionalRegistry');
+
+  const handleSpecialtyChange = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
+    setValue('specialty', e.target.value, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    // Limpa o registro ao trocar de especialidade
+    setValue('professionalRegistry', '', {
+      shouldValidate: false,
+      shouldDirty: true,
+    });
+  };
 
   const handlePhoneChange = (
     field: 'phone' | 'companyPhone',
@@ -106,7 +136,12 @@ export default function OnboardingPage() {
     setApiError('');
 
     // Validar apenas os campos do passo 1
-    const fieldsToValidate = ['fullName', 'specialty', 'phone'] as const;
+    const fieldsToValidate = [
+      'fullName',
+      'specialty',
+      'professionalRegistry',
+      'phone',
+    ] as const;
     const isValid = await trigger(fieldsToValidate);
 
     if (isValid) {
@@ -192,7 +227,8 @@ export default function OnboardingPage() {
                 Especialidade
               </label>
               <select
-                {...register('specialty')}
+                value={selectedSpecialty ?? ''}
+                onChange={handleSpecialtyChange}
                 autoComplete="off"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition bg-white"
               >
@@ -209,22 +245,21 @@ export default function OnboardingPage() {
             </div>
 
             {/* Professional Registry */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">
-                {registroSugestao.label}
-              </label>
-              <input
-                {...register('professionalRegistry')}
-                type="text"
-                autoComplete="off"
-                placeholder={registroSugestao.placeholder}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+            <div>
+              <RegistroInput
+                especialidade={selectedSpecialty}
+                value={professionalRegistry ?? ''}
+                onChange={(v) =>
+                  setValue('professionalRegistry', v, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
               />
-              <p className="text-xs text-slate-500">
-                Conselho sugerido: {registroSugestao.orgao}. Altere se necessário.
-              </p>
               {errors.professionalRegistry && (
-                <p className="text-xs text-red-500">{errors.professionalRegistry.message}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {errors.professionalRegistry.message}
+                </p>
               )}
             </div>
 

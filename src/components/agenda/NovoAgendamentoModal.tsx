@@ -12,6 +12,7 @@ import { Check, ExternalLink, Search, X } from "lucide-react";
 import {
   buscarPacientesPainel,
   criarAgendamentoPainel,
+  getDatasIndisponiveisPainel,
   getDisponibilidadePainel,
   listarProcedimentosPainel,
   type PacienteOpcao,
@@ -21,7 +22,7 @@ import {
 import { formatCPF } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import CalendarioMensal from "@/components/agendamento-publico/CalendarioMensal";
-import { startOfMonth, format } from "date-fns";
+import { addMonths, endOfMonth, startOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface NovoAgendamentoModalProps {
@@ -65,6 +66,8 @@ function NovoAgendamentoModal({
   const [diaIndisponivel, setDiaIndisponivel] = useState<string | null>(null);
   const [horaSelecionada, setHoraSelecionada] = useState<string | null>(null);
 
+  const [datasIndisponiveis, setDatasIndisponiveis] = useState<string[]>([]);
+
   const [observacoes, setObservacoes] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState(false);
@@ -86,6 +89,7 @@ function NovoAgendamentoModal({
     setSlotsErro(null);
     setDiaIndisponivel(null);
     setHoraSelecionada(null);
+    setDatasIndisponiveis([]);
     setObservacoes("");
     setErro(null);
     setOkMsg(false);
@@ -152,6 +156,22 @@ function NovoAgendamentoModal({
     setResultados([]);
     setBuscaJaFeita(false);
   };
+
+  // Carrega datas indisponiveis (feriados + bloqueios) do mes visivel
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    (async () => {
+      const ini = format(startOfMonth(visibleMonth), "yyyy-MM-dd");
+      const fim = format(endOfMonth(addMonths(visibleMonth, 1)), "yyyy-MM-dd");
+      const r = await getDatasIndisponiveisPainel(ini, fim);
+      if (cancelado) return;
+      if (r.ok) setDatasIndisponiveis(r.datas);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open, visibleMonth]);
 
   // Recarrega slots quando data ou procedimento mudam
   useEffect(() => {
@@ -389,6 +409,7 @@ function NovoAgendamentoModal({
                     selectedDate={selectedDate}
                     onSelectDate={(d) => setSelectedDate(d)}
                     diasSemanaDisponiveis={[0, 1, 2, 3, 4, 5, 6]}
+                    datasIndisponiveis={datasIndisponiveis}
                   />
                 </div>
 
