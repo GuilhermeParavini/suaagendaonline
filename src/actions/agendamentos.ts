@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   emailCancelamento,
+  emailConfirmacaoAgendamento,
   horarioFromIso,
   dataIsoFromTimestamp,
   montarLinkAgendamento,
@@ -280,4 +281,418 @@ export async function atualizarStatusAgendamento(
 
   revalidatePath('/agenda');
   return { ok: true };
+}
+
+// ============================================================
+// Agendamento manual pelo painel (Novo agendamento via FAB)
+// ============================================================
+
+export type PacienteOpcao = {
+  id: string;
+  nome: string;
+  cpf: string;
+  email: string | null;
+};
+
+export type ProcedimentoOpcao = {
+  id: string;
+  nome: string;
+  duracao_min: number;
+};
+
+export type SlotPainel = { time: string; available: boolean };
+
+export async function buscarPacientesPainel(
+  termo: string,
+): Promise<{ ok: true; data: PacienteOpcao[] } | { ok: false; error: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const t = (termo ?? '').trim();
+  if (t.length < 2) {
+    return { ok: true, data: [] };
+  }
+
+  const escapado = t.replace(/[%_\\]/g, '\\$&');
+  const cpfDigits = t.replace(/\D/g, '');
+  const cpfFilter = cpfDigits.length >= 3 ? `cpf.ilike.%${cpfDigits}%,` : '';
+  const orFilter = `${cpfFilter}nome.ilike.%${escapado}%`;
+
+  const { data, error } = await admin
+    .from('pacientes')
+    .select('id, nome, cpf, email')
+    .eq('tenant_id', prof.tenant_id as string)
+    .eq('ativo', true)
+    .or(orFilter)
+    .order('nome', { ascending: true })
+    .limit(10);
+  if (error) return { ok: false, error: error.message };
+
+  return {
+    ok: true,
+    data: (data ?? []).map((r) => ({
+      id: r.id as string,
+      nome: r.nome as string,
+      cpf: r.cpf as string,
+      email: (r.email as string | null) ?? null,
+    })),
+  };
+}
+
+export async function listarProcedimentosPainel(): Promise<
+  { ok: true; data: ProcedimentoOpcao[] } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const { data, error } = await admin
+    .from('procedimentos')
+    .select('id, nome, duracao_min')
+    .eq('tenant_id', prof.tenant_id as string)
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+  if (error) return { ok: false, error: error.message };
+
+  return {
+    ok: true,
+    data: (data ?? []).map((r) => ({
+      id: r.id as string,
+      nome: r.nome as string,
+      duracao_min: r.duracao_min as number,
+    })),
+  };
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function buildIsoDateTime(dataIso: string, hora: string): string {
+  const [y, m, d] = dataIso.split('-').map(Number);
+  const [hh, mm] = hora.split(':').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0)).toISOString();
+}
+
+export async function getDisponibilidadePainel(
+  dataIso: string,
+  procedimentoId: string,
+): Promise<
+  | {
+      ok: true;
+      slots: SlotPainel[];
+      duracaoMin: number;
+      indisponivel?: { tipo: 'feriado' | 'bloqueio'; texto: string };
+    }
+  | { ok: false; error: string }
+> {
+  if (!isIsoDate(dataIso)) {
+    return { ok: false, error: 'Data invalida.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, duracao_padrao_min')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const intervaloMin = (prof.duracao_padrao_min as number) ?? 30;
+
+  const { data: proc, error: procErr } = await admin
+    .from('procedimentos')
+    .select('duracao_min, tenant_id, ativo')
+    .eq('id', procedimentoId)
+    .maybeSingle();
+  if (procErr) return { ok: false, error: procErr.message };
+  if (!proc || proc.tenant_id !== prof.tenant_id || !proc.ativo) {
+    return { ok: false, error: 'Procedimento invalido.' };
+  }
+  const duracaoMin = (proc.duracao_min as number) ?? intervaloMin;
+
+  // Bloqueia feriados / ausencias
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(prof.tenant_id as string, dataIso, dataIso),
+      getBloqueiosForProfissional(prof.id as string, dataIso, dataIso),
+    ]);
+    if (feriados.length > 0) {
+      return {
+        ok: true,
+        slots: [],
+        duracaoMin,
+        indisponivel: {
+          tipo: 'feriado',
+          texto: `Feriado: ${feriados[0].nome}`,
+        },
+      };
+    }
+    if (bloqueios.length > 0) {
+      return {
+        ok: true,
+        slots: [],
+        duracaoMin,
+        indisponivel: {
+          tipo: 'bloqueio',
+          texto: bloqueios[0].motivo
+            ? `Bloqueio: ${bloqueios[0].motivo}`
+            : 'Dia bloqueado',
+        },
+      };
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao checar feriados/bloqueios:', e);
+  }
+
+  const [y, m, d] = dataIso.split('-').map(Number);
+  const diaSemana = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+
+  const { data: horarios, error: horError } = await admin
+    .from('horarios_disponiveis')
+    .select('hora_inicio, hora_fim')
+    .eq('profissional_id', prof.id as string)
+    .eq('ativo', true)
+    .eq('dia_semana', diaSemana);
+  if (horError) return { ok: false, error: horError.message };
+  if (!horarios || horarios.length === 0) {
+    return { ok: true, slots: [], duracaoMin };
+  }
+
+  const inicio = `${dataIso}T00:00:00.000Z`;
+  const fim = `${dataIso}T23:59:59.999Z`;
+  const { data: existentes, error: agErr } = await admin
+    .from('agendamentos')
+    .select('data_hora, duracao_min, status')
+    .eq('profissional_id', prof.id as string)
+    .gte('data_hora', inicio)
+    .lte('data_hora', fim)
+    .neq('status', 'cancelado');
+  if (agErr) return { ok: false, error: agErr.message };
+
+  const ocupados = (existentes ?? []).map((row) => {
+    const start = new Date(row.data_hora as string).getTime();
+    const dur = (row.duracao_min as number) ?? intervaloMin;
+    return { start, end: start + dur * 60_000 };
+  });
+
+  const agora = Date.now();
+  const slots: SlotPainel[] = [];
+  const seen = new Set<string>();
+
+  for (const range of horarios) {
+    const [hi, mi] = (range.hora_inicio as string).split(':').map(Number);
+    const [hf, mf] = (range.hora_fim as string).split(':').map(Number);
+    const startMin = hi * 60 + mi;
+    const endMin = hf * 60 + mf;
+
+    for (let cur = startMin; cur + duracaoMin <= endMin; cur += intervaloMin) {
+      const h = Math.floor(cur / 60);
+      const mm = cur % 60;
+      const time = `${pad2(h)}:${pad2(mm)}`;
+      if (seen.has(time)) continue;
+      seen.add(time);
+
+      const slotIso = buildIsoDateTime(dataIso, time);
+      const slotStart = new Date(slotIso).getTime();
+      const slotEnd = slotStart + duracaoMin * 60_000;
+      const isPast = slotStart <= agora;
+      const isOccupied = ocupados.some(
+        (o) => slotStart < o.end && slotEnd > o.start,
+      );
+      slots.push({ time, available: !isPast && !isOccupied });
+    }
+  }
+
+  slots.sort((a, b) => a.time.localeCompare(b.time));
+  return { ok: true, slots, duracaoMin };
+}
+
+export type CriarAgendamentoPainelInput = {
+  pacienteId: string;
+  procedimentoId: string;
+  dataIso: string;
+  hora: string;
+  observacoes?: string;
+};
+
+export async function criarAgendamentoPainel(
+  input: CriarAgendamentoPainelInput,
+): Promise<{ ok: true; agendamentoId: string } | { ok: false; error: string }> {
+  if (!isIsoDate(input.dataIso)) {
+    return { ok: false, error: 'Data invalida.' };
+  }
+  if (!/^\d{2}:\d{2}$/.test(input.hora)) {
+    return { ok: false, error: 'Horario invalido.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, nome, tolerancia_atraso_min')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const tenantId = prof.tenant_id as string;
+  const profissionalId = prof.id as string;
+
+  // Paciente
+  const { data: pac, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, nome, email, tenant_id')
+    .eq('id', input.pacienteId)
+    .maybeSingle();
+  if (pacErr) return { ok: false, error: pacErr.message };
+  if (!pac || pac.tenant_id !== tenantId) {
+    return { ok: false, error: 'Paciente nao encontrado.' };
+  }
+
+  // Procedimento
+  const { data: proc, error: procErr } = await admin
+    .from('procedimentos')
+    .select('id, nome, duracao_min, tenant_id, ativo')
+    .eq('id', input.procedimentoId)
+    .maybeSingle();
+  if (procErr) return { ok: false, error: procErr.message };
+  if (!proc || proc.tenant_id !== tenantId || !proc.ativo) {
+    return { ok: false, error: 'Procedimento indisponivel.' };
+  }
+  const duracaoMin = (proc.duracao_min as number) ?? 30;
+
+  const dataHoraIso = buildIsoDateTime(input.dataIso, input.hora);
+  const startMs = new Date(dataHoraIso).getTime();
+  const endMs = startMs + duracaoMin * 60_000;
+
+  if (startMs <= Date.now()) {
+    return { ok: false, error: 'Horario ja passou. Escolha outro.' };
+  }
+
+  // Bloqueia feriados / ausencias
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(tenantId, input.dataIso, input.dataIso),
+      getBloqueiosForProfissional(profissionalId, input.dataIso, input.dataIso),
+    ]);
+    if (feriados.length > 0) {
+      return { ok: false, error: 'Data indisponivel (feriado).' };
+    }
+    if (bloqueios.length > 0) {
+      return { ok: false, error: 'Data indisponivel.' };
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao checar feriados/bloqueios:', e);
+  }
+
+  // Conflito
+  const dayInicio = `${input.dataIso}T00:00:00.000Z`;
+  const dayFim = `${input.dataIso}T23:59:59.999Z`;
+  const { data: existentes, error: existErr } = await admin
+    .from('agendamentos')
+    .select('data_hora, duracao_min, status')
+    .eq('profissional_id', profissionalId)
+    .gte('data_hora', dayInicio)
+    .lte('data_hora', dayFim)
+    .neq('status', 'cancelado');
+  if (existErr) return { ok: false, error: existErr.message };
+
+  const conflito = (existentes ?? []).some((row) => {
+    const s = new Date(row.data_hora as string).getTime();
+    const dur = (row.duracao_min as number) ?? 30;
+    return startMs < s + dur * 60_000 && endMs > s;
+  });
+  if (conflito) {
+    return { ok: false, error: 'Horario indisponivel. Escolha outro.' };
+  }
+
+  const observacoes = input.observacoes?.trim() || null;
+
+  const { data: agRow, error: agErr } = await admin
+    .from('agendamentos')
+    .insert({
+      tenant_id: tenantId,
+      profissional_id: profissionalId,
+      paciente_id: pac.id as string,
+      procedimento_id: proc.id as string,
+      data_hora: dataHoraIso,
+      duracao_min: duracaoMin,
+      status: 'agendado',
+      tolerancia_min: (prof.tolerancia_atraso_min as number) ?? 5,
+      observacoes,
+    })
+    .select('id')
+    .single();
+  if (agErr || !agRow) {
+    return { ok: false, error: agErr?.message ?? 'Falha ao criar agendamento.' };
+  }
+
+  const agendamentoId = agRow.id as string;
+
+  // Email de confirmacao (best-effort)
+  try {
+    const destino = (pac.email as string | null) ?? null;
+    if (destino) {
+      const { data: tenant } = await admin
+        .from('tenants')
+        .select('slug')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const slug = (tenant?.slug as string | null) ?? null;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+      const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
+
+      const tpl = emailConfirmacaoAgendamento({
+        pacienteNome: (pac.nome as string) ?? 'Paciente',
+        profissionalNome: (prof.nome as string) ?? 'Profissional',
+        dataIso: input.dataIso,
+        horario: horarioFromIso(dataHoraIso),
+        linkAgendamento,
+      });
+      await enviarNotificacaoEmail({
+        tenantId,
+        agendamentoId,
+        tipo: 'confirmacao',
+        destino,
+        assunto: tpl.assunto,
+        html: tpl.html,
+      });
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao enviar email confirmacao:', e);
+  }
+
+  revalidatePath('/agenda');
+  revalidatePath('/');
+  return { ok: true, agendamentoId };
 }

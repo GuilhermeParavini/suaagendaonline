@@ -4,6 +4,7 @@ import { useState, useTransition, useCallback } from "react";
 import { Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useRouter } from "next/navigation";
 import {
   getAgendamentosDia,
   type AgendamentoDia,
@@ -13,6 +14,7 @@ import {
 import CalendarioSemanal, { type ViewMode } from "./CalendarioSemanal";
 import ListaHorarios from "./ListaHorarios";
 import AgendamentoModal from "./AgendamentoModal";
+import NovoAgendamentoModal from "./NovoAgendamentoModal";
 
 interface AgendaClientProps {
   initialDate: string;
@@ -53,6 +55,9 @@ function AgendaClient({
   const [isPending, startTransition] = useTransition();
   const [selecionado, setSelecionado] = useState<AgendamentoDia | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [novoModalOpen, setNovoModalOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSelecionarAgendamento = useCallback((ag: AgendamentoDia) => {
     setSelecionado(ag);
@@ -154,10 +159,32 @@ function AgendaClient({
       <button
         type="button"
         aria-label="Novo agendamento"
+        onClick={() => setNovoModalOpen(true)}
         className="fixed right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] lg:bottom-6 lg:right-6 h-14 w-14 rounded-full bg-primary text-white shadow-md hover:shadow-lg hover:bg-primary/90 transition flex items-center justify-center z-40"
       >
         <Plus size={24} strokeWidth={2} aria-hidden="true" />
       </button>
+
+      <NovoAgendamentoModal
+        open={novoModalOpen}
+        onOpenChange={setNovoModalOpen}
+        onCriado={() => {
+          setToast("Agendamento criado");
+          window.setTimeout(() => setToast(null), 2500);
+          router.refresh();
+          handleSelectDate(selectedDate);
+        }}
+      />
+
+      {toast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom)+96px)] lg:bottom-24 z-50 inline-flex items-center gap-2 rounded-lg border border-[#CCFBF1] bg-[#F0FDFA] px-4 py-2.5 text-sm font-medium text-[#115E59] shadow-md"
+        >
+          {toast}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import MetricCard from "@/components/ui/MetricCard";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import Card from "@/components/ui/Card";
+import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
 
 const currencyBRL = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -166,14 +166,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* Floating Action Button */}
-      <button
-        type="button"
-        aria-label="Novo agendamento"
-        className="fixed right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] lg:bottom-6 lg:right-6 h-14 w-14 rounded-full bg-primary text-white shadow-md hover:shadow-lg hover:bg-primary/90 transition flex items-center justify-center z-40"
-      >
-        <Plus size={24} strokeWidth={2} aria-hidden="true" />
-      </button>
+      <NovoAgendamentoFab />
     </div>
   );
 }
