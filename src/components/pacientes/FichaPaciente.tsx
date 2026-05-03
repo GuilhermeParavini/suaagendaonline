@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronUp,
   ClipboardList,
+  FileText,
   Pencil,
   Trash2,
 } from "lucide-react";
@@ -19,10 +20,12 @@ import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
 import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { getAnamneses, type Anamnese } from "@/actions/anamnese";
+import { getEvolucoes, type Evolucao } from "@/actions/evolucoes";
 import EditarPacienteModal from "./EditarPacienteModal";
 import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
 import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import AnamneseDetalhe from "./AnamneseDetalhe";
+import EvolucaoDetalhe from "./EvolucaoDetalhe";
 
 export type PacienteDetalhe = {
   id: string;
@@ -107,6 +110,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
   const [anamneses, setAnamneses] = useState<Anamnese[]>([]);
+  const [evolucoes, setEvolucoes] = useState<Evolucao[]>([]);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
   const [, startTransition] = useTransition();
 
@@ -120,8 +124,13 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
   useEffect(() => {
     let cancelado = false;
     (async () => {
-      const r = await getAnamneses(paciente.id);
-      if (!cancelado && r.ok) setAnamneses(r.data);
+      const [rA, rE] = await Promise.all([
+        getAnamneses(paciente.id),
+        getEvolucoes(paciente.id),
+      ]);
+      if (cancelado) return;
+      if (rA.ok) setAnamneses(rA.data);
+      if (rE.ok) setEvolucoes(rE.data);
     })();
     return () => {
       cancelado = true;
@@ -144,7 +153,8 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
 
   type ItemHistorico =
     | { tipo: "agendamento"; data: string; agendamento: AgendamentoHistorico }
-    | { tipo: "anamnese"; data: string; anamnese: Anamnese };
+    | { tipo: "anamnese"; data: string; anamnese: Anamnese }
+    | { tipo: "evolucao"; data: string; evolucao: Evolucao };
 
   const historicoMesclado: ItemHistorico[] = [
     ...historico.map((ag) => ({
@@ -156,6 +166,11 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
       tipo: "anamnese" as const,
       data: a.created_at,
       anamnese: a,
+    })),
+    ...evolucoes.map((ev) => ({
+      tipo: "evolucao" as const,
+      data: ev.created_at,
+      evolucao: ev,
     })),
   ].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
 
@@ -355,6 +370,69 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
           ) : (
             <ul className="space-y-2">
               {historicoMesclado.map((item) => {
+                if (item.tipo === "evolucao") {
+                  const ev = item.evolucao;
+                  const expandido = expandidos.has(`ev-${ev.id}`);
+                  const dt = new Date(ev.created_at);
+                  const dataLabel = format(dt, "dd MMM yyyy", { locale: ptBR });
+                  const horaLabel = format(dt, "HH:mm", { locale: ptBR });
+                  const corpo = (ev.texto ?? ev.transcricao ?? "").trim();
+                  const resumo =
+                    corpo.length > 100 ? `${corpo.slice(0, 100)}…` : corpo;
+                  return (
+                    <li
+                      key={`ev-${ev.id}`}
+                      className="rounded-lg border border-slate-200 bg-white"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandido(`ev-${ev.id}`)}
+                        className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-slate-50 transition-colors rounded-lg"
+                      >
+                        <FileText
+                          size={18}
+                          strokeWidth={1.5}
+                          className="shrink-0 text-primary"
+                          aria-hidden="true"
+                        />
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-sm font-medium text-slate-900">
+                            {dataLabel}
+                            <span className="text-slate-400">·</span>
+                            <span className="text-slate-600 ml-1">
+                              {horaLabel}
+                            </span>
+                          </p>
+                          <p className="text-xs text-slate-500 truncate">
+                            Evolução
+                            {resumo ? `: ${resumo}` : ""}
+                          </p>
+                        </div>
+                        {expandido ? (
+                          <ChevronUp
+                            size={16}
+                            strokeWidth={1.5}
+                            className="text-slate-400 shrink-0"
+                            aria-hidden="true"
+                          />
+                        ) : (
+                          <ChevronDown
+                            size={16}
+                            strokeWidth={1.5}
+                            className="text-slate-400 shrink-0"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                      {expandido ? (
+                        <div className="border-t border-slate-100 px-3 py-3">
+                          <EvolucaoDetalhe evolucao={ev} />
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                }
+
                 if (item.tipo === "agendamento") {
                   const ag = item.agendamento;
                   const status: StatusVariant = isStatusVariant(ag.status)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
 import {
@@ -76,6 +77,7 @@ function AgendamentoModal({
   onOpenChange,
   onUpdated,
 }: AgendamentoModalProps) {
+  const router = useRouter();
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -150,6 +152,12 @@ function AgendamentoModal({
       setConfirmandoCancelamento(false);
       setMotivo("");
       setToast(mensagemToast);
+
+      if (novoStatus === "em_atendimento") {
+        handleOpenChange(false);
+        router.push(`/atendimento/${agendamento.id}`);
+        return;
+      }
 
       const ehFinalAgora = ESTADOS_FINAIS.includes(novoStatus);
       if (ehFinalAgora) {
