@@ -54,13 +54,11 @@ const cpfSchema = z
   .string()
   .refine((s) => validateCPF(s), "CPF inválido");
 
-const optionalEmailSchema = z
+const requiredEmailSchema = z
   .string()
-  .optional()
-  .refine(
-    (s) => !s || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim()),
-    "E-mail inválido",
-  );
+  .transform((s) => s.trim())
+  .refine((s) => s.length > 0, "E-mail obrigatório")
+  .refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "E-mail inválido");
 
 const formSchema = z
   .object({
@@ -79,7 +77,7 @@ const formSchema = z
       }, "Data de nascimento inválida"),
     genero: z.enum(["masculino", "feminino", "prefiro_nao_informar"]),
     telefone: phoneSchema,
-    email: optionalEmailSchema,
+    email: requiredEmailSchema,
     endereco: z.string().optional(),
     cidade: z.string().optional(),
     estado: z.string().optional(),
@@ -213,7 +211,7 @@ function NovoPacienteForm() {
         data_nascimento: isoNascimento,
         genero: data.genero,
         telefone: data.telefone,
-        email: data.email?.trim() || undefined,
+        email: data.email.trim(),
         endereco: data.endereco?.trim() || undefined,
         cidade: data.cidade?.trim() || undefined,
         estado: data.estado?.trim() || undefined,
@@ -347,7 +345,7 @@ function NovoPacienteForm() {
         </div>
 
         <div className="space-y-1">
-          <label className={labelClass}>E-mail</label>
+          <label className={labelClass}>E-mail *</label>
           <input
             {...register("email")}
             type="email"

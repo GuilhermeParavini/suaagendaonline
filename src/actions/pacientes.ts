@@ -121,7 +121,7 @@ export type NovoPacienteInput = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email?: string;
+  email: string;
   endereco?: string;
   cidade?: string;
   estado?: string;
@@ -182,8 +182,9 @@ export async function createPaciente(
     return { ok: false, error: 'Telefone invalido.' };
   }
 
-  const email = input.email?.trim() || null;
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = input.email?.trim() ?? '';
+  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: 'E-mail invalido.' };
   }
 
