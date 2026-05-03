@@ -82,3 +82,100 @@ export function brDateToIso(value: string): string | null {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+export function isoToBrDate(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!match) return "";
+  return `${match[3]}/${match[2]}/${match[1]}`;
+}
+
+export function formatCurrency(value: number): string {
+  if (!Number.isFinite(value)) return "R$ 0,00";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function parseCurrency(input: string): number {
+  if (!input) return 0;
+  const digits = input.replace(/\D/g, "");
+  if (digits.length === 0) return 0;
+  return Number(digits) / 100;
+}
+
+export function formatCurrencyInput(input: string): string {
+  const digits = input.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+  const cents = Number(digits);
+  return formatCurrency(cents / 100);
+}
+
+const UNIDADES = [
+  "zero", "um", "dois", "tres", "quatro", "cinco",
+  "seis", "sete", "oito", "nove", "dez", "onze",
+  "doze", "treze", "quatorze", "quinze", "dezesseis",
+  "dezessete", "dezoito", "dezenove",
+];
+const DEZENAS = [
+  "", "", "vinte", "trinta", "quarenta", "cinquenta",
+  "sessenta", "setenta", "oitenta", "noventa",
+];
+const CENTENAS = [
+  "", "cento", "duzentos", "trezentos", "quatrocentos",
+  "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos",
+];
+
+function ateMil(n: number): string {
+  if (n === 0) return "";
+  if (n === 100) return "cem";
+  if (n < 20) return UNIDADES[n];
+  if (n < 100) {
+    const d = Math.floor(n / 10);
+    const u = n % 10;
+    return u === 0 ? DEZENAS[d] : `${DEZENAS[d]} e ${UNIDADES[u]}`;
+  }
+  const c = Math.floor(n / 100);
+  const resto = n % 100;
+  return resto === 0
+    ? CENTENAS[c]
+    : `${CENTENAS[c]} e ${ateMil(resto)}`;
+}
+
+function inteiroPorExtenso(n: number): string {
+  if (n === 0) return "zero";
+  if (n < 1000) return ateMil(n);
+  if (n < 1000000) {
+    const milhares = Math.floor(n / 1000);
+    const resto = n % 1000;
+    const prefixo = milhares === 1 ? "mil" : `${ateMil(milhares)} mil`;
+    if (resto === 0) return prefixo;
+    return `${prefixo} e ${ateMil(resto)}`;
+  }
+  const milhoes = Math.floor(n / 1000000);
+  const resto = n % 1000000;
+  const prefixo = milhoes === 1 ? "um milhao" : `${ateMil(milhoes)} milhoes`;
+  if (resto === 0) return prefixo;
+  return `${prefixo} e ${inteiroPorExtenso(resto)}`;
+}
+
+export function valorPorExtenso(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return "zero reais";
+  const cents = Math.round(value * 100);
+  const reais = Math.floor(cents / 100);
+  const centavos = cents % 100;
+
+  const partes: string[] = [];
+  if (reais > 0) {
+    partes.push(`${inteiroPorExtenso(reais)} ${reais === 1 ? "real" : "reais"}`);
+  }
+  if (centavos > 0) {
+    partes.push(
+      `${inteiroPorExtenso(centavos)} ${centavos === 1 ? "centavo" : "centavos"}`,
+    );
+  }
+  if (partes.length === 0) return "zero reais";
+  return partes.join(" e ");
+}
