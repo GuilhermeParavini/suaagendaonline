@@ -1,6 +1,10 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import {
+  getBloqueiosForProfissional,
+  getFeriadosForTenant,
+} from '@/lib/feriados-bloqueios';
 import { cleanCEP, cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
 import {
@@ -11,6 +15,9 @@ import {
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
 export type Slot = { time: string; available: boolean };
+export type DiaIndisponivel =
+  | { tipo: 'feriado'; nome: string }
+  | { tipo: 'bloqueio'; motivo: string | null };
 
 export type Genero = 'masculino' | 'feminino' | 'prefiro_nao_informar';
 export type GrauParentesco = 'mae' | 'pai' | 'avo' | 'tio' | 'outro';
@@ -67,7 +74,7 @@ export async function getDisponibilidade(
   dataIso: string,
   procedimentoId: string,
 ): Promise<
-  | { ok: true; slots: Slot[]; duracaoMin: number }
+  | { ok: true; slots: Slot[]; duracaoMin: number; indisponivel?: DiaIndisponivel }
   | { ok: false; error: string }
 > {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataIso)) {
@@ -78,13 +85,14 @@ export async function getDisponibilidade(
 
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('duracao_padrao_min')
+    .select('duracao_padrao_min, tenant_id')
     .eq('id', profissionalId)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
 
   const intervaloMin = (prof.duracao_padrao_min as number) ?? 30;
+  const tenantId = prof.tenant_id as string;
 
   const { data: proc, error: procErr } = await admin
     .from('procedimentos')
@@ -95,6 +103,32 @@ export async function getDisponibilidade(
   if (!proc) return { ok: false, error: 'Procedimento não encontrado.' };
 
   const duracaoMin = (proc.duracao_min as number) ?? intervaloMin;
+
+  // Bloqueia feriados e ausencias do profissional
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(tenantId, dataIso, dataIso),
+      getBloqueiosForProfissional(profissionalId, dataIso, dataIso),
+    ]);
+    if (feriados.length > 0) {
+      return {
+        ok: true,
+        slots: [],
+        duracaoMin,
+        indisponivel: { tipo: 'feriado', nome: feriados[0].nome },
+      };
+    }
+    if (bloqueios.length > 0) {
+      return {
+        ok: true,
+        slots: [],
+        duracaoMin,
+        indisponivel: { tipo: 'bloqueio', motivo: bloqueios[0].motivo },
+      };
+    }
+  } catch (e) {
+    console.error('[agendamento-publico] erro ao checar feriados/bloqueios:', e);
+  }
 
   // Postgres dia_semana: 0=domingo, 6=sabado (igual JS Date.getDay)
   const [y, m, d] = dataIso.split('-').map(Number);
@@ -239,6 +273,22 @@ export async function criarAgendamentoPublico(
 
   if (startMs <= Date.now()) {
     return { ok: false, error: 'Horário já passou. Escolha outro.' };
+  }
+
+  // Bloqueia feriados e ausencias
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(input.tenantId, input.dataIso, input.dataIso),
+      getBloqueiosForProfissional(input.profissionalId, input.dataIso, input.dataIso),
+    ]);
+    if (feriados.length > 0) {
+      return { ok: false, error: 'Data indisponível (feriado). Escolha outra.' };
+    }
+    if (bloqueios.length > 0) {
+      return { ok: false, error: 'Data indisponível. Escolha outra.' };
+    }
+  } catch (e) {
+    console.error('[agendamento-publico] erro ao checar feriados/bloqueios:', e);
   }
 
   // Verifica conflito de horario

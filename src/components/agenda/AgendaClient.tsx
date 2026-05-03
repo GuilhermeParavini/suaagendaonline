@@ -7,6 +7,7 @@ import { ptBR } from "date-fns/locale";
 import {
   getAgendamentosDia,
   type AgendamentoDia,
+  type IndisponivelDia,
   type StatusAgendamento,
 } from "@/actions/agendamentos";
 import CalendarioSemanal, { type ViewMode } from "./CalendarioSemanal";
@@ -16,6 +17,8 @@ import AgendamentoModal from "./AgendamentoModal";
 interface AgendaClientProps {
   initialDate: string;
   initialAgendamentos: AgendamentoDia[];
+  initialIndisponivel: IndisponivelDia | null;
+  initialDatasIndisponiveisSemana: string[];
 }
 
 function parseIsoDateLocal(iso: string): Date {
@@ -27,13 +30,24 @@ function toIsoDate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
+function AgendaClient({
+  initialDate,
+  initialAgendamentos,
+  initialIndisponivel,
+  initialDatasIndisponiveisSemana,
+}: AgendaClientProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(() =>
     parseIsoDateLocal(initialDate),
   );
   const [agendamentos, setAgendamentos] = useState<AgendamentoDia[]>(
     initialAgendamentos,
   );
+  const [indisponivel, setIndisponivel] = useState<IndisponivelDia | null>(
+    initialIndisponivel,
+  );
+  const [datasIndisponiveisSemana, setDatasIndisponiveisSemana] = useState<
+    string[]
+  >(initialDatasIndisponiveisSemana);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("semana");
   const [isPending, startTransition] = useTransition();
@@ -65,8 +79,12 @@ function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
       if (!result.ok) {
         setError(result.error);
         setAgendamentos([]);
+        setIndisponivel(null);
+        setDatasIndisponiveisSemana([]);
       } else {
         setAgendamentos(result.agendamentos);
+        setIndisponivel(result.indisponivel);
+        setDatasIndisponiveisSemana(result.datasIndisponiveisSemana);
       }
     });
   }, []);
@@ -89,6 +107,7 @@ function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
         onSelectDate={handleSelectDate}
         viewMode={viewMode}
         onChangeViewMode={setViewMode}
+        datasIndisponiveis={new Set(datasIndisponiveisSemana)}
       />
 
       <section
@@ -101,10 +120,27 @@ function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
             {error}
           </div>
         ) : (
-          <ListaHorarios
-            agendamentos={agendamentos}
-            onSelecionar={handleSelecionarAgendamento}
-          />
+          <>
+            {indisponivel ? (
+              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {indisponivel.tipo === "feriado" ? (
+                  <span>
+                    <strong className="font-semibold">Feriado:</strong>{" "}
+                    {indisponivel.nome}
+                  </span>
+                ) : (
+                  <span>
+                    <strong className="font-semibold">Dia bloqueado</strong>
+                    {indisponivel.motivo ? ` · ${indisponivel.motivo}` : ""}
+                  </span>
+                )}
+              </div>
+            ) : null}
+            <ListaHorarios
+              agendamentos={agendamentos}
+              onSelecionar={handleSelecionarAgendamento}
+            />
+          </>
         )}
       </section>
 

@@ -1,4 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import {
+  getBloqueiosForProfissional,
+  getFeriadosForTenant,
+} from '@/lib/feriados-bloqueios';
 
 export type Procedimento = {
   id: string;
@@ -92,4 +96,38 @@ export async function getDiasSemanaDisponiveis(
     .eq('ativo', true);
   if (error) return [];
   return Array.from(new Set((data ?? []).map((r) => r.dia_semana as number)));
+}
+
+function somarDiasIso(iso: string, dias: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + dias);
+  return date.toISOString().slice(0, 10);
+}
+
+export async function getDatasIndisponiveis(
+  tenantId: string,
+  profissionalId: string,
+  dataInicio: string,
+  dataFim: string,
+): Promise<string[]> {
+  const [feriados, bloqueios] = await Promise.all([
+    getFeriadosForTenant(tenantId, dataInicio, dataFim),
+    getBloqueiosForProfissional(profissionalId, dataInicio, dataFim),
+  ]);
+
+  const datas = new Set<string>();
+  for (const f of feriados) datas.add(f.data);
+
+  for (const b of bloqueios) {
+    const inicio = b.data_inicio < dataInicio ? dataInicio : b.data_inicio;
+    const fim = b.data_fim > dataFim ? dataFim : b.data_fim;
+    let cursor = inicio;
+    while (cursor <= fim) {
+      datas.add(cursor);
+      cursor = somarDiasIso(cursor, 1);
+    }
+  }
+
+  return Array.from(datas).sort();
 }

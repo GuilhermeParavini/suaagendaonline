@@ -23,6 +23,7 @@ interface CalendarioMensalProps {
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
   diasSemanaDisponiveis: number[];
+  datasIndisponiveis?: string[];
 }
 
 function startOfDay(d: Date): Date {
@@ -31,13 +32,22 @@ function startOfDay(d: Date): Date {
   return c;
 }
 
+function isoDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
 function CalendarioMensal({
   visibleMonth,
   onChangeMonth,
   selectedDate,
   onSelectDate,
   diasSemanaDisponiveis,
+  datasIndisponiveis,
 }: CalendarioMensalProps) {
+  const indisponiveisSet = new Set(datasIndisponiveis ?? []);
   const today = startOfDay(new Date());
   const monthStart = startOfMonth(visibleMonth);
   const monthEnd = endOfMonth(visibleMonth);
@@ -94,9 +104,10 @@ function CalendarioMensal({
           const isPast = isBefore(dia, today);
           const diaSemana = dia.getDay();
           const temHorario = diasSemanaDisponiveis.includes(diaSemana);
+          const indisponivel = indisponiveisSet.has(isoDate(dia));
           const isToday = isSameDay(dia, today);
           const isSelected = selectedDate ? isSameDay(dia, selectedDate) : false;
-          const enabled = inMonth && !isPast && temHorario;
+          const enabled = inMonth && !isPast && temHorario && !indisponivel;
 
           return (
             <li key={dia.toISOString()} className="aspect-square">
@@ -106,10 +117,12 @@ function CalendarioMensal({
                 disabled={!enabled}
                 aria-label={format(dia, "d 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 aria-pressed={isSelected}
+                title={indisponivel ? "Dia indisponível" : undefined}
                 className={cn(
                   "flex h-full w-full items-center justify-center rounded-full text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                   !inMonth && "text-slate-300 cursor-default",
-                  inMonth && !enabled && "text-slate-300 cursor-not-allowed",
+                  inMonth && !enabled && !indisponivel && "text-slate-300 cursor-not-allowed",
+                  inMonth && indisponivel && "text-slate-300 line-through cursor-not-allowed",
                   enabled && !isSelected && !isToday &&
                     "text-slate-900 hover:bg-primary-surface",
                   enabled && isToday && !isSelected &&

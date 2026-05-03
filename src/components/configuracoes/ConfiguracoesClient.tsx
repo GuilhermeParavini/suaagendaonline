@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import TabMeusDados from "./TabMeusDados";
 import TabHorarios from "./TabHorarios";
 import TabProcedimentos from "./TabProcedimentos";
+import TabBloqueios from "./TabBloqueios";
 
 interface ConfiguracoesClientProps {
   initialProfissional: ProfissionalConfig;
@@ -66,6 +67,7 @@ function ConfiguracoesClient({
             { value: "dados", label: "Meus dados" },
             { value: "horarios", label: "Horários" },
             { value: "procedimentos", label: "Procedimentos" },
+            { value: "bloqueios", label: "Bloqueios" },
           ].map((t) => (
             <Tabs.Trigger
               key={t.value}
@@ -98,6 +100,10 @@ function ConfiguracoesClient({
             procedimentos={procedimentos}
             onChanged={recarregar}
           />
+        </Tabs.Content>
+
+        <Tabs.Content value="bloqueios" className="focus:outline-none">
+          <TabBloqueios />
         </Tabs.Content>
       </Tabs.Root>
     </div>

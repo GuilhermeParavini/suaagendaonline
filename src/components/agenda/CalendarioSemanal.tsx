@@ -20,6 +20,7 @@ interface CalendarioSemanalProps {
   viewMode: ViewMode;
   onChangeViewMode: (mode: ViewMode) => void;
   diasComAgendamento?: Set<string>;
+  datasIndisponiveis?: Set<string>;
 }
 
 const viewLabels: Record<ViewMode, string> = {
@@ -38,6 +39,7 @@ function CalendarioSemanal({
   viewMode,
   onChangeViewMode,
   diasComAgendamento,
+  datasIndisponiveis,
 }: CalendarioSemanalProps) {
   const inicioSemana = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const dias = Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i));
@@ -79,6 +81,8 @@ function CalendarioSemanal({
           const isSelected = isSameDay(dia, selectedDate);
           const isToday = isSameDay(dia, hoje);
           const temAgendamento = diasComAgendamento?.has(toDayKey(dia)) ?? false;
+          const indisponivel =
+            datasIndisponiveis?.has(toDayKey(dia)) ?? false;
 
           const labelDia = format(dia, "EEEEEE", { locale: ptBR }).slice(0, 3);
           const labelDiaCapital =
@@ -108,6 +112,8 @@ function CalendarioSemanal({
                       ? "bg-primary text-white font-semibold"
                       : isSelected
                       ? "text-primary-dark font-semibold"
+                      : indisponivel
+                      ? "bg-amber-50 text-amber-700 font-medium"
                       : temAgendamento
                       ? "bg-primary-surface text-primary-dark font-medium"
                       : "text-slate-900",
@@ -115,6 +121,12 @@ function CalendarioSemanal({
                 >
                   {format(dia, "d")}
                 </span>
+                {indisponivel && !isSelected && !isToday ? (
+                  <span
+                    aria-hidden="true"
+                    className="h-1 w-1 rounded-full bg-amber-500"
+                  />
+                ) : null}
               </button>
             </li>
           );

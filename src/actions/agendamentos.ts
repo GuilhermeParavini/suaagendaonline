@@ -9,6 +9,10 @@ import {
   montarLinkAgendamento,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
+import {
+  getBloqueiosForProfissional,
+  getFeriadosForTenant,
+} from '@/lib/feriados-bloqueios';
 
 export type StatusAgendamento =
   | 'agendado'
@@ -27,8 +31,17 @@ export type AgendamentoDia = {
   procedimento: { id: string; nome: string } | null;
 };
 
+export type IndisponivelDia =
+  | { tipo: 'feriado'; nome: string }
+  | { tipo: 'bloqueio'; motivo: string | null };
+
 type GetAgendamentosResult =
-  | { ok: true; agendamentos: AgendamentoDia[] }
+  | {
+      ok: true;
+      agendamentos: AgendamentoDia[];
+      indisponivel: IndisponivelDia | null;
+      datasIndisponiveisSemana: string[];
+    }
   | { ok: false; error: string };
 
 type AtualizarStatusResult = { ok: true } | { ok: false; error: string };
@@ -46,6 +59,23 @@ function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function somarDiasIso(iso: string, dias: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + dias);
+  return date.toISOString().slice(0, 10);
+}
+
+function inicioSemanaIso(iso: string): string {
+  // Semana iniciando na segunda-feira (igual CalendarioSemanal)
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const dow = date.getUTCDay(); // 0=Dom..6=Sab
+  const diff = (dow + 6) % 7; // dias desde segunda
+  date.setUTCDate(date.getUTCDate() - diff);
+  return date.toISOString().slice(0, 10);
+}
+
 export async function getAgendamentosDia(data: string): Promise<GetAgendamentosResult> {
   if (!isIsoDate(data)) {
     return { ok: false, error: 'Data invalida.' };
@@ -61,7 +91,7 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
 
   const { data: prof, error: profError } = await admin
     .from('profissionais')
-    .select('id')
+    .select('id, tenant_id')
     .eq('user_id', user.id)
     .maybeSingle();
   if (profError) return { ok: false, error: profError.message };
@@ -97,7 +127,42 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
     };
   });
 
-  return { ok: true, agendamentos };
+  let indisponivel: IndisponivelDia | null = null;
+  let datasIndisponiveisSemana: string[] = [];
+  try {
+    const semanaInicio = inicioSemanaIso(data);
+    const semanaFim = somarDiasIso(semanaInicio, 6);
+
+    const [feriadosSemana, bloqueiosSemana] = await Promise.all([
+      getFeriadosForTenant(prof.tenant_id as string, semanaInicio, semanaFim),
+      getBloqueiosForProfissional(prof.id as string, semanaInicio, semanaFim),
+    ]);
+
+    const setIndisp = new Set<string>();
+    for (const f of feriadosSemana) {
+      setIndisp.add(f.data);
+      if (f.data === data) {
+        indisponivel = { tipo: 'feriado', nome: f.nome };
+      }
+    }
+    for (const b of bloqueiosSemana) {
+      const bi = b.data_inicio < semanaInicio ? semanaInicio : b.data_inicio;
+      const bf = b.data_fim > semanaFim ? semanaFim : b.data_fim;
+      let cur = bi;
+      while (cur <= bf) {
+        setIndisp.add(cur);
+        cur = somarDiasIso(cur, 1);
+      }
+      if (b.data_inicio <= data && b.data_fim >= data && !indisponivel) {
+        indisponivel = { tipo: 'bloqueio', motivo: b.motivo };
+      }
+    }
+    datasIndisponiveisSemana = Array.from(setIndisp).sort();
+  } catch (e) {
+    console.error('[agendamentos] erro ao carregar feriados/bloqueios:', e);
+  }
+
+  return { ok: true, agendamentos, indisponivel, datasIndisponiveisSemana };
 }
 
 export async function atualizarStatusAgendamento(

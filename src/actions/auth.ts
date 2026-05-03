@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { seedFeriadosNacionais } from '@/actions/feriados';
 
 // Função auxiliar para gerar slug
 function generateSlug(text: string): string {
@@ -183,6 +184,22 @@ export async function completeOnboarding(data: {
     }
 
     console.log('✅ Profissional criado com sucesso');
+
+    // Seed de feriados nacionais (nao bloqueia o onboarding em caso de falha).
+    try {
+      const anoAtual = new Date().getFullYear();
+      const r1 = await seedFeriadosNacionais(anoAtual);
+      const r2 = await seedFeriadosNacionais(anoAtual + 1);
+      console.log(
+        `✅ Feriados nacionais: ${r1.inseridos + r2.inseridos} inseridos (${anoAtual} e ${anoAtual + 1})`,
+      );
+    } catch (seedErr) {
+      console.error(
+        '⚠️ Falha ao popular feriados nacionais:',
+        seedErr instanceof Error ? seedErr.message : seedErr,
+      );
+    }
+
     console.log('=== completeOnboarding finalizado com sucesso ===');
     return { error: null };
   } catch (error) {

@@ -27,13 +27,18 @@ type Step = "procedimento" | "data" | "hora" | "paciente" | "resumo" | "sucesso"
 interface AgendarFlowProps {
   contexto: ProfissionalPublico;
   diasSemanaDisponiveis: number[];
+  datasIndisponiveis: string[];
 }
 
 function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
 }
 
-function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
+function AgendarFlow({
+  contexto,
+  diasSemanaDisponiveis,
+  datasIndisponiveis,
+}: AgendarFlowProps) {
   const [step, setStep] = useState<Step>("procedimento");
   const [procedimento, setProcedimento] = useState<Procedimento | null>(null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(startOfMonth(new Date()));
@@ -41,6 +46,7 @@ function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, startSlotsLoad] = useTransition();
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [diaIndisponivel, setDiaIndisponivel] = useState<string | null>(null);
   const [selectedHora, setSelectedHora] = useState<string | null>(null);
   const [paciente, setPaciente] = useState<FormResult | null>(null);
   const [aceiteLgpd, setAceiteLgpd] = useState(false);
@@ -51,6 +57,7 @@ function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
     if (step !== "hora" || !selectedDate || !procedimento) return;
     setSelectedHora(null);
     setSlotsError(null);
+    setDiaIndisponivel(null);
     startSlotsLoad(async () => {
       const result = await getDisponibilidade(
         contexto.profissional.id,
@@ -62,6 +69,15 @@ function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
         setSlots([]);
       } else {
         setSlots(result.slots);
+        if (result.indisponivel) {
+          setDiaIndisponivel(
+            result.indisponivel.tipo === "feriado"
+              ? `Feriado: ${result.indisponivel.nome}`
+              : result.indisponivel.motivo
+                ? `Indisponível: ${result.indisponivel.motivo}`
+                : "Profissional indisponível neste dia.",
+          );
+        }
       }
     });
   }, [step, selectedDate, procedimento, contexto.profissional.id]);
@@ -229,6 +245,7 @@ function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
               setStep("hora");
             }}
             diasSemanaDisponiveis={diasSemanaDisponiveis}
+            datasIndisponiveis={datasIndisponiveis}
           />
         </section>
       ) : null}
@@ -244,6 +261,10 @@ function AgendarFlow({ contexto, diasSemanaDisponiveis }: AgendarFlowProps) {
           {slotsError ? (
             <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {slotsError}
+            </p>
+          ) : diaIndisponivel ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+              {diaIndisponivel}. Escolha outra data.
             </p>
           ) : (
             <div className={slotsLoading ? "opacity-60" : undefined}>
