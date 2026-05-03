@@ -3,6 +3,11 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { cleanCEP, cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
+import {
+  emailConfirmacaoAgendamento,
+  horarioFromIso,
+} from '@/lib/email-templates';
+import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
 export type Slot = { time: string; available: boolean };
 
@@ -424,5 +429,44 @@ export async function criarAgendamentoPublico(
     return { ok: false, error: agErr?.message ?? 'Falha ao criar agendamento.' };
   }
 
-  return { ok: true, agendamentoId: agRow.id as string };
+  const agendamentoId = agRow.id as string;
+
+  try {
+    const { data: pacienteEmail } = await admin
+      .from('pacientes')
+      .select('nome, email')
+      .eq('id', pacienteId)
+      .maybeSingle();
+    const { data: profissional } = await admin
+      .from('profissionais')
+      .select('nome')
+      .eq('id', input.profissionalId)
+      .maybeSingle();
+
+    const destino = (pacienteEmail?.email as string | null) ?? null;
+    const pacienteNome = (pacienteEmail?.nome as string | null) ?? 'Paciente';
+    const profissionalNome =
+      (profissional?.nome as string | null) ?? 'Profissional';
+
+    if (destino) {
+      const tpl = emailConfirmacaoAgendamento({
+        pacienteNome,
+        profissionalNome,
+        dataIso: input.dataIso,
+        horario: horarioFromIso(dataHoraIso),
+      });
+      await enviarNotificacaoEmail({
+        tenantId: input.tenantId,
+        agendamentoId,
+        tipo: 'confirmacao',
+        destino,
+        assunto: tpl.assunto,
+        html: tpl.html,
+      });
+    }
+  } catch (e) {
+    console.error('[agendamento-publico] Erro ao enviar email de confirmacao:', e);
+  }
+
+  return { ok: true, agendamentoId };
 }

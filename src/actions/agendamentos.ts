@@ -2,6 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import {
+  emailCancelamento,
+  horarioFromIso,
+  dataIsoFromTimestamp,
+} from '@/lib/email-templates';
+import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
 export type StatusAgendamento =
   | 'agendado'
@@ -146,6 +152,65 @@ export async function atualizarStatusAgendamento(
     .update(update)
     .eq('id', id);
   if (updateError) return { ok: false, error: updateError.message };
+
+  if (novoStatus === 'cancelado') {
+    try {
+      const { data: ag } = await admin
+        .from('agendamentos')
+        .select('id, data_hora, paciente_id, profissional_id, tenant_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (ag) {
+        const [{ data: paciente }, { data: profissional }, { data: tenant }] =
+          await Promise.all([
+            admin
+              .from('pacientes')
+              .select('nome, email')
+              .eq('id', ag.paciente_id as string)
+              .maybeSingle(),
+            admin
+              .from('profissionais')
+              .select('nome')
+              .eq('id', ag.profissional_id as string)
+              .maybeSingle(),
+            admin
+              .from('tenants')
+              .select('slug')
+              .eq('id', ag.tenant_id as string)
+              .maybeSingle(),
+          ]);
+
+        const destino = (paciente?.email as string | null) ?? null;
+        if (destino) {
+          const slug = (tenant?.slug as string | null) ?? null;
+          const baseUrl =
+            process.env.NEXT_PUBLIC_APP_URL ??
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+          const linkAgendamento = slug && baseUrl ? `${baseUrl}/agendar/${slug}` : null;
+
+          const dataHoraIso = ag.data_hora as string;
+          const tpl = emailCancelamento({
+            pacienteNome: (paciente?.nome as string) ?? 'Paciente',
+            profissionalNome:
+              (profissional?.nome as string) ?? 'Profissional',
+            dataIso: dataIsoFromTimestamp(dataHoraIso),
+            horario: horarioFromIso(dataHoraIso),
+            linkAgendamento,
+          });
+          await enviarNotificacaoEmail({
+            tenantId: ag.tenant_id as string,
+            agendamentoId: id,
+            tipo: 'cancelamento',
+            destino,
+            assunto: tpl.assunto,
+            html: tpl.html,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[agendamentos] Erro ao enviar email de cancelamento:', e);
+    }
+  }
 
   revalidatePath('/agenda');
   return { ok: true };
