@@ -1,0 +1,423 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { cleanPhone } from '@/lib/masks';
+
+type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export type ProfissionalConfig = {
+  id: string;
+  tenant_id: string;
+  nome: string;
+  especialidade: string;
+  registro_profissional: string | null;
+  email: string;
+  telefone: string | null;
+  bio: string | null;
+  role: string;
+};
+
+export type TenantConfig = {
+  id: string;
+  nome_empresa: string;
+  slug: string;
+  telefone: string | null;
+  email: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+};
+
+export type HorarioBloco = {
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fim: string;
+};
+
+export type Procedimento = {
+  id: string;
+  nome: string;
+  duracao_min: number;
+  valor: number | null;
+  ativo: boolean;
+};
+
+async function obterContexto(): Promise<
+  | { ok: true; tenantId: string; profissionalId: string; role: string }
+  | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+  return {
+    ok: true,
+    tenantId: prof.tenant_id as string,
+    profissionalId: prof.id as string,
+    role: prof.role as string,
+  };
+}
+
+export async function getConfiguracoes(): Promise<
+  Result<{
+    profissional: ProfissionalConfig;
+    tenant: TenantConfig;
+    horarios: HorarioBloco[];
+    procedimentos: Procedimento[];
+  }>
+> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select(
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role',
+    )
+    .eq('id', ctx.profissionalId)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const { data: tenant, error: tenantErr } = await admin
+    .from('tenants')
+    .select('id, nome_empresa, slug, telefone, email, endereco, cidade, estado')
+    .eq('id', ctx.tenantId)
+    .maybeSingle();
+  if (tenantErr) return { ok: false, error: tenantErr.message };
+  if (!tenant) return { ok: false, error: 'Tenant nao encontrado.' };
+
+  const { data: horariosRaw, error: horErr } = await admin
+    .from('horarios_disponiveis')
+    .select('dia_semana, hora_inicio, hora_fim')
+    .eq('profissional_id', ctx.profissionalId)
+    .eq('ativo', true)
+    .order('dia_semana', { ascending: true })
+    .order('hora_inicio', { ascending: true });
+  if (horErr) return { ok: false, error: horErr.message };
+
+  const { data: procsRaw, error: procErr } = await admin
+    .from('procedimentos')
+    .select('id, nome, duracao_min, valor, ativo')
+    .eq('tenant_id', ctx.tenantId)
+    .order('nome', { ascending: true });
+  if (procErr) return { ok: false, error: procErr.message };
+
+  const horarios: HorarioBloco[] = (horariosRaw ?? []).map((h) => ({
+    dia_semana: h.dia_semana as number,
+    hora_inicio: (h.hora_inicio as string).slice(0, 5),
+    hora_fim: (h.hora_fim as string).slice(0, 5),
+  }));
+
+  const procedimentos: Procedimento[] = (procsRaw ?? []).map((p) => ({
+    id: p.id as string,
+    nome: p.nome as string,
+    duracao_min: p.duracao_min as number,
+    valor: p.valor === null || p.valor === undefined ? null : Number(p.valor),
+    ativo: Boolean(p.ativo),
+  }));
+
+  return {
+    ok: true,
+    data: {
+      profissional: {
+        id: prof.id as string,
+        tenant_id: prof.tenant_id as string,
+        nome: prof.nome as string,
+        especialidade: prof.especialidade as string,
+        registro_profissional: (prof.registro_profissional as string | null) ?? null,
+        email: prof.email as string,
+        telefone: (prof.telefone as string | null) ?? null,
+        bio: (prof.bio as string | null) ?? null,
+        role: prof.role as string,
+      },
+      tenant: {
+        id: tenant.id as string,
+        nome_empresa: tenant.nome_empresa as string,
+        slug: tenant.slug as string,
+        telefone: (tenant.telefone as string | null) ?? null,
+        email: (tenant.email as string | null) ?? null,
+        endereco: (tenant.endereco as string | null) ?? null,
+        cidade: (tenant.cidade as string | null) ?? null,
+        estado: (tenant.estado as string | null) ?? null,
+      },
+      horarios,
+      procedimentos,
+    },
+  };
+}
+
+export type AtualizarProfissionalInput = {
+  nome: string;
+  especialidade: string;
+  registro_profissional?: string;
+  telefone: string;
+  bio?: string;
+};
+
+export async function atualizarProfissional(
+  input: AtualizarProfissionalInput,
+): Promise<Result<null>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const nome = input.nome?.trim() ?? '';
+  if (nome.length < 3) return { ok: false, error: 'Nome invalido.' };
+
+  const especialidade = input.especialidade?.trim() ?? '';
+  if (especialidade.length < 2) {
+    return { ok: false, error: 'Selecione uma especialidade.' };
+  }
+
+  const telefone = cleanPhone(input.telefone ?? '');
+  if (telefone.length !== 10 && telefone.length !== 11) {
+    return { ok: false, error: 'Telefone invalido.' };
+  }
+
+  const bio = input.bio?.trim() ?? '';
+  if (bio.length > 300) return { ok: false, error: 'Bio acima de 300 caracteres.' };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('profissionais')
+    .update({
+      nome,
+      especialidade,
+      registro_profissional: input.registro_profissional?.trim() || null,
+      telefone,
+      bio: bio || null,
+    })
+    .eq('id', ctx.profissionalId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
+}
+
+export type AtualizarTenantInput = {
+  nome_empresa: string;
+  telefone?: string;
+  cidade?: string;
+  estado?: string;
+};
+
+export async function atualizarTenant(
+  input: AtualizarTenantInput,
+): Promise<Result<null>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+  if (ctx.role !== 'admin') {
+    return { ok: false, error: 'Apenas administradores podem editar a clinica.' };
+  }
+
+  const nome = input.nome_empresa?.trim() ?? '';
+  if (nome.length < 3) return { ok: false, error: 'Nome da empresa invalido.' };
+
+  let telefone: string | null = null;
+  if (input.telefone) {
+    const digits = cleanPhone(input.telefone);
+    if (digits.length !== 0 && digits.length !== 10 && digits.length !== 11) {
+      return { ok: false, error: 'Telefone invalido.' };
+    }
+    telefone = digits || null;
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from('tenants')
+    .update({
+      nome_empresa: nome,
+      telefone,
+      cidade: input.cidade?.trim() || null,
+      estado: input.estado?.trim() || null,
+    })
+    .eq('id', ctx.tenantId);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
+}
+
+export async function salvarHorarios(
+  blocos: HorarioBloco[],
+): Promise<Result<null>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  for (const b of blocos) {
+    if (!Number.isInteger(b.dia_semana) || b.dia_semana < 0 || b.dia_semana > 6) {
+      return { ok: false, error: 'Dia da semana invalido.' };
+    }
+    if (!/^\d{2}:\d{2}$/.test(b.hora_inicio) || !/^\d{2}:\d{2}$/.test(b.hora_fim)) {
+      return { ok: false, error: 'Horario invalido.' };
+    }
+    if (b.hora_inicio >= b.hora_fim) {
+      return { ok: false, error: 'Hora de fim deve ser maior que a de inicio.' };
+    }
+  }
+
+  const admin = createAdminClient();
+
+  const { error: delErr } = await admin
+    .from('horarios_disponiveis')
+    .delete()
+    .eq('profissional_id', ctx.profissionalId);
+  if (delErr) return { ok: false, error: delErr.message };
+
+  if (blocos.length > 0) {
+    const rows = blocos.map((b) => ({
+      profissional_id: ctx.profissionalId,
+      dia_semana: b.dia_semana,
+      hora_inicio: `${b.hora_inicio}:00`,
+      hora_fim: `${b.hora_fim}:00`,
+      ativo: true,
+    }));
+    const { error: insErr } = await admin.from('horarios_disponiveis').insert(rows);
+    if (insErr) return { ok: false, error: insErr.message };
+  }
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
+}
+
+export type ProcedimentoInput = {
+  nome: string;
+  duracao_min: number;
+  valor?: number | null;
+};
+
+export async function criarProcedimento(
+  input: ProcedimentoInput,
+): Promise<Result<{ id: string }>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const nome = input.nome?.trim() ?? '';
+  if (nome.length < 2) return { ok: false, error: 'Nome obrigatorio.' };
+  if (
+    !Number.isFinite(input.duracao_min) ||
+    input.duracao_min <= 0 ||
+    input.duracao_min > 600
+  ) {
+    return { ok: false, error: 'Duracao invalida.' };
+  }
+  const valor =
+    input.valor === null || input.valor === undefined
+      ? null
+      : Number.isFinite(input.valor) && input.valor >= 0
+        ? input.valor
+        : null;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('procedimentos')
+    .insert({
+      tenant_id: ctx.tenantId,
+      profissional_id: ctx.profissionalId,
+      nome,
+      duracao_min: Math.round(input.duracao_min),
+      valor,
+      ativo: true,
+    })
+    .select('id')
+    .single();
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Falha ao salvar.' };
+  }
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: { id: data.id as string } };
+}
+
+export async function atualizarProcedimento(
+  id: string,
+  input: ProcedimentoInput,
+): Promise<Result<null>> {
+  if (!id) return { ok: false, error: 'Procedimento invalido.' };
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const nome = input.nome?.trim() ?? '';
+  if (nome.length < 2) return { ok: false, error: 'Nome obrigatorio.' };
+  if (
+    !Number.isFinite(input.duracao_min) ||
+    input.duracao_min <= 0 ||
+    input.duracao_min > 600
+  ) {
+    return { ok: false, error: 'Duracao invalida.' };
+  }
+  const valor =
+    input.valor === null || input.valor === undefined
+      ? null
+      : Number.isFinite(input.valor) && input.valor >= 0
+        ? input.valor
+        : null;
+
+  const admin = createAdminClient();
+  const { data: row, error: getErr } = await admin
+    .from('procedimentos')
+    .select('id, tenant_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: getErr.message };
+  if (!row) return { ok: false, error: 'Procedimento nao encontrado.' };
+  if (row.tenant_id !== ctx.tenantId) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const { error } = await admin
+    .from('procedimentos')
+    .update({
+      nome,
+      duracao_min: Math.round(input.duracao_min),
+      valor,
+    })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
+}
+
+export async function toggleProcedimento(
+  id: string,
+  ativo: boolean,
+): Promise<Result<null>> {
+  if (!id) return { ok: false, error: 'Procedimento invalido.' };
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data: row, error: getErr } = await admin
+    .from('procedimentos')
+    .select('id, tenant_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: getErr.message };
+  if (!row) return { ok: false, error: 'Procedimento nao encontrado.' };
+  if (row.tenant_id !== ctx.tenantId) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const { error } = await admin
+    .from('procedimentos')
+    .update({ ativo })
+    .eq('id', id);
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
+}
