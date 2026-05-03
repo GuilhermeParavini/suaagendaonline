@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
 import {
   atualizarStatusAgendamento,
   type AgendamentoDia,
@@ -22,14 +22,20 @@ interface AgendamentoModalProps {
 type AcaoStatus = {
   status: Exclude<StatusAgendamento, "agendado">;
   label: string;
+  toast: string;
   className: string;
 };
+
+const ESTADOS_FINAIS: StatusAgendamento[] = ["concluido", "faltou", "cancelado"];
+const TOAST_DURATION_MS = 2000;
+const FECHAMENTO_FINAL_MS = 1000;
 
 const ACOES_POR_STATUS: Record<StatusAgendamento, AcaoStatus[]> = {
   agendado: [
     {
       status: "confirmado",
       label: "Confirmar presenca",
+      toast: "Presenca confirmada",
       className: "bg-primary text-white hover:bg-primary-dark border-transparent",
     },
   ],
@@ -37,6 +43,7 @@ const ACOES_POR_STATUS: Record<StatusAgendamento, AcaoStatus[]> = {
     {
       status: "em_atendimento",
       label: "Iniciar atendimento",
+      toast: "Atendimento iniciado",
       className:
         "bg-[#F59E0B] text-white hover:bg-[#D97706] border-transparent",
     },
@@ -45,12 +52,14 @@ const ACOES_POR_STATUS: Record<StatusAgendamento, AcaoStatus[]> = {
     {
       status: "concluido",
       label: "Concluir atendimento",
+      toast: "Atendimento concluido",
       className:
         "bg-[#22C55E] text-white hover:bg-[#16A34A] border-transparent",
     },
     {
       status: "faltou",
       label: "Registrar falta",
+      toast: "Falta registrada",
       className: "bg-[#EF4444] text-white hover:bg-[#DC2626] border-transparent",
     },
   ],
@@ -70,13 +79,36 @@ function AgendamentoModal({
   const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const limparTimers = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      limparTimers();
+    };
+  }, []);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
+      limparTimers();
       setConfirmandoCancelamento(false);
       setMotivo("");
       setErro(null);
+      setToast(null);
     }
     onOpenChange(next);
   };
@@ -96,7 +128,11 @@ function AgendamentoModal({
   const podeCancelar = PODE_CANCELAR.includes(agendamento.status);
   const ehFinal = acoes.length === 0 && !podeCancelar;
 
-  const aplicarStatus = (novoStatus: StatusAgendamento, motivoTexto?: string) => {
+  const aplicarStatus = (
+    novoStatus: StatusAgendamento,
+    mensagemToast: string,
+    motivoTexto?: string,
+  ) => {
     setErro(null);
     startTransition(async () => {
       const result = await atualizarStatusAgendamento(
@@ -108,8 +144,23 @@ function AgendamentoModal({
         setErro(result.error);
         return;
       }
+
       onUpdated(agendamento.id, novoStatus);
-      handleOpenChange(false);
+      limparTimers();
+      setConfirmandoCancelamento(false);
+      setMotivo("");
+      setToast(mensagemToast);
+
+      const ehFinalAgora = ESTADOS_FINAIS.includes(novoStatus);
+      if (ehFinalAgora) {
+        closeTimerRef.current = setTimeout(() => {
+          handleOpenChange(false);
+        }, FECHAMENTO_FINAL_MS);
+      } else {
+        toastTimerRef.current = setTimeout(() => {
+          setToast(null);
+        }, TOAST_DURATION_MS);
+      }
     });
   };
 
@@ -146,6 +197,17 @@ function AgendamentoModal({
               <X size={18} strokeWidth={1.5} />
             </Dialog.Close>
           </div>
+
+          {toast ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-4 flex items-center gap-2 rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]"
+            >
+              <Check size={14} strokeWidth={2} aria-hidden="true" />
+              <span>{toast}</span>
+            </div>
+          ) : null}
 
           <div className="mt-4 flex items-center gap-2">
             <span className="text-xs text-slate-500">Status atual:</span>
@@ -188,7 +250,9 @@ function AgendamentoModal({
                 <Button
                   variant="destructive"
                   disabled={isPending}
-                  onClick={() => aplicarStatus("cancelado", motivo)}
+                  onClick={() =>
+                    aplicarStatus("cancelado", "Agendamento cancelado", motivo)
+                  }
                   className="w-full"
                 >
                   {isPending ? "Cancelando..." : "Cancelar agendamento"}
@@ -213,7 +277,7 @@ function AgendamentoModal({
                   key={acao.status}
                   type="button"
                   disabled={isPending}
-                  onClick={() => aplicarStatus(acao.status)}
+                  onClick={() => aplicarStatus(acao.status, acao.toast)}
                   className={cn(
                     "inline-flex w-full items-center justify-center rounded border px-5 py-2.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none",
                     acao.className,
