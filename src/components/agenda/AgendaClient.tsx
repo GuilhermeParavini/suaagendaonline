@@ -7,9 +7,11 @@ import { ptBR } from "date-fns/locale";
 import {
   getAgendamentosDia,
   type AgendamentoDia,
+  type StatusAgendamento,
 } from "@/actions/agendamentos";
 import CalendarioSemanal, { type ViewMode } from "./CalendarioSemanal";
 import ListaHorarios from "./ListaHorarios";
+import AgendamentoModal from "./AgendamentoModal";
 
 interface AgendaClientProps {
   initialDate: string;
@@ -35,6 +37,25 @@ function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("semana");
   const [isPending, startTransition] = useTransition();
+  const [selecionado, setSelecionado] = useState<AgendamentoDia | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleSelecionarAgendamento = useCallback((ag: AgendamentoDia) => {
+    setSelecionado(ag);
+    setModalOpen(true);
+  }, []);
+
+  const handleStatusAtualizado = useCallback(
+    (id: string, novoStatus: StatusAgendamento) => {
+      setAgendamentos((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: novoStatus } : a)),
+      );
+      setSelecionado((prev) =>
+        prev && prev.id === id ? { ...prev, status: novoStatus } : prev,
+      );
+    },
+    [],
+  );
 
   const handleSelectDate = useCallback((date: Date) => {
     setSelectedDate(date);
@@ -80,9 +101,19 @@ function AgendaClient({ initialDate, initialAgendamentos }: AgendaClientProps) {
             {error}
           </div>
         ) : (
-          <ListaHorarios agendamentos={agendamentos} />
+          <ListaHorarios
+            agendamentos={agendamentos}
+            onSelecionar={handleSelecionarAgendamento}
+          />
         )}
       </section>
+
+      <AgendamentoModal
+        agendamento={selecionado}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onUpdated={handleStatusAtualizado}
+      />
 
       <button
         type="button"

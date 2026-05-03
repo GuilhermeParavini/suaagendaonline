@@ -6,6 +6,7 @@ interface ListaHorariosProps {
   horaInicio?: number;
   horaFim?: number;
   intervaloMin?: number;
+  onSelecionar?: (agendamento: AgendamentoDia) => void;
 }
 
 type Slot = { key: string; label: string; agendamento: AgendamentoDia | null };
@@ -45,6 +46,7 @@ function ListaHorarios({
   horaInicio = 8,
   horaFim = 18,
   intervaloMin = 30,
+  onSelecionar,
 }: ListaHorariosProps) {
   if (agendamentos.length === 0) {
     return (
@@ -65,7 +67,10 @@ function ListaHorarios({
           </span>
           <div className="flex-1 min-w-0">
             {slot.agendamento ? (
-              <CardAgendamento agendamento={slot.agendamento} />
+              <CardAgendamento
+                agendamento={slot.agendamento}
+                onClick={onSelecionar}
+              />
             ) : (
               <div className="h-full min-h-[36px] border-t border-dashed border-slate-200" />
             )}
