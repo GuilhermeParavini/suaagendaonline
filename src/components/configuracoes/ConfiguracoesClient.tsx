@@ -14,6 +14,7 @@ import TabMeusDados from "./TabMeusDados";
 import TabHorarios from "./TabHorarios";
 import TabProcedimentos from "./TabProcedimentos";
 import TabBloqueios from "./TabBloqueios";
+import TabAnamnese from "./TabAnamnese";
 
 interface ConfiguracoesClientProps {
   initialProfissional: ProfissionalConfig;
@@ -67,6 +68,7 @@ function ConfiguracoesClient({
             { value: "dados", label: "Meus dados" },
             { value: "horarios", label: "Horários" },
             { value: "procedimentos", label: "Procedimentos" },
+            { value: "anamnese", label: "Anamnese" },
             { value: "bloqueios", label: "Bloqueios" },
           ].map((t) => (
             <Tabs.Trigger
@@ -100,6 +102,10 @@ function ConfiguracoesClient({
             procedimentos={procedimentos}
             onChanged={recarregar}
           />
+        </Tabs.Content>
+
+        <Tabs.Content value="anamnese" className="focus:outline-none">
+          <TabAnamnese especialidade={profissional.especialidade} />
         </Tabs.Content>
 
         <Tabs.Content value="bloqueios" className="focus:outline-none">

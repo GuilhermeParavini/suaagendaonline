@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { seedFeriadosNacionais } from '@/actions/feriados';
+import { seedTemplatesAnamnese } from '@/actions/anamnese';
 
 // Função auxiliar para gerar slug
 function generateSlug(text: string): string {
@@ -198,6 +199,32 @@ export async function completeOnboarding(data: {
         '⚠️ Falha ao popular feriados nacionais:',
         seedErr instanceof Error ? seedErr.message : seedErr,
       );
+    }
+
+    // Buscar profissional recem-criado para pegar o id
+    const { data: profCriado } = await supabase
+      .from('profissionais')
+      .select('id')
+      .eq('user_id', data.userId)
+      .maybeSingle();
+
+    // Seed de template padrao de anamnese (nao bloqueia o onboarding em caso de falha).
+    if (profCriado?.id) {
+      try {
+        const r = await seedTemplatesAnamnese(
+          profCriado.id as string,
+          tenant.id as string,
+          data.specialty,
+        );
+        console.log(
+          `✅ Template anamnese: ${r.inserido ? 'criado' : 'ja existia'} (${r.nome})`,
+        );
+      } catch (seedErr) {
+        console.error(
+          '⚠️ Falha ao popular template de anamnese:',
+          seedErr instanceof Error ? seedErr.message : seedErr,
+        );
+      }
     }
 
     console.log('=== completeOnboarding finalizado com sucesso ===');

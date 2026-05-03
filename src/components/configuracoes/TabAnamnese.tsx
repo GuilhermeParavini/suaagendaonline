@@ -1,0 +1,204 @@
+"use client";
+
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { Pencil, Plus } from "lucide-react";
+import {
+  atualizarTemplate,
+  excluirTemplate,
+  getTemplates,
+  type Template,
+} from "@/actions/anamnese";
+import { cn } from "@/lib/utils";
+import EditorTemplate from "./EditorTemplate";
+
+interface TabAnamneseProps {
+  especialidade: string;
+}
+
+function TabAnamnese({ especialidade }: TabAnamneseProps) {
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editando, setEditando] = useState<Template | null>(null);
+
+  const recarregar = useCallback(async () => {
+    setErro(null);
+    const result = await getTemplates();
+    if (!result.ok) {
+      setErro(result.error);
+      return;
+    }
+    setTemplates(result.data);
+  }, []);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      await recarregar();
+      if (!cancelado) setCarregando(false);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [recarregar]);
+
+  const abrirNovo = () => {
+    setEditando(null);
+    setEditorOpen(true);
+  };
+
+  const abrirEditar = (t: Template) => {
+    setEditando(t);
+    setEditorOpen(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-slate-500">
+          Crie templates de anamnese personalizados. Você pode ter um por
+          especialidade ou variações por tipo de atendimento.
+        </p>
+        <button
+          type="button"
+          onClick={abrirNovo}
+          className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors shrink-0"
+        >
+          <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+          Novo
+        </button>
+      </div>
+
+      {erro ? (
+        <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {erro}
+        </p>
+      ) : null}
+
+      {carregando ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <p className="text-sm text-slate-500">Carregando...</p>
+        </div>
+      ) : templates.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+          <p className="text-sm text-slate-500">
+            Nenhum template cadastrado.
+          </p>
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+          {templates.map((t) => (
+            <ItemTemplate
+              key={t.id}
+              template={t}
+              onEditar={() => abrirEditar(t)}
+              onChanged={recarregar}
+            />
+          ))}
+        </ul>
+      )}
+
+      <EditorTemplate
+        key={`${editando?.id ?? "novo"}-${editorOpen ? "open" : "closed"}`}
+        open={editorOpen}
+        onOpenChange={setEditorOpen}
+        template={editando}
+        especialidadeDefault={especialidade}
+        onSaved={recarregar}
+      />
+    </div>
+  );
+}
+
+function ItemTemplate({
+  template,
+  onEditar,
+  onChanged,
+}: {
+  template: Template;
+  onEditar: () => void;
+  onChanged: () => void;
+}) {
+  const [erro, setErro] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const handleToggle = () => {
+    setErro(null);
+    if (template.ativo) {
+      if (
+        !confirm(
+          "Inativar este template? Ele não aparecerá mais na ficha do paciente.",
+        )
+      ) {
+        return;
+      }
+      startTransition(async () => {
+        const result = await excluirTemplate(template.id);
+        if (!result.ok) {
+          setErro(result.error);
+          return;
+        }
+        onChanged();
+      });
+    } else {
+      startTransition(async () => {
+        const result = await atualizarTemplate(template.id, { ativo: true });
+        if (!result.ok) {
+          setErro(result.error);
+          return;
+        }
+        onChanged();
+      });
+    }
+  };
+
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3 px-3 py-3 sm:px-4",
+        !template.ativo && "opacity-60",
+      )}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-slate-900 truncate">
+            {template.nome}
+          </p>
+          {template.padrao ? (
+            <span className="inline-flex items-center rounded-full bg-primary-surface px-2 py-0.5 text-[10px] font-medium text-primary-dark">
+              Padrão
+            </span>
+          ) : null}
+        </div>
+        <p className="text-xs text-slate-500">
+          {template.especialidade} · {template.campos.length}{" "}
+          {template.campos.length === 1 ? "campo" : "campos"}
+        </p>
+        {erro ? <p className="text-xs text-red-600">{erro}</p> : null}
+      </div>
+
+      <label className="flex items-center gap-1.5 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={template.ativo}
+          onChange={handleToggle}
+          disabled={isPending}
+          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+        />
+        <span className="text-xs text-slate-600">Ativo</span>
+      </label>
+
+      <button
+        type="button"
+        onClick={onEditar}
+        aria-label={`Editar ${template.nome}`}
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+      >
+        <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
+      </button>
+    </li>
+  );
+}
+
+export default TabAnamnese;
