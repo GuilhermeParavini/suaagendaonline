@@ -129,7 +129,7 @@ export default function LoginPage() {
       {/* Forgot Password Link */}
       <div className="text-center">
         <Link
-          href="/recuperar-senha"
+          href="/esqueci-senha"
           className="text-sm text-teal-600 hover:text-teal-700"
         >
           Esqueci minha senha
