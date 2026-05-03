@@ -511,6 +511,216 @@ export async function atualizarPaciente(
   return { ok: true };
 }
 
+export type CadastroAvulsoInput = {
+  slug: string;
+  nome: string;
+  cpf: string;
+  data_nascimento: string;
+  genero: Genero;
+  telefone: string;
+  email: string;
+  aceiteLgpd: boolean;
+  responsavel?: {
+    nome: string;
+    cpf: string;
+    telefone: string;
+    email?: string;
+    grau_parentesco: GrauParentesco;
+  };
+};
+
+type CadastroAvulsoResult =
+  | { ok: true; pacienteId: string; profissionalNome: string }
+  | { ok: false; error: string; jaCadastrado?: boolean; profissionalNome?: string };
+
+const LGPD_TEXT_PUBLICO =
+  'Termo de consentimento LGPD aceito pelo paciente em cadastro publico. ' +
+  'Autoriza tratamento de dados pessoais e sensiveis para finalidade clinica e administrativa, ' +
+  'conforme Lei 13.709/2018.';
+
+export async function cadastrarPacienteAvulso(
+  input: CadastroAvulsoInput,
+): Promise<CadastroAvulsoResult> {
+  if (!input.aceiteLgpd) {
+    return { ok: false, error: 'E necessario aceitar o termo LGPD.' };
+  }
+
+  const slug = input.slug?.trim().toLowerCase() ?? '';
+  if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+    return { ok: false, error: 'Link invalido.' };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: tenant, error: tenantErr } = await admin
+    .from('tenants')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (tenantErr) return { ok: false, error: tenantErr.message };
+  if (!tenant) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const tenantId = tenant.id as string;
+
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('nome')
+    .eq('tenant_id', tenantId)
+    .eq('ativo', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  const profissionalNome = (prof?.nome as string | null) ?? 'profissional';
+
+  const nome = input.nome?.trim() ?? '';
+  if (nome.length < 3) return { ok: false, error: 'Nome invalido.' };
+
+  const cpf = cleanCPF(input.cpf ?? '');
+  if (!validateCPF(cpf)) return { ok: false, error: 'CPF invalido.' };
+
+  if (!isValidBirthDate(input.data_nascimento)) {
+    return { ok: false, error: 'Data de nascimento invalida.' };
+  }
+
+  if (!['masculino', 'feminino', 'prefiro_nao_informar'].includes(input.genero)) {
+    return { ok: false, error: 'Genero invalido.' };
+  }
+
+  const telefone = cleanPhone(input.telefone ?? '');
+  if (telefone.length !== 10 && telefone.length !== 11) {
+    return { ok: false, error: 'Telefone invalido.' };
+  }
+
+  const email = input.email?.trim() ?? '';
+  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: 'E-mail invalido.' };
+  }
+
+  const menor = isMinor(input.data_nascimento);
+  if (menor && !input.responsavel) {
+    return { ok: false, error: 'Responsavel obrigatorio para menor de idade.' };
+  }
+
+  let respPayload:
+    | {
+        nome: string;
+        cpf: string;
+        telefone: string;
+        email: string | null;
+        grau_parentesco: GrauParentesco;
+      }
+    | null = null;
+
+  if (menor && input.responsavel) {
+    const r = input.responsavel;
+    const respNome = r.nome?.trim() ?? '';
+    if (respNome.length < 3) {
+      return { ok: false, error: 'Nome do responsavel invalido.' };
+    }
+    const respCpf = cleanCPF(r.cpf ?? '');
+    if (!validateCPF(respCpf)) {
+      return { ok: false, error: 'CPF do responsavel invalido.' };
+    }
+    const respTel = cleanPhone(r.telefone ?? '');
+    if (respTel.length !== 10 && respTel.length !== 11) {
+      return { ok: false, error: 'Telefone do responsavel invalido.' };
+    }
+    const respEmail = r.email?.trim() || null;
+    if (respEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(respEmail)) {
+      return { ok: false, error: 'E-mail do responsavel invalido.' };
+    }
+    if (!['mae', 'pai', 'avo', 'tio', 'outro'].includes(r.grau_parentesco)) {
+      return { ok: false, error: 'Grau de parentesco invalido.' };
+    }
+    respPayload = {
+      nome: respNome,
+      cpf: respCpf,
+      telefone: respTel,
+      email: respEmail,
+      grau_parentesco: r.grau_parentesco,
+    };
+  }
+
+  // Verifica duplicidade
+  const { data: existing, error: dupErr } = await admin
+    .from('pacientes')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('cpf', cpf)
+    .maybeSingle();
+  if (dupErr) return { ok: false, error: dupErr.message };
+  if (existing) {
+    return {
+      ok: false,
+      error: `Voce ja esta cadastrado com ${profissionalNome}.`,
+      jaCadastrado: true,
+      profissionalNome,
+    };
+  }
+
+  const { data: pacRow, error: insErr } = await admin
+    .from('pacientes')
+    .insert({
+      tenant_id: tenantId,
+      nome,
+      cpf,
+      data_nascimento: input.data_nascimento,
+      genero: input.genero,
+      telefone,
+      email,
+      ativo: true,
+    })
+    .select('id')
+    .single();
+  if (insErr || !pacRow) {
+    return { ok: false, error: insErr?.message ?? 'Falha ao salvar paciente.' };
+  }
+  const pacienteId = pacRow.id as string;
+
+  let responsavelId: string | null = null;
+  if (respPayload) {
+    const { data: respRow, error: respErr } = await admin
+      .from('responsaveis')
+      .insert({
+        paciente_id: pacienteId,
+        nome: respPayload.nome,
+        cpf: respPayload.cpf,
+        telefone: respPayload.telefone,
+        email: respPayload.email,
+        grau_parentesco: respPayload.grau_parentesco,
+      })
+      .select('id')
+      .single();
+    if (respErr || !respRow) {
+      await admin.from('pacientes').delete().eq('id', pacienteId);
+      return {
+        ok: false,
+        error: respErr?.message ?? 'Falha ao salvar responsavel.',
+      };
+    }
+    responsavelId = respRow.id as string;
+  }
+
+  const { error: consErr } = await admin.from('consentimentos').insert({
+    paciente_id: pacienteId,
+    responsavel_id: responsavelId,
+    tipo: menor ? 'lgpd_menor' : 'lgpd_geral',
+    aceite: true,
+    texto_aceito: LGPD_TEXT_PUBLICO,
+  });
+  if (consErr) {
+    await admin.from('pacientes').delete().eq('id', pacienteId);
+    return {
+      ok: false,
+      error: `Falha ao registrar consentimento: ${consErr.message}`,
+    };
+  }
+
+  return { ok: true, pacienteId, profissionalNome };
+}
+
 type ExcluirPacienteResult = { ok: true } | { ok: false; error: string };
 
 export async function excluirPaciente(

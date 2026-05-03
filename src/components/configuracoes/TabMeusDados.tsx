@@ -12,6 +12,7 @@ import {
 } from "@/actions/configuracoes";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import LinkAgendamento from "./LinkAgendamento";
+import LinkCadastroPaciente from "./LinkCadastroPaciente";
 import SecaoAssinatura from "./SecaoAssinatura";
 
 const ESPECIALIDADES = [
@@ -183,6 +184,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
   return (
     <div className="space-y-6">
       <LinkAgendamento slug={tenant.slug} />
+      <LinkCadastroPaciente slug={tenant.slug} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <header className="flex items-center justify-between gap-2">
