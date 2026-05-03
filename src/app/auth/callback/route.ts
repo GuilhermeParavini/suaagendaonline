@@ -19,7 +19,15 @@ export async function GET(request: Request) {
   const tokenHash = url.searchParams.get('token_hash');
   const typeParam = url.searchParams.get('type') as EmailOtpType | null;
   const nextParam = url.searchParams.get('next') ?? '/';
-  const next = nextParam.startsWith('/') ? nextParam : '/';
+  const nextSafe = nextParam.startsWith('/') ? nextParam : '/';
+
+  // Para fluxo de recovery, sempre garantir que cai em /redefinir-senha
+  const next =
+    typeParam === 'recovery'
+      ? '/redefinir-senha'
+      : nextParam === '/' && nextSafe === '/' && nextParam.includes('redefinir-senha')
+        ? '/redefinir-senha'
+        : nextSafe;
 
   const errorParam = url.searchParams.get('error');
   if (errorParam) {

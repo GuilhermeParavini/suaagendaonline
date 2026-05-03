@@ -37,9 +37,10 @@ export default function EsqueciSenhaPage() {
         typeof window !== 'undefined'
           ? window.location.origin
           : process.env.NEXT_PUBLIC_APP_URL ?? '';
-      // Aponta direto para /redefinir-senha. O cliente Supabase no browser
-      // detecta o token (hash ou code) automaticamente e cria a sessao.
-      const redirectTo = `${baseUrl}/redefinir-senha`;
+      // PKCE: o Supabase devolve ?code=... no redirect; precisa passar pelo
+      // /auth/callback para trocar o code por sessao antes de cair
+      // em /redefinir-senha (a pagina exige sessao ativa).
+      const redirectTo = `${baseUrl}/auth/callback?next=/redefinir-senha`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo,
