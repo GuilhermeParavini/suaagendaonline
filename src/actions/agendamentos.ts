@@ -6,6 +6,7 @@ import {
   emailCancelamento,
   horarioFromIso,
   dataIsoFromTimestamp,
+  montarLinkAgendamento,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
@@ -186,7 +187,7 @@ export async function atualizarStatusAgendamento(
           const baseUrl =
             process.env.NEXT_PUBLIC_APP_URL ??
             (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
-          const linkAgendamento = slug && baseUrl ? `${baseUrl}/agendar/${slug}` : null;
+          const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
 
           const dataHoraIso = ag.data_hora as string;
           const tpl = emailCancelamento({

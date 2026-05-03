@@ -6,6 +6,7 @@ import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
 import {
   emailConfirmacaoAgendamento,
   horarioFromIso,
+  montarLinkAgendamento,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
@@ -432,21 +433,34 @@ export async function criarAgendamentoPublico(
   const agendamentoId = agRow.id as string;
 
   try {
-    const { data: pacienteEmail } = await admin
-      .from('pacientes')
-      .select('nome, email')
-      .eq('id', pacienteId)
-      .maybeSingle();
-    const { data: profissional } = await admin
-      .from('profissionais')
-      .select('nome')
-      .eq('id', input.profissionalId)
-      .maybeSingle();
+    const [{ data: pacienteEmail }, { data: profissional }, { data: tenant }] =
+      await Promise.all([
+        admin
+          .from('pacientes')
+          .select('nome, email')
+          .eq('id', pacienteId)
+          .maybeSingle(),
+        admin
+          .from('profissionais')
+          .select('nome')
+          .eq('id', input.profissionalId)
+          .maybeSingle(),
+        admin
+          .from('tenants')
+          .select('slug')
+          .eq('id', input.tenantId)
+          .maybeSingle(),
+      ]);
 
     const destino = (pacienteEmail?.email as string | null) ?? null;
     const pacienteNome = (pacienteEmail?.nome as string | null) ?? 'Paciente';
     const profissionalNome =
       (profissional?.nome as string | null) ?? 'Profissional';
+    const slug = (tenant?.slug as string | null) ?? null;
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+    const linkAgendamento = montarLinkAgendamento(appUrl, slug);
 
     if (destino) {
       const tpl = emailConfirmacaoAgendamento({
@@ -454,6 +468,7 @@ export async function criarAgendamentoPublico(
         profissionalNome,
         dataIso: input.dataIso,
         horario: horarioFromIso(dataHoraIso),
+        linkAgendamento,
       });
       await enviarNotificacaoEmail({
         tenantId: input.tenantId,

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import {
   emailLembrete24h,
   horarioFromIso,
+  montarLinkAgendamento,
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
 
@@ -75,10 +76,18 @@ export async function GET(req: Request) {
   const profIds = Array.from(
     new Set(pendentes.map((a) => a.profissional_id as string)),
   );
+  const tenantIds = Array.from(
+    new Set(pendentes.map((a) => a.tenant_id as string)),
+  );
 
-  const [{ data: pacientes }, { data: profissionais }] = await Promise.all([
+  const [
+    { data: pacientes },
+    { data: profissionais },
+    { data: tenants },
+  ] = await Promise.all([
     admin.from("pacientes").select("id, nome, email").in("id", pacIds),
     admin.from("profissionais").select("id, nome").in("id", profIds),
+    admin.from("tenants").select("id, slug").in("id", tenantIds),
   ]);
 
   const pacMap = new Map<string, { nome: string; email: string | null }>();
@@ -92,6 +101,14 @@ export async function GET(req: Request) {
   for (const p of profissionais ?? []) {
     profMap.set(p.id as string, (p.nome as string) ?? "Profissional");
   }
+  const slugMap = new Map<string, string | null>();
+  for (const t of tenants ?? []) {
+    slugMap.set(t.id as string, (t.slug as string | null) ?? null);
+  }
+
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
 
   let enviados = 0;
   for (const ag of pendentes) {
@@ -100,10 +117,13 @@ export async function GET(req: Request) {
     const profNome =
       profMap.get(ag.profissional_id as string) ?? "Profissional";
     const dataHoraIso = ag.data_hora as string;
+    const slug = slugMap.get(ag.tenant_id as string) ?? null;
+    const linkAgendamento = montarLinkAgendamento(appUrl, slug);
     const tpl = emailLembrete24h({
       pacienteNome: pac.nome,
       profissionalNome: profNome,
       horario: horarioFromIso(dataHoraIso),
+      linkAgendamento,
     });
     const result = await enviarNotificacaoEmail({
       tenantId: ag.tenant_id as string,

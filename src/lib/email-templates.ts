@@ -3,6 +3,13 @@ const MESES_EXTENSO = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
+// Conjuncoes/preposicoes que ficam em minuscula no meio de um nome
+const MINUSCULAS_NOME = new Set([
+  "da", "de", "di", "do", "du",
+  "das", "des", "dos", "dus",
+  "e", "y",
+]);
+
 export function dataPorExtenso(dataIso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dataIso);
   if (!match) return dataIso;
@@ -27,6 +34,29 @@ export function dataIsoFromTimestamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toISOString().slice(0, 10);
+}
+
+export function capitalizeNome(input: string | null | undefined): string {
+  if (!input) return "";
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  return trimmed
+    .toLocaleLowerCase("pt-BR")
+    .split(/\s+/)
+    .map((palavra, idx) => {
+      if (idx > 0 && MINUSCULAS_NOME.has(palavra)) return palavra;
+      return palavra.charAt(0).toLocaleUpperCase("pt-BR") + palavra.slice(1);
+    })
+    .join(" ");
+}
+
+export function montarLinkAgendamento(
+  appUrl: string | null | undefined,
+  slug: string | null | undefined,
+): string | null {
+  if (!appUrl || !slug) return null;
+  const base = appUrl.replace(/\/+$/, "");
+  return `${base}/agendar/${slug}`;
 }
 
 function escapeHtml(value: string): string {
@@ -80,11 +110,17 @@ function row(label: string, value: string): string {
 </p>`;
 }
 
+function linkBlock(linkAgendamento: string | null): string {
+  if (!linkAgendamento) return "";
+  return `<p style="margin:20px 0 0 0;color:#0F172A;font-size:14px;">Se precisar reagendar, acesse: <a href="${escapeHtml(linkAgendamento)}" style="color:#0D9488;text-decoration:underline;">${escapeHtml(linkAgendamento)}</a></p>`;
+}
+
 export type DadosConfirmacao = {
   pacienteNome: string;
   profissionalNome: string;
   dataIso: string;
   horario: string;
+  linkAgendamento: string | null;
 };
 
 export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
@@ -92,14 +128,16 @@ export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
   html: string;
 } {
   const assunto = "Confirmação de agendamento";
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
   const conteudo = `
-    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(d.pacienteNome)}.</p>
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
     <p style="margin:0 0 16px 0;">Seu agendamento está confirmado.</p>
-    ${row("Profissional", d.profissionalNome)}
+    ${row("Profissional", profissional)}
     ${row("Data", dataPorExtenso(d.dataIso))}
     ${row("Horário", d.horario)}
-    <p style="margin:20px 0 0 0;color:#64748B;font-size:13px;">Se precisar reagendar, entre em contato.</p>
-    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(d.profissionalNome)}</p>
+    ${linkBlock(d.linkAgendamento)}
+    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
   return { assunto, html: layout(conteudo) };
 }
@@ -108,6 +146,7 @@ export type DadosLembrete = {
   pacienteNome: string;
   profissionalNome: string;
   horario: string;
+  linkAgendamento: string | null;
 };
 
 export function emailLembrete24h(d: DadosLembrete): {
@@ -115,12 +154,15 @@ export function emailLembrete24h(d: DadosLembrete): {
   html: string;
 } {
   const assunto = "Lembrete: consulta amanhã";
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
   const conteudo = `
-    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(d.pacienteNome)}.</p>
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
     <p style="margin:0 0 16px 0;">Lembrete: você tem consulta amanhã.</p>
-    ${row("Profissional", d.profissionalNome)}
+    ${row("Profissional", profissional)}
     ${row("Horário", d.horario)}
-    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(d.profissionalNome)}</p>
+    ${linkBlock(d.linkAgendamento)}
+    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
   return { assunto, html: layout(conteudo) };
 }
@@ -138,17 +180,16 @@ export function emailCancelamento(d: DadosCancelamento): {
   html: string;
 } {
   const assunto = "Agendamento cancelado";
-  const linkBlock = d.linkAgendamento
-    ? `<p style="margin:16px 0 0 0;">Para reagendar, acesse: <a href="${escapeHtml(d.linkAgendamento)}" style="color:#0D9488;text-decoration:underline;">${escapeHtml(d.linkAgendamento)}</a></p>`
-    : "";
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
   const conteudo = `
-    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(d.pacienteNome)}.</p>
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
     <p style="margin:0 0 16px 0;">Seu agendamento foi cancelado.</p>
-    ${row("Profissional", d.profissionalNome)}
+    ${row("Profissional", profissional)}
     ${row("Data", dataPorExtenso(d.dataIso))}
     ${row("Horário", d.horario)}
-    ${linkBlock}
-    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(d.profissionalNome)}</p>
+    ${linkBlock(d.linkAgendamento)}
+    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
   return { assunto, html: layout(conteudo) };
 }
