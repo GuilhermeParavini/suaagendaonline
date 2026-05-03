@@ -489,23 +489,39 @@ export async function getDisponibilidadePainel(
   }
   const duracaoMin = (proc.duracao_min as number) ?? intervaloMin;
 
-  // Bloqueia feriados / ausencias
+  // Bloqueia feriados — feriados sao estritos (erro fatal se a consulta falhar)
+  let feriados: Awaited<ReturnType<typeof getFeriadosForTenant>> = [];
   try {
-    const [feriados, bloqueios] = await Promise.all([
-      getFeriadosForTenant(prof.tenant_id as string, dataIso, dataIso),
-      getBloqueiosForProfissional(prof.id as string, dataIso, dataIso),
-    ]);
-    if (feriados.length > 0) {
-      return {
-        ok: true,
-        slots: [],
-        duracaoMin,
-        indisponivel: {
-          tipo: 'feriado',
-          texto: `Feriado: ${feriados[0].nome}`,
-        },
-      };
-    }
+    feriados = await getFeriadosForTenant(
+      prof.tenant_id as string,
+      dataIso,
+      dataIso,
+    );
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Falha ao verificar feriados: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  if (feriados.length > 0) {
+    return {
+      ok: true,
+      slots: [],
+      duracaoMin,
+      indisponivel: {
+        tipo: 'feriado',
+        texto: `Feriado: ${feriados[0].nome}`,
+      },
+    };
+  }
+
+  // Bloqueios sao permissivos (se a tabela ainda nao existe, segue)
+  try {
+    const bloqueios = await getBloqueiosForProfissional(
+      prof.id as string,
+      dataIso,
+      dataIso,
+    );
     if (bloqueios.length > 0) {
       return {
         ok: true,
@@ -520,7 +536,7 @@ export async function getDisponibilidadePainel(
       };
     }
   } catch (e) {
-    console.error('[agendamentos] erro ao checar feriados/bloqueios:', e);
+    console.error('[agendamentos] erro ao checar bloqueios:', e);
   }
 
   const [y, m, d] = dataIso.split('-').map(Number);
@@ -651,20 +667,38 @@ export async function criarAgendamentoPainel(
     return { ok: false, error: 'Horario ja passou. Escolha outro.' };
   }
 
-  // Bloqueia feriados / ausencias
+  // Bloqueia feriados (estrito) e bloqueios (permissivo)
+  let feriadosCheck: Awaited<ReturnType<typeof getFeriadosForTenant>> = [];
   try {
-    const [feriados, bloqueios] = await Promise.all([
-      getFeriadosForTenant(tenantId, input.dataIso, input.dataIso),
-      getBloqueiosForProfissional(profissionalId, input.dataIso, input.dataIso),
-    ]);
-    if (feriados.length > 0) {
-      return { ok: false, error: 'Data indisponivel (feriado).' };
-    }
+    feriadosCheck = await getFeriadosForTenant(
+      tenantId,
+      input.dataIso,
+      input.dataIso,
+    );
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Falha ao verificar feriados: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  if (feriadosCheck.length > 0) {
+    return {
+      ok: false,
+      error: `Data indisponivel (feriado: ${feriadosCheck[0].nome}).`,
+    };
+  }
+
+  try {
+    const bloqueios = await getBloqueiosForProfissional(
+      profissionalId,
+      input.dataIso,
+      input.dataIso,
+    );
     if (bloqueios.length > 0) {
       return { ok: false, error: 'Data indisponivel.' };
     }
   } catch (e) {
-    console.error('[agendamentos] erro ao checar feriados/bloqueios:', e);
+    console.error('[agendamentos] erro ao checar bloqueios:', e);
   }
 
   // Conflito

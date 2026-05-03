@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getFeriadosForTenant, type FeriadoRow } from '@/lib/feriados-bloqueios';
 
+export type BloqueioTipo = 'ferias' | 'folga' | 'feriado' | 'outro';
+
 export type Bloqueio = {
   id: string;
   tenant_id: string;
@@ -11,6 +13,7 @@ export type Bloqueio = {
   data_inicio: string;
   data_fim: string;
   motivo: string | null;
+  tipo: BloqueioTipo;
   created_at: string;
 };
 
@@ -99,6 +102,7 @@ export type CriarBloqueioInput = {
   data_inicio: string;
   data_fim: string;
   motivo?: string;
+  tipo?: BloqueioTipo;
 };
 
 export async function criarBloqueio(
@@ -122,6 +126,11 @@ export async function criarBloqueio(
     return { ok: false, error: 'Motivo acima de 200 caracteres.' };
   }
 
+  const tipo: BloqueioTipo = input.tipo ?? 'ferias';
+  if (!['ferias', 'folga', 'feriado', 'outro'].includes(tipo)) {
+    return { ok: false, error: 'Tipo de bloqueio invalido.' };
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('bloqueios')
@@ -131,6 +140,7 @@ export async function criarBloqueio(
       data_inicio: input.data_inicio,
       data_fim: input.data_fim,
       motivo: motivo || null,
+      tipo,
     })
     .select('*')
     .single();
