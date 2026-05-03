@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import * as Tabs from "@radix-ui/react-tabs";
-import { ChevronLeft, Pencil } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Avatar from "@/components/ui/Avatar";
@@ -10,6 +11,8 @@ import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
 import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
+import EditarPacienteModal from "./EditarPacienteModal";
+import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
 
 export type PacienteDetalhe = {
   id: string;
@@ -24,6 +27,7 @@ export type PacienteDetalhe = {
   estado: string | null;
   cep: string | null;
   convenio: string | null;
+  observacoes: string | null;
   menor_idade: boolean;
 };
 
@@ -90,6 +94,8 @@ function DadoLinha({
 }
 
 function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps) {
+  const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
+  const [modalExclusaoAberto, setModalExclusaoAberto] = useState(false);
   const idade = calculateAge(paciente.data_nascimento);
   const concluidos = historico.filter((h) => h.status === "concluido");
   const isRetorno = concluidos.length > 0;
@@ -203,9 +209,9 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 </h2>
                 <button
                   type="button"
-                  disabled
+                  onClick={() => setModalEdicaoAberto(true)}
                   aria-label="Editar paciente"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
                 >
                   <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
                   Editar
@@ -222,6 +228,9 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
               </div>
               {enderecoCompleto ? (
                 <DadoLinha label="Endereço" value={enderecoCompleto} />
+              ) : null}
+              {paciente.observacoes ? (
+                <DadoLinha label="Observações" value={paciente.observacoes} />
               ) : null}
             </div>
 
@@ -245,6 +254,17 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 </div>
               </div>
             ) : null}
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setModalExclusaoAberto(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-danger bg-transparent px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger-surface transition-colors"
+              >
+                <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
+                Excluir paciente
+              </button>
+            </div>
           </div>
         </Tabs.Content>
 
@@ -296,6 +316,20 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
           )}
         </Tabs.Content>
       </Tabs.Root>
+
+      <EditarPacienteModal
+        paciente={paciente}
+        responsavel={responsavel}
+        open={modalEdicaoAberto}
+        onOpenChange={setModalEdicaoAberto}
+      />
+
+      <ExcluirPacienteDialog
+        pacienteId={paciente.id}
+        pacienteNome={paciente.nome}
+        open={modalExclusaoAberto}
+        onOpenChange={setModalExclusaoAberto}
+      />
     </div>
   );
 }

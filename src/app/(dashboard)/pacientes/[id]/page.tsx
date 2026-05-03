@@ -37,7 +37,7 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
   const { data: pacienteRow, error: pacienteErr } = await admin
     .from("pacientes")
     .select(
-      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, menor_idade",
+      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade",
     )
     .eq("id", id)
     .eq("tenant_id", prof.tenant_id)
@@ -58,6 +58,7 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
     estado: (pacienteRow.estado as string | null) ?? null,
     cep: (pacienteRow.cep as string | null) ?? null,
     convenio: (pacienteRow.convenio as string | null) ?? null,
+    observacoes: (pacienteRow.observacoes as string | null) ?? null,
     menor_idade: Boolean(pacienteRow.menor_idade),
   };
 

@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanCEP, cleanPhone } from '@/lib/masks';
 import { validateCPF, isValidBirthDate, isMinor } from '@/lib/validators';
@@ -317,4 +318,255 @@ export async function createPaciente(
   }
 
   return { ok: true, id: pacienteId };
+}
+
+export type AtualizarPacienteInput = {
+  nome: string;
+  data_nascimento: string;
+  genero: Genero;
+  telefone: string;
+  email: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  convenio?: string;
+  observacoes?: string;
+  responsavel?: {
+    nome: string;
+    cpf: string;
+    telefone: string;
+    email?: string;
+    grau_parentesco: GrauParentesco;
+  } | null;
+};
+
+type AtualizarPacienteResult = { ok: true } | { ok: false; error: string };
+
+export async function atualizarPaciente(
+  id: string,
+  input: AtualizarPacienteInput,
+): Promise<AtualizarPacienteResult> {
+  if (!id) return { ok: false, error: 'Paciente invalido.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const { data: pacienteRow, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, tenant_id, menor_idade')
+    .eq('id', id)
+    .maybeSingle();
+  if (pacErr) return { ok: false, error: pacErr.message };
+  if (!pacienteRow) return { ok: false, error: 'Paciente nao encontrado.' };
+  if (pacienteRow.tenant_id !== prof.tenant_id) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const nome = input.nome?.trim() ?? '';
+  if (nome.length < 3) return { ok: false, error: 'Nome invalido.' };
+
+  if (!isValidBirthDate(input.data_nascimento)) {
+    return { ok: false, error: 'Data de nascimento invalida.' };
+  }
+
+  if (!['masculino', 'feminino', 'prefiro_nao_informar'].includes(input.genero)) {
+    return { ok: false, error: 'Genero invalido.' };
+  }
+
+  const telefone = cleanPhone(input.telefone ?? '');
+  if (telefone.length !== 10 && telefone.length !== 11) {
+    return { ok: false, error: 'Telefone invalido.' };
+  }
+
+  const email = input.email?.trim() ?? '';
+  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: 'E-mail invalido.' };
+  }
+
+  const cepDigits = input.cep ? cleanCEP(input.cep) : '';
+  if (cepDigits && cepDigits.length !== 8) {
+    return { ok: false, error: 'CEP invalido.' };
+  }
+
+  const menor = isMinor(input.data_nascimento);
+  if (menor && !input.responsavel) {
+    return { ok: false, error: 'Responsavel obrigatorio para menor de idade.' };
+  }
+
+  let respPayload: {
+    nome: string;
+    cpf: string;
+    telefone: string;
+    email: string | null;
+    grau_parentesco: GrauParentesco;
+  } | null = null;
+
+  if (menor && input.responsavel) {
+    const r = input.responsavel;
+    const respNome = r.nome?.trim() ?? '';
+    if (respNome.length < 3) {
+      return { ok: false, error: 'Nome do responsavel invalido.' };
+    }
+    const respCpf = cleanCPF(r.cpf ?? '');
+    if (!validateCPF(respCpf)) {
+      return { ok: false, error: 'CPF do responsavel invalido.' };
+    }
+    const respTel = cleanPhone(r.telefone ?? '');
+    if (respTel.length !== 10 && respTel.length !== 11) {
+      return { ok: false, error: 'Telefone do responsavel invalido.' };
+    }
+    const respEmail = r.email?.trim() || null;
+    if (respEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(respEmail)) {
+      return { ok: false, error: 'E-mail do responsavel invalido.' };
+    }
+    if (
+      !['mae', 'pai', 'avo', 'tio', 'outro'].includes(r.grau_parentesco)
+    ) {
+      return { ok: false, error: 'Grau de parentesco invalido.' };
+    }
+    respPayload = {
+      nome: respNome,
+      cpf: respCpf,
+      telefone: respTel,
+      email: respEmail,
+      grau_parentesco: r.grau_parentesco,
+    };
+  }
+
+  const { error: updError } = await admin
+    .from('pacientes')
+    .update({
+      nome,
+      data_nascimento: input.data_nascimento,
+      genero: input.genero,
+      telefone,
+      email,
+      endereco: input.endereco?.trim() || null,
+      cidade: input.cidade?.trim() || null,
+      estado: input.estado?.trim() || null,
+      cep: cepDigits || null,
+      convenio: input.convenio?.trim() || null,
+      observacoes: input.observacoes?.trim() || null,
+    })
+    .eq('id', id);
+  if (updError) return { ok: false, error: updError.message };
+
+  if (menor && respPayload) {
+    const { data: existingResp, error: existRespErr } = await admin
+      .from('responsaveis')
+      .select('id')
+      .eq('paciente_id', id)
+      .maybeSingle();
+    if (existRespErr) return { ok: false, error: existRespErr.message };
+
+    if (existingResp) {
+      const { error: respErr } = await admin
+        .from('responsaveis')
+        .update({
+          nome: respPayload.nome,
+          cpf: respPayload.cpf,
+          telefone: respPayload.telefone,
+          email: respPayload.email,
+          grau_parentesco: respPayload.grau_parentesco,
+        })
+        .eq('id', existingResp.id);
+      if (respErr) return { ok: false, error: respErr.message };
+    } else {
+      const { error: respErr } = await admin.from('responsaveis').insert({
+        paciente_id: id,
+        nome: respPayload.nome,
+        cpf: respPayload.cpf,
+        telefone: respPayload.telefone,
+        email: respPayload.email,
+        grau_parentesco: respPayload.grau_parentesco,
+      });
+      if (respErr) return { ok: false, error: respErr.message };
+    }
+  } else if (!menor) {
+    // Paciente passou a ser maior — remove responsavel(eis) existente(s)
+    const { error: delErr } = await admin
+      .from('responsaveis')
+      .delete()
+      .eq('paciente_id', id);
+    if (delErr) return { ok: false, error: delErr.message };
+  }
+
+  revalidatePath(`/pacientes/${id}`);
+  revalidatePath('/pacientes');
+  return { ok: true };
+}
+
+type ExcluirPacienteResult = { ok: true } | { ok: false; error: string };
+
+export async function excluirPaciente(
+  id: string,
+): Promise<ExcluirPacienteResult> {
+  if (!id) return { ok: false, error: 'Paciente invalido.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const { data: pacienteRow, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, tenant_id')
+    .eq('id', id)
+    .maybeSingle();
+  if (pacErr) return { ok: false, error: pacErr.message };
+  if (!pacienteRow) return { ok: false, error: 'Paciente nao encontrado.' };
+  if (pacienteRow.tenant_id !== prof.tenant_id) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const agora = new Date().toISOString();
+  const { count, error: countErr } = await admin
+    .from('agendamentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('paciente_id', id)
+    .gte('data_hora', agora)
+    .in('status', ['agendado', 'confirmado', 'em_atendimento']);
+  if (countErr) return { ok: false, error: countErr.message };
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error:
+        'Paciente possui agendamentos futuros. Cancele os agendamentos antes de excluir.',
+    };
+  }
+
+  const { error: updErr } = await admin
+    .from('pacientes')
+    .update({ ativo: false })
+    .eq('id', id);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/pacientes');
+  return { ok: true };
 }
