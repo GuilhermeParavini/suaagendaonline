@@ -11,6 +11,7 @@ import {
   type TenantConfig,
 } from "@/actions/configuracoes";
 import { cleanPhone, formatPhone } from "@/lib/masks";
+import { getRegistroSugestao } from "@/lib/registro-profissional";
 import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
 import SecaoAssinatura from "./SecaoAssinatura";
@@ -18,10 +19,14 @@ import SecaoAssinatura from "./SecaoAssinatura";
 const ESPECIALIDADES = [
   "Podologia",
   "Fisioterapia",
+  "Terapia Ocupacional",
   "Nutrição",
   "Psicologia",
+  "Odontologia",
   "Fonoaudiologia",
+  "Medicina",
   "Cardiologia",
+  "Enfermagem",
   "Outra",
 ];
 
@@ -105,6 +110,9 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       bio: profissional.bio ?? "",
     },
   });
+
+  const especialidadeAtual = profForm.watch("especialidade");
+  const registroSugestao = getRegistroSugestao(especialidadeAtual);
 
   const tenantForm = useForm<TenantFormData>({
     resolver: zodResolver(tenantSchema),
@@ -250,14 +258,20 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className={labelClass}>Registro profissional</label>
+              <label className={labelClass}>{registroSugestao.label}</label>
               <input
                 {...profForm.register("registro_profissional")}
                 type="text"
                 disabled={!editandoProf}
-                placeholder="Ex.: CRM 12345/SP"
+                placeholder={registroSugestao.placeholder}
                 className={inputClass}
               />
+              {editandoProf ? (
+                <p className="text-xs text-slate-500">
+                  Conselho sugerido: {registroSugestao.orgao}. Altere se
+                  necessário.
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-1">

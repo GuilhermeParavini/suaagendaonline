@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
+import { getRegistroSugestao } from '@/lib/registro-profissional';
 
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -18,24 +19,16 @@ const brazilianStates = [
 const specialties = [
   'Podologia',
   'Fisioterapia',
+  'Terapia Ocupacional',
   'Nutrição',
   'Psicologia',
+  'Odontologia',
   'Fonoaudiologia',
+  'Medicina',
   'Cardiologia',
+  'Enfermagem',
   'Outra',
 ];
-
-const registryPlaceholders: Record<string, string> = {
-  Fisioterapia: 'Ex: CREFITO-10/12345',
-  Podologia: 'Ex: Certificação livre',
-  Nutrição: 'Ex: CRN-10/12345',
-  Psicologia: 'Ex: CRP-12/12345',
-  Fonoaudiologia: 'Ex: CRFa 12345',
-  Cardiologia: 'Ex: CRM-SC 12345',
-  Outra: 'Registro profissional (se aplicável)',
-};
-
-const defaultRegistryPlaceholder = 'Ex: CRM 123456/SP';
 
 const trimmedString = (min: number, msg: string) =>
   z.string().transform((s) => s.trim()).refine((s) => s.length >= min, { message: msg });
@@ -99,8 +92,7 @@ export default function OnboardingPage() {
   });
 
   const selectedSpecialty = watch('specialty');
-  const registryPlaceholder =
-    registryPlaceholders[selectedSpecialty ?? ''] ?? defaultRegistryPlaceholder;
+  const registroSugestao = getRegistroSugestao(selectedSpecialty);
 
   const handlePhoneChange = (
     field: 'phone' | 'companyPhone',
@@ -219,15 +211,18 @@ export default function OnboardingPage() {
             {/* Professional Registry */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Registro profissional (CRM, CREFITO, CRN, etc.)
+                {registroSugestao.label}
               </label>
               <input
                 {...register('professionalRegistry')}
                 type="text"
                 autoComplete="off"
-                placeholder={registryPlaceholder}
+                placeholder={registroSugestao.placeholder}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
               />
+              <p className="text-xs text-slate-500">
+                Conselho sugerido: {registroSugestao.orgao}. Altere se necessário.
+              </p>
               {errors.professionalRegistry && (
                 <p className="text-xs text-red-500">{errors.professionalRegistry.message}</p>
               )}
