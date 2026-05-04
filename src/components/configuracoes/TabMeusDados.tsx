@@ -16,6 +16,7 @@ import RegistroInput from "@/components/ui/RegistroInput";
 import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
 import SecaoAssinatura from "./SecaoAssinatura";
+import SecaoLogo from "./SecaoLogo";
 
 const ESPECIALIDADES = [
   "Podologia",
@@ -391,6 +392,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
           ) : null}
         </form>
       </section>
+
+      <SecaoLogo profissional={profissional} onSaved={onSaved} />
 
       <SecaoAssinatura profissional={profissional} onSaved={onSaved} />
 

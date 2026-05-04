@@ -154,7 +154,15 @@ function AgendarFlow({
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="space-y-1 text-center">
+        {contexto.profissional.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={contexto.profissional.logo_url}
+            alt="Logo"
+            className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
+          />
+        ) : null}
         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
           {contexto.profissional.especialidade}
         </p>

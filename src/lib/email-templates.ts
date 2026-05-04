@@ -68,7 +68,16 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function layout(content: string): string {
+function logoBlock(logoUrl: string | null | undefined): string {
+  if (!logoUrl) return '';
+  return `<tr>
+            <td style="background-color:#FFFFFF;padding:16px;text-align:center;border-bottom:1px solid #E2E8F0;">
+              <img src="${escapeHtml(logoUrl)}" alt="Logo" style="display:inline-block;max-height:48px;width:auto;object-fit:contain;" />
+            </td>
+          </tr>`;
+}
+
+function layout(content: string, logoUrl?: string | null): string {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -85,6 +94,7 @@ function layout(content: string): string {
               <p style="margin:0;color:#FFFFFF;font-size:14px;font-weight:600;letter-spacing:0.2px;">Sua Agenda Online</p>
             </td>
           </tr>
+          ${logoBlock(logoUrl)}
           <tr>
             <td style="padding:24px;color:#0F172A;font-size:14px;line-height:1.6;">
               ${content}
@@ -121,6 +131,7 @@ export type DadosConfirmacao = {
   dataIso: string;
   horario: string;
   linkAgendamento: string | null;
+  logoUrl?: string | null;
 };
 
 export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
@@ -139,7 +150,7 @@ export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo) };
+  return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
 export type DadosLembrete = {
@@ -147,6 +158,7 @@ export type DadosLembrete = {
   profissionalNome: string;
   horario: string;
   linkAgendamento: string | null;
+  logoUrl?: string | null;
 };
 
 export function emailLembrete24h(d: DadosLembrete): {
@@ -164,7 +176,7 @@ export function emailLembrete24h(d: DadosLembrete): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo) };
+  return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
 export type DadosCancelamento = {
@@ -173,6 +185,7 @@ export type DadosCancelamento = {
   dataIso: string;
   horario: string;
   linkAgendamento: string | null;
+  logoUrl?: string | null;
 };
 
 export function emailCancelamento(d: DadosCancelamento): {
@@ -191,5 +204,5 @@ export function emailCancelamento(d: DadosCancelamento): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo) };
+  return { assunto, html: layout(conteudo, d.logoUrl) };
 }

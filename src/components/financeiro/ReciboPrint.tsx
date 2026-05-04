@@ -21,6 +21,7 @@ interface ReciboPrintProps {
     assinatura_tipo: "fonte" | "imagem" | null;
     assinatura_fonte: string | null;
     assinatura_url: string | null;
+    logo_url: string | null;
   };
   paciente: { id: string; nome: string } | null;
   descricao: string;
@@ -134,19 +135,31 @@ function ReciboPrint({
         </div>
 
         <article className="recibo-page mx-auto max-w-[680px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-10 text-slate-900">
-          <header className="text-center border-b border-slate-200 pb-4">
-            <h2 className="text-lg font-semibold uppercase tracking-wide">
-              Recibo de Pagamento
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              {tenant.nome_empresa}
-            </p>
-            {tenant.endereco ? (
-              <p className="text-xs text-slate-500">{tenant.endereco}</p>
-            ) : null}
-            {tenant.cidade ? (
-              <p className="text-xs text-slate-500">{tenant.cidade}</p>
-            ) : null}
+          <header className="border-b border-slate-200 pb-4">
+            <div className="flex items-start gap-3">
+              {profissional.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profissional.logo_url}
+                  alt="Logo"
+                  className="max-h-12 w-auto shrink-0 object-contain"
+                />
+              ) : null}
+              <div className="flex-1 text-center">
+                <h2 className="text-lg font-semibold uppercase tracking-wide">
+                  Recibo de Pagamento
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {tenant.nome_empresa}
+                </p>
+                {tenant.endereco ? (
+                  <p className="text-xs text-slate-500">{tenant.endereco}</p>
+                ) : null}
+                {tenant.cidade ? (
+                  <p className="text-xs text-slate-500">{tenant.cidade}</p>
+                ) : null}
+              </div>
+            </div>
           </header>
 
           <section className="mt-6 space-y-3 text-sm leading-relaxed">

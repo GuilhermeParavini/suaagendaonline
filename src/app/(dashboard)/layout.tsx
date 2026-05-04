@@ -6,32 +6,38 @@ import Header from "@/components/layout/Header";
 
 export const dynamic = "force-dynamic";
 
-async function getProfissionalNome(): Promise<string | undefined> {
+async function getProfissionalInfo(): Promise<{
+  nome?: string;
+  logoUrl?: string | null;
+}> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return undefined;
+  if (!user) return {};
 
   const admin = createAdminClient();
   const { data: prof, error } = await admin
     .from("profissionais")
-    .select("nome")
+    .select("nome, logo_url")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (error) {
     console.error("[DashboardLayout] Erro ao buscar profissional:", error.message);
-    return undefined;
+    return {};
   }
 
-  return prof?.nome ?? undefined;
+  return {
+    nome: (prof?.nome as string | undefined) ?? undefined,
+    logoUrl: (prof?.logo_url as string | null | undefined) ?? null,
+  };
 }
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const userName = await getProfissionalNome();
+  const { nome: userName, logoUrl } = await getProfissionalInfo();
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar />
+      <Sidebar logoUrl={logoUrl} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header userName={userName} />
         <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 mb-20 lg:mb-0">

@@ -237,7 +237,7 @@ export async function atualizarStatusAgendamento(
               .maybeSingle(),
             admin
               .from('profissionais')
-              .select('nome')
+              .select('nome, logo_url')
               .eq('id', ag.profissional_id as string)
               .maybeSingle(),
             admin
@@ -263,6 +263,7 @@ export async function atualizarStatusAgendamento(
             dataIso: dataIsoFromTimestamp(dataHoraIso),
             horario: horarioFromIso(dataHoraIso),
             linkAgendamento,
+            logoUrl: (profissional?.logo_url as string | null) ?? null,
           });
           await enviarNotificacaoEmail({
             tenantId: ag.tenant_id as string,
@@ -628,7 +629,7 @@ export async function criarAgendamentoPainel(
   const admin = createAdminClient();
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('id, tenant_id, nome, tolerancia_atraso_min')
+    .select('id, tenant_id, nome, tolerancia_atraso_min, logo_url')
     .eq('user_id', user.id)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
@@ -767,6 +768,7 @@ export async function criarAgendamentoPainel(
         dataIso: input.dataIso,
         horario: horarioFromIso(dataHoraIso),
         linkAgendamento,
+        logoUrl: (prof.logo_url as string | null) ?? null,
       });
       await enviarNotificacaoEmail({
         tenantId,

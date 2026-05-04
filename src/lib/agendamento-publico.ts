@@ -20,6 +20,7 @@ export type ProfissionalPublico = {
     especialidade: string;
     duracao_padrao_min: number;
     tolerancia_atraso_min: number;
+    logo_url: string | null;
   };
   procedimentos: Procedimento[];
 };
@@ -45,7 +46,7 @@ export async function getProfissionalBySlug(
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min',
+      'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min, logo_url',
     )
     .eq('tenant_id', tenant.id)
     .eq('ativo', true)
@@ -74,6 +75,7 @@ export async function getProfissionalBySlug(
         especialidade: prof.especialidade as string,
         duracao_padrao_min: (prof.duracao_padrao_min as number) ?? 30,
         tolerancia_atraso_min: (prof.tolerancia_atraso_min as number) ?? 5,
+        logo_url: (prof.logo_url as string | null) ?? null,
       },
       procedimentos: (procs ?? []).map((p) => ({
         id: p.id as string,

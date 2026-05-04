@@ -86,7 +86,7 @@ export async function GET(req: Request) {
     { data: tenants },
   ] = await Promise.all([
     admin.from("pacientes").select("id, nome, email").in("id", pacIds),
-    admin.from("profissionais").select("id, nome").in("id", profIds),
+    admin.from("profissionais").select("id, nome, logo_url").in("id", profIds),
     admin.from("tenants").select("id, slug").in("id", tenantIds),
   ]);
 
@@ -97,9 +97,12 @@ export async function GET(req: Request) {
       email: (p.email as string | null) ?? null,
     });
   }
-  const profMap = new Map<string, string>();
+  const profMap = new Map<string, { nome: string; logoUrl: string | null }>();
   for (const p of profissionais ?? []) {
-    profMap.set(p.id as string, (p.nome as string) ?? "Profissional");
+    profMap.set(p.id as string, {
+      nome: (p.nome as string) ?? "Profissional",
+      logoUrl: (p.logo_url as string | null) ?? null,
+    });
   }
   const slugMap = new Map<string, string | null>();
   for (const t of tenants ?? []) {
@@ -114,8 +117,8 @@ export async function GET(req: Request) {
   for (const ag of pendentes) {
     const pac = pacMap.get(ag.paciente_id as string);
     if (!pac?.email) continue;
-    const profNome =
-      profMap.get(ag.profissional_id as string) ?? "Profissional";
+    const profInfo = profMap.get(ag.profissional_id as string);
+    const profNome = profInfo?.nome ?? "Profissional";
     const dataHoraIso = ag.data_hora as string;
     const slug = slugMap.get(ag.tenant_id as string) ?? null;
     const linkAgendamento = montarLinkAgendamento(appUrl, slug);
@@ -124,6 +127,7 @@ export async function GET(req: Request) {
       profissionalNome: profNome,
       horario: horarioFromIso(dataHoraIso),
       linkAgendamento,
+      logoUrl: profInfo?.logoUrl ?? null,
     });
     const result = await enviarNotificacaoEmail({
       tenantId: ag.tenant_id as string,

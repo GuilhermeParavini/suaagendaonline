@@ -492,7 +492,7 @@ export async function criarAgendamentoPublico(
           .maybeSingle(),
         admin
           .from('profissionais')
-          .select('nome')
+          .select('nome, logo_url')
           .eq('id', input.profissionalId)
           .maybeSingle(),
         admin
@@ -506,6 +506,7 @@ export async function criarAgendamentoPublico(
     const pacienteNome = (pacienteEmail?.nome as string | null) ?? 'Paciente';
     const profissionalNome =
       (profissional?.nome as string | null) ?? 'Profissional';
+    const logoUrl = (profissional?.logo_url as string | null) ?? null;
     const slug = (tenant?.slug as string | null) ?? null;
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ??
@@ -519,6 +520,7 @@ export async function criarAgendamentoPublico(
         dataIso: input.dataIso,
         horario: horarioFromIso(dataHoraIso),
         linkAgendamento,
+        logoUrl,
       });
       await enviarNotificacaoEmail({
         tenantId: input.tenantId,

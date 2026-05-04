@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface SidebarProps {
+  logoUrl?: string | null;
+}
+
 type SidebarItem = {
   href: string;
   label: string;
@@ -34,7 +38,7 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Sidebar() {
+function Sidebar({ logoUrl }: SidebarProps = {}) {
   const pathname = usePathname();
 
   return (
@@ -42,9 +46,17 @@ function Sidebar() {
       <div className="px-6 py-5 border-b border-slate-200">
         <Link
           href="/"
-          className="text-lg font-semibold text-primary-dark leading-tight"
+          className="flex items-center gap-2 text-lg font-semibold text-primary-dark leading-tight"
         >
-          Sua Agenda Online
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="max-h-8 w-auto object-contain"
+            />
+          ) : null}
+          <span className="truncate">Sua Agenda Online</span>
         </Link>
       </div>
       <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">

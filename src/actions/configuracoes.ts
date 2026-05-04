@@ -22,6 +22,7 @@ export type ProfissionalConfig = {
   assinatura_tipo: AssinaturaTipo | null;
   assinatura_fonte: string | null;
   assinatura_url: string | null;
+  logo_url: string | null;
 };
 
 export type TenantConfig = {
@@ -91,7 +92,7 @@ export async function getConfiguracoes(): Promise<
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url',
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url',
     )
     .eq('id', ctx.profissionalId)
     .maybeSingle();
@@ -152,6 +153,7 @@ export async function getConfiguracoes(): Promise<
         assinatura_tipo: (prof.assinatura_tipo as AssinaturaTipo | null) ?? null,
         assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
         assinatura_url: (prof.assinatura_url as string | null) ?? null,
+        logo_url: (prof.logo_url as string | null) ?? null,
       },
       tenant: {
         id: tenant.id as string,
@@ -360,6 +362,127 @@ export async function salvarAssinatura(
 
   revalidatePath('/configuracoes');
   return { ok: true, data: { tipo: 'imagem', fonte: null, url } };
+}
+
+// ============================================================
+// LOGO DA CLINICA
+// ============================================================
+
+const LOGO_BUCKET = 'avatares';
+const MAX_LOGO_BYTES = 1 * 1024 * 1024;
+const TIPOS_LOGO_VALIDOS = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/svg+xml',
+];
+
+function extLogo(mime: string): string {
+  if (mime === 'image/png') return 'png';
+  if (mime === 'image/svg+xml') return 'svg';
+  return 'jpg';
+}
+
+async function removerLogoStorage(
+  admin: ReturnType<typeof createAdminClient>,
+  url: string | null,
+) {
+  if (!url) return;
+  const marker = `/${LOGO_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return;
+  const path = url.slice(idx + marker.length);
+  if (!path) return;
+  await admin.storage.from(LOGO_BUCKET).remove([path]).catch(() => {});
+}
+
+export async function salvarLogo(
+  formData: FormData,
+): Promise<Result<{ url: string }>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const arquivo = formData.get('arquivo');
+  if (!(arquivo instanceof File) || arquivo.size === 0) {
+    return { ok: false, error: 'Arquivo invalido.' };
+  }
+  if (arquivo.size > MAX_LOGO_BYTES) {
+    return { ok: false, error: 'Logo acima de 1MB.' };
+  }
+  if (!TIPOS_LOGO_VALIDOS.includes(arquivo.type)) {
+    return { ok: false, error: 'Use PNG, JPG ou SVG.' };
+  }
+
+  const ext = extLogo(arquivo.type);
+  const path = `logos/${ctx.profissionalId}/logo-${Date.now()}.${ext}`;
+
+  const buffer = new Uint8Array(await arquivo.arrayBuffer());
+  const admin = createAdminClient();
+
+  const { error: upErr } = await admin.storage
+    .from(LOGO_BUCKET)
+    .upload(path, buffer, {
+      contentType: arquivo.type,
+      upsert: false,
+    });
+  if (upErr) {
+    return { ok: false, error: `Falha no upload: ${upErr.message}` };
+  }
+
+  const { data: pub } = admin.storage.from(LOGO_BUCKET).getPublicUrl(path);
+  const url = pub?.publicUrl ?? null;
+  if (!url) return { ok: false, error: 'Falha ao gerar URL publica.' };
+
+  // Remove logo anterior se existir
+  try {
+    const { data: profAtual } = await admin
+      .from('profissionais')
+      .select('logo_url')
+      .eq('id', ctx.profissionalId)
+      .maybeSingle();
+    const antiga = (profAtual?.logo_url as string | null) ?? null;
+    if (antiga && antiga !== url) {
+      await removerLogoStorage(admin, antiga);
+    }
+  } catch (e) {
+    console.error('[salvarLogo] limpeza antiga falhou:', e);
+  }
+
+  const { error: updErr } = await admin
+    .from('profissionais')
+    .update({ logo_url: url })
+    .eq('id', ctx.profissionalId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: { url } };
+}
+
+export async function removerLogo(): Promise<Result<null>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data: profAtual, error: getErr } = await admin
+    .from('profissionais')
+    .select('logo_url')
+    .eq('id', ctx.profissionalId)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: getErr.message };
+
+  const antiga = (profAtual?.logo_url as string | null) ?? null;
+  if (antiga) {
+    await removerLogoStorage(admin, antiga);
+  }
+
+  const { error: updErr } = await admin
+    .from('profissionais')
+    .update({ logo_url: null })
+    .eq('id', ctx.profissionalId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
 }
 
 export type AtualizarTenantInput = {

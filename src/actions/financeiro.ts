@@ -362,6 +362,7 @@ export type ReciboProfissional = {
   assinatura_tipo: 'fonte' | 'imagem' | null;
   assinatura_fonte: string | null;
   assinatura_url: string | null;
+  logo_url: string | null;
 };
 
 type ReciboData = {
@@ -415,7 +416,7 @@ async function montarReciboData(
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'nome, especialidade, registro_profissional, email, telefone, assinatura_tipo, assinatura_fonte, assinatura_url',
+      'nome, especialidade, registro_profissional, email, telefone, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url',
     )
     .eq('id', row.profissional_id)
     .maybeSingle();
@@ -462,6 +463,7 @@ async function montarReciboData(
           (prof.assinatura_tipo as 'fonte' | 'imagem' | null) ?? null,
         assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
         assinatura_url: (prof.assinatura_url as string | null) ?? null,
+        logo_url: (prof.logo_url as string | null) ?? null,
       },
       tenant: {
         nome_empresa: tenant.nome_empresa as string,
