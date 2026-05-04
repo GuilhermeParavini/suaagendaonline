@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Plus, Search, X } from "lucide-react";
 import {
+  getConveniosExistentes,
   getPacientes,
   type PacienteListItem,
 } from "@/actions/pacientes";
@@ -15,11 +16,24 @@ interface ListaPacientesProps {
 
 function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
   const [query, setQuery] = useState("");
+  const [convenioFiltro, setConvenioFiltro] = useState("");
+  const [convenios, setConvenios] = useState<string[]>([]);
   const [pacientes, setPacientes] = useState<PacienteListItem[]>(initialPacientes);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await getConveniosExistentes();
+      if (!cancelado && r.ok) setConvenios(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -31,7 +45,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
 
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
-        const result = await getPacientes(query);
+        const result = await getPacientes(query, convenioFiltro || undefined);
         if (!result.ok) {
           setError(result.error);
           setPacientes([]);
@@ -45,7 +59,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, convenioFiltro]);
 
   const hasQuery = query.trim().length > 0;
   const isEmpty = pacientes.length === 0;
@@ -94,6 +108,27 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
             </button>
           ) : null}
         </div>
+
+        {convenios.length > 0 ? (
+          <div>
+            <label htmlFor="filtro-convenio" className="sr-only">
+              Filtrar por convênio
+            </label>
+            <select
+              id="filtro-convenio"
+              value={convenioFiltro}
+              onChange={(e) => setConvenioFiltro(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition"
+            >
+              <option value="">Todos os convênios</option>
+              {convenios.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </header>
 
       <section

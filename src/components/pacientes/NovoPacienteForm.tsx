@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,6 +19,7 @@ import {
 import { calculateAge, isValidBirthDate, validateCPF } from "@/lib/validators";
 import {
   createPaciente,
+  getConveniosExistentes,
   type Genero,
   type GrauParentesco,
 } from "@/actions/pacientes";
@@ -85,6 +86,7 @@ const formSchema = z
       .string()
       .optional()
       .refine((s) => !s || cleanCEP(s).length === 0 || cleanCEP(s).length === 8, "CEP inválido"),
+    convenio: z.string().optional(),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
     resp_telefone: z.string().optional(),
@@ -152,7 +154,19 @@ const errorClass = "text-xs text-red-500";
 function NovoPacienteForm() {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
+  const [convenios, setConvenios] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await getConveniosExistentes();
+      if (!cancelado && r.ok) setConvenios(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const {
     register,
@@ -174,6 +188,7 @@ function NovoPacienteForm() {
       cidade: "",
       estado: "",
       cep: "",
+      convenio: "",
       resp_nome: "",
       resp_cpf: "",
       resp_telefone: "",
@@ -216,6 +231,7 @@ function NovoPacienteForm() {
         cidade: data.cidade?.trim() || undefined,
         estado: data.estado?.trim() || undefined,
         cep: data.cep?.trim() || undefined,
+        convenio: data.convenio?.trim() || undefined,
         responsavel: showResponsavel
           ? {
               nome: data.resp_nome ?? "",
@@ -354,6 +370,23 @@ function NovoPacienteForm() {
             className={inputClass}
           />
           {errors.email ? <p className={errorClass}>{errors.email.message}</p> : null}
+        </div>
+
+        <div className="space-y-1">
+          <label className={labelClass}>Convênio</label>
+          <input
+            {...register("convenio")}
+            type="text"
+            list="convenios-sugestoes"
+            autoComplete="off"
+            placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
+            className={inputClass}
+          />
+          <datalist id="convenios-sugestoes">
+            {convenios.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </div>
       </fieldset>
 

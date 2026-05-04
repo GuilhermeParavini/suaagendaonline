@@ -25,13 +25,18 @@ function CardPaciente({ paciente }: CardPacienteProps) {
         <Avatar name={paciente.nome} className="h-10 w-10 text-sm" />
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <p className="text-sm font-medium text-slate-900 truncate">
               {paciente.nome}
             </p>
             {paciente.menor_idade ? (
               <span className="shrink-0 inline-flex items-center rounded-full bg-warning-surface px-2 py-[2px] text-[11px] font-medium leading-none text-[#92400E]">
                 Menor
+              </span>
+            ) : null}
+            {paciente.convenio ? (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-primary-surface px-2 py-[2px] text-[11px] font-medium leading-none text-primary-dark">
+                {paciente.convenio}
               </span>
             ) : null}
           </div>

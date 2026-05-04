@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,6 +21,7 @@ import {
 import { calculateAge, isValidBirthDate, validateCPF } from "@/lib/validators";
 import {
   atualizarPaciente,
+  getConveniosExistentes,
   type Genero,
   type GrauParentesco,
 } from "@/actions/pacientes";
@@ -172,10 +173,23 @@ function EditarPacienteModal({
 }: EditarPacienteModalProps) {
   const router = useRouter();
   const [apiError, setApiError] = useState<string | null>(null);
+  const [convenios, setConvenios] = useState<string[]>([]);
   const [confirmRemoverResp, setConfirmRemoverResp] = useState<
     FormData | null
   >(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    (async () => {
+      const r = await getConveniosExistentes();
+      if (!cancelado && r.ok) setConvenios(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open]);
 
   const defaults: FormData = {
     nome: paciente.nome,
@@ -422,9 +436,16 @@ function EditarPacienteModal({
                 <input
                   {...register("convenio")}
                   type="text"
-                  placeholder="Ex.: Unimed, particular"
+                  list="convenios-sugestoes-edit"
+                  autoComplete="off"
+                  placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
                   className={inputClass}
                 />
+                <datalist id="convenios-sugestoes-edit">
+                  {convenios.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-1">

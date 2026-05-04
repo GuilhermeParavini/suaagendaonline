@@ -113,6 +113,7 @@ export type CadastroPreConsultaInput = {
   genero: Genero;
   telefone: string;
   email: string;
+  convenio?: string;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -193,6 +194,7 @@ export async function cadastrarPacientePreConsulta(
       genero: input.genero,
       telefone,
       email,
+      convenio: input.convenio?.trim() || null,
       ativo: true,
     })
     .select('id')

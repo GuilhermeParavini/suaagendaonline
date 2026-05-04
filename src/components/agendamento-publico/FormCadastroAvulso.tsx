@@ -77,6 +77,7 @@ const schema = z
         (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s),
         "E-mail inválido",
       ),
+    convenio: z.string().optional(),
     aceite_lgpd: z.boolean().refine((v) => v === true, "É necessário aceitar o termo"),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
@@ -164,6 +165,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       genero: "feminino",
       telefone: "",
       email: "",
+      convenio: "",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -200,6 +202,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       genero: data.genero,
       telefone: data.telefone,
       email: data.email,
+      convenio: data.convenio?.trim() || undefined,
       aceiteLgpd: data.aceite_lgpd,
       responsavel: showResponsavel
         ? {
@@ -375,6 +378,17 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
             <p className={errorClass}>{errors.email.message}</p>
           ) : null}
         </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className={labelClass}>Convênio</label>
+        <input
+          {...register("convenio")}
+          type="text"
+          autoComplete="off"
+          placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
+          className={inputClass}
+        />
       </div>
 
       {showResponsavel ? (

@@ -237,6 +237,11 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                   {format(new Date(ultimaConsulta), "dd/MM/yyyy", { locale: ptBR })}
                 </span>
               ) : null}
+              {paciente.convenio ? (
+                <span className="inline-flex items-center rounded-full bg-primary-surface px-2.5 py-[3px] text-[11px] font-medium leading-none text-primary-dark">
+                  {paciente.convenio}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>

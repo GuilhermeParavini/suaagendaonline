@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,6 +19,7 @@ import {
   type FormaPagamento,
   type PacienteOption,
 } from "@/actions/financeiro";
+import { getConveniosExistentes } from "@/actions/pacientes";
 import { cn } from "@/lib/utils";
 
 const formaPagamentoOptions: { value: FormaPagamento; label: string }[] = [
@@ -48,6 +49,7 @@ const formSchema = z.object({
   categoria: z.string().optional(),
   pago: z.boolean(),
   paciente_id: z.string().optional(),
+  convenio: z.string().optional(),
   observacoes: z.string().optional(),
 });
 
@@ -80,7 +82,20 @@ function FormLancamento({
   pacientes,
 }: FormLancamentoProps) {
   const [apiError, setApiError] = useState<string | null>(null);
+  const [convenios, setConvenios] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    (async () => {
+      const r = await getConveniosExistentes();
+      if (!cancelado && r.ok) setConvenios(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open]);
 
   const {
     register,
@@ -101,11 +116,14 @@ function FormLancamento({
       categoria: "",
       pago: true,
       paciente_id: "",
+      convenio: "",
       observacoes: "",
     },
   });
 
   const tipo = watch("tipo");
+  const formaSelecionada = watch("forma_pagamento");
+  const isConvenio = formaSelecionada === "convenio";
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -118,6 +136,7 @@ function FormLancamento({
         categoria: "",
         pago: true,
         paciente_id: "",
+        convenio: "",
         observacoes: "",
       });
       setApiError(null);
@@ -140,6 +159,13 @@ function FormLancamento({
     const valorNumerico = parseCurrency(data.valor);
     const forma = data.forma_pagamento as FormaPagamento | "";
 
+    const convenioVal =
+      forma === "convenio" ? data.convenio?.trim() ?? "" : "";
+    const obsBase = data.observacoes?.trim() ?? "";
+    const obsCombinada = convenioVal
+      ? [`Convênio: ${convenioVal}`, obsBase].filter(Boolean).join(" — ")
+      : obsBase;
+
     startTransition(async () => {
       const result = await criarLancamento({
         tipo: data.tipo,
@@ -149,7 +175,7 @@ function FormLancamento({
         data_lancamento: isoData,
         pago: data.pago,
         categoria: data.categoria?.trim() || undefined,
-        observacoes: data.observacoes?.trim() || undefined,
+        observacoes: obsCombinada || undefined,
         paciente_id: data.paciente_id?.trim() || null,
       });
       if (!result.ok) {
@@ -286,6 +312,25 @@ function FormLancamento({
                 ))}
               </select>
             </div>
+
+            {isConvenio ? (
+              <div className="space-y-1">
+                <label className={labelClass}>Qual convênio?</label>
+                <input
+                  {...register("convenio")}
+                  type="text"
+                  list="convenios-financeiro"
+                  autoComplete="off"
+                  placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
+                  className={inputClass}
+                />
+                <datalist id="convenios-financeiro">
+                  {convenios.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">

@@ -68,6 +68,7 @@ const cadastroSchema = z
       .string()
       .transform((s) => s.trim())
       .refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "E-mail inválido"),
+    convenio: z.string().optional(),
     aceite_lgpd: z
       .boolean()
       .refine((v) => v === true, "É necessário aceitar o termo"),
@@ -182,6 +183,7 @@ function PreConsultaFlow({
       genero: "feminino",
       telefone: "",
       email: "",
+      convenio: "",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -286,6 +288,7 @@ function PreConsultaFlow({
         genero: data.genero,
         telefone: data.telefone,
         email: data.email,
+        convenio: data.convenio?.trim() || undefined,
         aceiteLgpd: data.aceite_lgpd,
         responsavel: showResponsavel
           ? {
@@ -645,6 +648,17 @@ function PreConsultaFlow({
                     </p>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelClass}>Convênio</label>
+                <input
+                  {...cadastroForm.register("convenio")}
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
+                  className={inputClass}
+                />
               </div>
 
               {showResponsavel ? (

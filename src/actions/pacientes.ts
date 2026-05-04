@@ -14,12 +14,17 @@ export type PacienteListItem = {
   id: string;
   nome: string;
   telefone: string;
+  convenio: string | null;
   menor_idade: boolean;
   ultima_consulta: string | null;
 };
 
 type GetPacientesResult =
   | { ok: true; pacientes: PacienteListItem[] }
+  | { ok: false; error: string };
+
+type GetConveniosResult =
+  | { ok: true; data: string[] }
   | { ok: false; error: string };
 
 function cleanDigits(value: string): string {
@@ -31,10 +36,11 @@ async function buildList(
   tenantId: string,
   profissionalId: string,
   query: string | null,
+  convenioFiltro: string | null,
 ): Promise<PacienteListItem[]> {
   let pacientesQuery = admin
     .from('pacientes')
-    .select('id, nome, telefone, menor_idade')
+    .select('id, nome, telefone, convenio, menor_idade')
     .eq('tenant_id', tenantId)
     .eq('ativo', true);
 
@@ -52,6 +58,11 @@ async function buildList(
     } else {
       pacientesQuery = pacientesQuery.ilike('nome', `%${safeNome}%`);
     }
+  }
+
+  const conv = convenioFiltro?.trim() ?? '';
+  if (conv.length > 0) {
+    pacientesQuery = pacientesQuery.eq('convenio', conv);
   }
 
   const { data: pacientes, error } = await pacientesQuery.order('nome', {
@@ -85,12 +96,16 @@ async function buildList(
     id: p.id as string,
     nome: p.nome as string,
     telefone: (p.telefone as string) ?? '',
+    convenio: (p.convenio as string | null) ?? null,
     menor_idade: Boolean(p.menor_idade),
     ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
   }));
 }
 
-export async function getPacientes(query?: string): Promise<GetPacientesResult> {
+export async function getPacientes(
+  query?: string,
+  convenio?: string,
+): Promise<GetPacientesResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -113,11 +128,48 @@ export async function getPacientes(query?: string): Promise<GetPacientesResult> 
       prof.tenant_id as string,
       prof.id as string,
       query ?? null,
+      convenio ?? null,
     );
     return { ok: true, pacientes };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export async function getConveniosExistentes(): Promise<GetConveniosResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const { data, error } = await admin
+    .from('pacientes')
+    .select('convenio')
+    .eq('tenant_id', prof.tenant_id as string)
+    .not('convenio', 'is', null)
+    .neq('convenio', '');
+  if (error) return { ok: false, error: error.message };
+
+  const set = new Set<string>();
+  for (const row of data ?? []) {
+    const c = ((row.convenio as string | null) ?? '').trim();
+    if (c) set.add(c);
+  }
+  const lista = Array.from(set).sort((a, b) =>
+    a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }),
+  );
+  return { ok: true, data: lista };
 }
 
 export type Genero = 'masculino' | 'feminino' | 'prefiro_nao_informar';
@@ -134,6 +186,7 @@ export type NovoPacienteInput = {
   cidade?: string;
   estado?: string;
   cep?: string;
+  convenio?: string;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -274,6 +327,7 @@ export async function createPaciente(
       cidade: input.cidade?.trim() || null,
       estado: input.estado?.trim() || null,
       cep: cepDigits || null,
+      convenio: input.convenio?.trim() || null,
       ativo: true,
     })
     .select('id')
@@ -526,6 +580,7 @@ export type CadastroAvulsoInput = {
   genero: Genero;
   telefone: string;
   email: string;
+  convenio?: string;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -686,6 +741,7 @@ export async function cadastrarPacienteAvulso(
       genero: input.genero,
       telefone,
       email,
+      convenio: input.convenio?.trim() || null,
       ativo: true,
     })
     .select('id')
