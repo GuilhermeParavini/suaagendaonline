@@ -8,10 +8,13 @@ import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import Card from "@/components/ui/Card";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
 import AcompanhamentoLista from "@/components/dashboard/AcompanhamentoLista";
+import CardUsoTranscricao from "@/components/dashboard/CardUsoTranscricao";
+import BannerUsoTranscricao from "@/components/dashboard/BannerUsoTranscricao";
 import {
   getPacientesParaAcompanhar,
   type PacienteAcompanhamento,
 } from "@/actions/followup";
+import { getUsoTranscricao } from "@/actions/transcricao";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -132,6 +135,12 @@ export default async function DashboardPage() {
     };
   });
 
+  const usoRes = await getUsoTranscricao();
+  const uso = usoRes.ok ? usoRes.data : null;
+  const mostrarCardUso = uso
+    ? uso.limiteSegundos > 0 || uso.usadoSegundos > 0
+    : false;
+
   const mostrarAcompanhamento =
     (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
 
@@ -159,6 +168,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6 relative">
+      {uso ? <BannerUsoTranscricao uso={uso} /> : null}
+
       {/* Metric Cards Grid 2x2 */}
       <section className="grid grid-cols-2 gap-3">
         <MetricCard label="Consultas hoje" value={consultasHoje ?? 0} />
@@ -166,6 +177,8 @@ export default async function DashboardPage() {
         <MetricCard label="Pendentes" value={pendentes ?? 0} />
         <MetricCard label="Receita do mês" value={currencyBRL(receitaMes)} />
       </section>
+
+      {mostrarCardUso && uso ? <CardUsoTranscricao uso={uso} /> : null}
 
       {/* Próximos agendamentos */}
       <section className="space-y-3">

@@ -20,6 +20,7 @@ import SecaoAcompanhamento from "./SecaoAcompanhamento";
 import SecaoAssinatura from "./SecaoAssinatura";
 import SecaoAvaliacoes from "./SecaoAvaliacoes";
 import SecaoLogo from "./SecaoLogo";
+import SecaoMeuPlano from "./SecaoMeuPlano";
 
 const ESPECIALIDADES = [
   "Podologia",
@@ -225,6 +226,10 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
   return (
     <div className="space-y-6">
+      <SecaoMeuPlano
+        plano={tenant.plano}
+        trialExpiraEm={tenant.trial_expira_em}
+      />
       <LinkAgendamento slug={tenant.slug} />
       <LinkCadastroPaciente slug={tenant.slug} />
       <LinkPreConsulta slug={tenant.slug} />

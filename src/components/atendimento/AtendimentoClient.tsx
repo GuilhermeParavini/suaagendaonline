@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Clock,
   FileText,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -19,6 +20,7 @@ import type { CampoTemplate } from "@/actions/anamnese";
 import { criarEvolucao } from "@/actions/evolucoes";
 import { atualizarStatusAgendamento } from "@/actions/agendamentos";
 import { getTemplates, type Template } from "@/actions/anamnese";
+import { verificarLimiteTranscricao } from "@/actions/transcricao";
 import AnamneseDetalhe from "@/components/pacientes/AnamneseDetalhe";
 import FormNovaAnamnese from "@/components/pacientes/FormNovaAnamnese";
 import GravadorAudio from "./GravadorAudio";
@@ -89,6 +91,28 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   const [templatesAnamnese, setTemplatesAnamnese] = useState<Template[]>([]);
   const [carregandoTemplates, setCarregandoTemplates] = useState(false);
   const [anamneseAtual, setAnamneseAtual] = useState(contexto.anamnese);
+
+  const [transcricaoBloqueio, setTranscricaoBloqueio] = useState<{
+    permitido: boolean;
+    mensagem: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await verificarLimiteTranscricao();
+      if (cancelado) return;
+      if (r.ok) {
+        setTranscricaoBloqueio({
+          permitido: r.data.permitido,
+          mensagem: r.data.mensagem,
+        });
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const abrirNovaAnamnese = async () => {
     setErro(null);
@@ -346,11 +370,23 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
           />
         </div>
 
-        <GravadorAudio
-          pacienteId={contexto.paciente.id}
-          onUsarTranscricao={handleUsarTranscricao}
-          onAudioPronto={handleAudioPronto}
-        />
+        {transcricaoBloqueio && !transcricaoBloqueio.permitido ? (
+          <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+            <Lock
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="mt-0.5 shrink-0 text-slate-400"
+            />
+            <p className="min-w-0 flex-1">{transcricaoBloqueio.mensagem}</p>
+          </div>
+        ) : (
+          <GravadorAudio
+            pacienteId={contexto.paciente.id}
+            onUsarTranscricao={handleUsarTranscricao}
+            onAudioPronto={handleAudioPronto}
+          />
+        )}
 
         <div className="space-y-1">
           <label className="block text-[13px] font-medium text-slate-700">

@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {
   Edit3,
   Loader2,
+  Lock,
   Mic,
   RefreshCw,
   Square,
@@ -18,6 +19,7 @@ import {
   type Template,
 } from "@/actions/anamnese";
 import { uploadAudioEvolucao } from "@/actions/evolucoes";
+import { verificarLimiteTranscricao } from "@/actions/transcricao";
 import { cn } from "@/lib/utils";
 
 interface FormNovaAnamneseProps {
@@ -123,6 +125,29 @@ function FormNovaAnamnese({
   const [erroCampo, setErroCampo] = useState<Record<string, string>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [isPending, startTransition] = useTransition();
+
+  const [transcricaoBloqueio, setTranscricaoBloqueio] = useState<{
+    permitido: boolean;
+    mensagem: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    (async () => {
+      const r = await verificarLimiteTranscricao();
+      if (cancelado) return;
+      if (r.ok) {
+        setTranscricaoBloqueio({
+          permitido: r.data.permitido,
+          mensagem: r.data.mensagem,
+        });
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open]);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -693,7 +718,19 @@ function FormNovaAnamnese({
                       </ul>
                     </div>
 
-                    {audioEstado === "idle" || audioEstado === "erro" ? (
+                    {transcricaoBloqueio && !transcricaoBloqueio.permitido ? (
+                      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                        <Lock
+                          size={16}
+                          strokeWidth={1.5}
+                          aria-hidden="true"
+                          className="mt-0.5 shrink-0 text-slate-400"
+                        />
+                        <p className="min-w-0 flex-1">
+                          {transcricaoBloqueio.mensagem}
+                        </p>
+                      </div>
+                    ) : audioEstado === "idle" || audioEstado === "erro" ? (
                       <button
                         type="button"
                         onClick={iniciarGravacao}

@@ -38,6 +38,8 @@ export type TenantConfig = {
   endereco: string | null;
   cidade: string | null;
   estado: string | null;
+  plano: string;
+  trial_expira_em: string | null;
 };
 
 export type HorarioBloco = {
@@ -105,7 +107,9 @@ export async function getConfiguracoes(): Promise<
 
   const { data: tenant, error: tenantErr } = await admin
     .from('tenants')
-    .select('id, nome_empresa, slug, telefone, email, endereco, cidade, estado')
+    .select(
+      'id, nome_empresa, slug, telefone, email, endereco, cidade, estado, plano, trial_expira_em',
+    )
     .eq('id', ctx.tenantId)
     .maybeSingle();
   if (tenantErr) return { ok: false, error: tenantErr.message };
@@ -177,6 +181,9 @@ export async function getConfiguracoes(): Promise<
         endereco: (tenant.endereco as string | null) ?? null,
         cidade: (tenant.cidade as string | null) ?? null,
         estado: (tenant.estado as string | null) ?? null,
+        plano: (tenant.plano as string | null) ?? 'trial',
+        trial_expira_em:
+          (tenant.trial_expira_em as string | null) ?? null,
       },
       horarios,
       procedimentos,
