@@ -245,6 +245,43 @@ export function emailSolicitarAvaliacao(d: DadosAvaliacao): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosPreConsultaConfirmacao = {
+  pacienteNome: string;
+  profissionalNome: string;
+  profissionalEspecialidade: string | null;
+  linkAgendamento: string | null;
+  logoUrl?: string | null;
+};
+
+export function emailConfirmacaoPreConsulta(d: DadosPreConsultaConfirmacao): {
+  assunto: string;
+  html: string;
+} {
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
+  const especialidade = (d.profissionalEspecialidade ?? '').trim();
+  const assunto = `Dados recebidos - ${profissional}`;
+  const profissionalLabel = especialidade
+    ? `${escapeHtml(profissional)} (${escapeHtml(especialidade)})`
+    : escapeHtml(profissional);
+
+  const botao = d.linkAgendamento
+    ? `<p style="margin:20px 0 0 0;">Se precisar agendar, use o link abaixo:</p>
+       <p style="margin:12px 0 0 0;">
+         <a href="${escapeHtml(d.linkAgendamento)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Agendar consulta</a>
+       </p>
+       <p style="margin:12px 0 0 0;font-size:12px;color:#64748B;">Ou copie o link: ${escapeHtml(d.linkAgendamento)}</p>`
+    : '';
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 12px 0;">Seus dados e anamnese foram recebidos por ${profissionalLabel}.</p>
+    <p style="margin:0 0 12px 0;">Eles estarão disponíveis na sua próxima consulta.</p>
+    ${botao}
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

@@ -4,7 +4,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
-import { capitalizeNome } from '@/lib/email-templates';
+import {
+  capitalizeNome,
+  emailConfirmacaoPreConsulta,
+  montarLinkAgendamento,
+} from '@/lib/email-templates';
 import type { CampoTemplate, CampoTipo } from '@/actions/anamnese';
 
 type Genero = 'masculino' | 'feminino' | 'prefiro_nao_informar';
@@ -19,7 +23,14 @@ async function resolverContextoSlug(slug: string): Promise<
   | {
       ok: true;
       tenantId: string;
-      profissional: { id: string; nome: string; email: string };
+      slug: string;
+      profissional: {
+        id: string;
+        nome: string;
+        email: string;
+        especialidade: string | null;
+        logo_url: string | null;
+      };
     }
   | { ok: false; error: string }
 > {
@@ -39,7 +50,7 @@ async function resolverContextoSlug(slug: string): Promise<
 
   const { data: prof, error: pErr } = await admin
     .from('profissionais')
-    .select('id, nome, email')
+    .select('id, nome, email, especialidade, logo_url')
     .eq('tenant_id', tenant.id as string)
     .eq('ativo', true)
     .order('created_at', { ascending: true })
@@ -51,10 +62,13 @@ async function resolverContextoSlug(slug: string): Promise<
   return {
     ok: true,
     tenantId: tenant.id as string,
+    slug: cleanSlug,
     profissional: {
       id: prof.id as string,
       nome: prof.nome as string,
       email: prof.email as string,
+      especialidade: (prof.especialidade as string | null) ?? null,
+      logo_url: (prof.logo_url as string | null) ?? null,
     },
   };
 }
@@ -388,7 +402,7 @@ export async function salvarAnamnesePreConsulta(
 
   const { data: pac, error: pacErr } = await admin
     .from('pacientes')
-    .select('id, nome, tenant_id')
+    .select('id, nome, email, tenant_id')
     .eq('id', input.pacienteId)
     .maybeSingle();
   if (pacErr) return { ok: false, error: pacErr.message };
@@ -446,6 +460,36 @@ export async function salvarAnamnesePreConsulta(
     });
   } catch (e) {
     console.error('[pre-consulta] erro ao notificar profissional:', e);
+  }
+
+  // Envia confirmacao ao paciente (se tiver email)
+  try {
+    const pacienteEmail = (pac.email as string | null)?.trim() || null;
+    if (pacienteEmail) {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+      const linkAgendamento = montarLinkAgendamento(baseUrl, ctx.slug);
+
+      const tpl = emailConfirmacaoPreConsulta({
+        pacienteNome: pac.nome as string,
+        profissionalNome: ctx.profissional.nome,
+        profissionalEspecialidade: ctx.profissional.especialidade,
+        linkAgendamento,
+        logoUrl: ctx.profissional.logo_url,
+      });
+
+      await enviarNotificacaoEmail({
+        tenantId: ctx.tenantId,
+        agendamentoId: null,
+        tipo: 'feedback',
+        destino: pacienteEmail,
+        assunto: tpl.assunto,
+        html: tpl.html,
+      });
+    }
+  } catch (e) {
+    console.error('[pre-consulta] erro ao confirmar para paciente:', e);
   }
 
   return { ok: true, anamneseId: anaRow.id as string };
