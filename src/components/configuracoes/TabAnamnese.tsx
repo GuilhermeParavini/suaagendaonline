@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Copy, Pencil, Plus, Sparkles } from "lucide-react";
+import { Copy, Pencil, Plus, Sparkles, Upload } from "lucide-react";
 import {
   atualizarTemplate,
   definirTemplatePadraoPreConsulta,
@@ -13,6 +13,7 @@ import {
 } from "@/actions/anamnese";
 import { cn } from "@/lib/utils";
 import EditorTemplate from "./EditorTemplate";
+import ImportarTemplateModal from "./ImportarTemplateModal";
 
 interface TabAnamneseProps {
   especialidade: string;
@@ -23,6 +24,7 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [importarOpen, setImportarOpen] = useState(false);
   const [editando, setEditando] = useState<Template | null>(null);
   const [carregandoSeed, startSeed] = useTransition();
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
@@ -144,6 +146,14 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
           ) : null}
           <button
             type="button"
+            onClick={() => setImportarOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+          >
+            <Upload size={14} strokeWidth={1.5} aria-hidden="true" />
+            Importar modelo
+          </button>
+          <button
+            type="button"
             onClick={abrirNovo}
             className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
           >
@@ -215,6 +225,14 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
         open={editorOpen}
         onOpenChange={setEditorOpen}
         template={editando}
+        especialidadeDefault={especialidade}
+        onSaved={recarregar}
+      />
+
+      <ImportarTemplateModal
+        key={`importar-${importarOpen ? "open" : "closed"}`}
+        open={importarOpen}
+        onOpenChange={setImportarOpen}
         especialidadeDefault={especialidade}
         onSaved={recarregar}
       />
