@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, MessageCircle, Printer } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Image as ImageIcon, Loader2, Mail, MessageCircle, Printer } from "lucide-react";
 import AssinaturaRecibo from "./AssinaturaRecibo";
+import {
+  compartilharOuBaixarPng,
+  nomeArquivoRecibo,
+} from "@/lib/recibo-imagem";
 
 interface ReciboPrintProps {
   id: string;
@@ -63,6 +67,10 @@ function ReciboPrint({
   formaPagamento,
 }: ReciboPrintProps) {
   const [copiado, setCopiado] = useState(false);
+  const [feedbackImagem, setFeedbackImagem] = useState<string | null>(null);
+  const [erroImagem, setErroImagem] = useState<string | null>(null);
+  const [gerandoImagem, startGerar] = useTransition();
+  const reciboRef = useRef<HTMLElement | null>(null);
 
   const buildUrlPublica = () => {
     if (typeof window === "undefined") return "";
@@ -96,6 +104,27 @@ function ReciboPrint({
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleEnviarImagem = () => {
+    setFeedbackImagem(null);
+    setErroImagem(null);
+    const el = reciboRef.current;
+    if (!el) return;
+    startGerar(async () => {
+      const filename = nomeArquivoRecibo(paciente?.nome ?? null, dataPagamento);
+      const r = await compartilharOuBaixarPng(el, filename);
+      if (!r.ok) {
+        setErroImagem(r.error);
+        return;
+      }
+      if (r.modo === "download") {
+        setFeedbackImagem("Imagem salva! Envie pelo WhatsApp manualmente.");
+      } else {
+        setFeedbackImagem("Imagem compartilhada.");
+      }
+      window.setTimeout(() => setFeedbackImagem(null), 3500);
+    });
   };
 
   const handleCopiarLink = async () => {
@@ -134,7 +163,10 @@ function ReciboPrint({
           </h1>
         </div>
 
-        <article className="recibo-page mx-auto max-w-[680px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-10 text-slate-900">
+        <article
+          ref={reciboRef}
+          className="recibo-page mx-auto max-w-[680px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm md:p-10 text-slate-900"
+        >
           <header className="border-b border-slate-200 pb-4">
             <div className="flex items-start gap-3">
               {profissional.logo_url ? (
@@ -218,6 +250,49 @@ function ReciboPrint({
             <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" />
             Enviar por WhatsApp
           </button>
+
+          <div className="flex items-center gap-3 py-1" aria-hidden="true">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              ou
+            </span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleEnviarImagem}
+            disabled={gerandoImagem}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-medium text-white hover:bg-[#1ebe5a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-[0.99]"
+          >
+            {gerandoImagem ? (
+              <>
+                <Loader2
+                  size={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                  className="animate-spin"
+                />
+                Gerando imagem...
+              </>
+            ) : (
+              <>
+                <ImageIcon size={16} strokeWidth={1.5} aria-hidden="true" />
+                Enviar imagem pelo WhatsApp
+              </>
+            )}
+          </button>
+
+          {feedbackImagem ? (
+            <p className="rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]">
+              {feedbackImagem}
+            </p>
+          ) : null}
+          {erroImagem ? (
+            <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {erroImagem}
+            </p>
+          ) : null}
 
           <button
             type="button"
