@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import {
   Bar,
@@ -8,6 +8,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Line,
+  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -23,8 +25,12 @@ import {
 } from "lucide-react";
 import {
   getRelatorioFaturamento,
+  getRelatorioPacientes,
+  type FaixaEtaria,
   type FaturamentoData,
   type FaturamentoFiltros,
+  type PacientesData,
+  type PacientesFiltros,
 } from "@/actions/relatorios";
 import type { FormaPagamento } from "@/actions/financeiro";
 import { formatCurrency, brDateToIso, isoToBrDate, formatDate } from "@/lib/masks";
@@ -108,7 +114,7 @@ function RelatoriosClient({
         </Tabs.Content>
 
         <Tabs.Content value="pacientes" className="focus:outline-none">
-          <EmBreve titulo="Relatório de Pacientes" />
+          <PacientesTab initialPeriodo={initialPeriodo} />
         </Tabs.Content>
 
         <Tabs.Content value="agendamentos" className="focus:outline-none">
@@ -598,6 +604,382 @@ function FaturamentoTab({ initialData, initialPeriodo }: FaturamentoTabProps) {
   );
 }
 
+// ============================================================
+// PACIENTES TAB
+// ============================================================
+
+const GENERO_LABEL: Record<"todos" | "masculino" | "feminino" | "prefiro_nao_informar", string> = {
+  todos: "Todos",
+  masculino: "Masculino",
+  feminino: "Feminino",
+  prefiro_nao_informar: "Outro",
+};
+
+const FAIXAS: { value: FaixaEtaria | "todos"; label: string }[] = [
+  { value: "todos", label: "Todas" },
+  { value: "0-17", label: "0-17 anos" },
+  { value: "18-30", label: "18-30 anos" },
+  { value: "31-50", label: "31-50 anos" },
+  { value: "51-65", label: "51-65 anos" },
+  { value: "65+", label: "65+ anos" },
+];
+
+interface PacientesTabProps {
+  initialPeriodo: { dataInicio: string; dataFim: string };
+}
+
+function PacientesTab({ initialPeriodo }: PacientesTabProps) {
+  const [dataInicioBr, setDataInicioBr] = useState(
+    isoToBrDate(initialPeriodo.dataInicio),
+  );
+  const [dataFimBr, setDataFimBr] = useState(
+    isoToBrDate(initialPeriodo.dataFim),
+  );
+  const [genero, setGenero] = useState<
+    "todos" | "masculino" | "feminino" | "prefiro_nao_informar"
+  >("todos");
+  const [faixaEtaria, setFaixaEtaria] = useState<FaixaEtaria | "todos">(
+    "todos",
+  );
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+
+  const [data, setData] = useState<PacientesData | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [isLoading, startLoading] = useTransition();
+  const initialLoadRef = useRef(false);
+
+  const carregar = (filtros: PacientesFiltros) => {
+    setErro(null);
+    startLoading(async () => {
+      const r = await getRelatorioPacientes(filtros);
+      if (!r.ok) {
+        setErro(r.error);
+        return;
+      }
+      setData(r.data);
+    });
+  };
+
+  useEffect(() => {
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+    carregar({
+      dataInicio: initialPeriodo.dataInicio,
+      dataFim: initialPeriodo.dataFim,
+      genero: "todos",
+      faixaEtaria: "todos",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const aplicarFiltros = () => {
+    setErro(null);
+    const ini = brDateToIso(dataInicioBr);
+    const fim = brDateToIso(dataFimBr);
+    if (!ini || !fim) {
+      setErro("Datas inválidas. Use DD/MM/AAAA.");
+      return;
+    }
+    if (fim < ini) {
+      setErro("Data fim anterior à data inicio.");
+      return;
+    }
+    carregar({
+      dataInicio: ini,
+      dataFim: fim,
+      genero,
+      faixaEtaria,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-lg border border-slate-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setFiltrosAbertos((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 sm:hidden"
+        >
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <Filter size={16} strokeWidth={1.5} aria-hidden="true" />
+            Filtros
+          </span>
+          {filtrosAbertos ? (
+            <ChevronUp
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-500"
+            />
+          ) : (
+            <ChevronDown
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-500"
+            />
+          )}
+        </button>
+        <div
+          className={cn(
+            "px-4 pb-4 pt-2 sm:p-4 sm:block",
+            !filtrosAbertos && "hidden sm:block",
+          )}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <label className={labelClass}>Cadastro a partir de</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/AAAA"
+                value={dataInicioBr}
+                onChange={(e) => setDataInicioBr(formatDate(e.target.value))}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Cadastro até</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/AAAA"
+                value={dataFimBr}
+                onChange={(e) => setDataFimBr(formatDate(e.target.value))}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Gênero</label>
+              <select
+                value={genero}
+                onChange={(e) =>
+                  setGenero(e.target.value as typeof genero)
+                }
+                className={inputClass}
+              >
+                {Object.entries(GENERO_LABEL).map(([v, lbl]) => (
+                  <option key={v} value={v}>
+                    {lbl}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Faixa etária</label>
+              <select
+                value={faixaEtaria}
+                onChange={(e) =>
+                  setFaixaEtaria(e.target.value as FaixaEtaria | "todos")
+                }
+                className={inputClass}
+              >
+                {FAIXAS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {erro ? (
+            <p className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={aplicarFiltros}
+              disabled={isLoading}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? "Atualizando..." : "Aplicar"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {isLoading || !data ? (
+        <Skeleton />
+      ) : (
+        <>
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <CardResumo
+              label="Total de pacientes"
+              value={String(data.total)}
+              accent="teal"
+            />
+            <CardResumo
+              label="Novos no período"
+              value={String(data.novosNoPeriodo)}
+              accent="verde"
+            />
+            <CardResumo
+              label="Retornos no período"
+              value={String(data.retornosNoPeriodo)}
+              accent="azul"
+            />
+            <CardResumo
+              label="Taxa de retorno"
+              value={`${data.taxaRetorno.toFixed(1).replace(".", ",")}%`}
+              accent="teal"
+            />
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-medium text-slate-700">
+                Novos pacientes (últimos 6 meses)
+              </h3>
+              {data.porMes.every((m) => m.novos === 0) ? (
+                <EstadoVazio />
+              ) : (
+                <div className="mt-3 h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={data.porMes}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="mes"
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        formatter={(v) => [`${Number(v) || 0}`, "Novos"]}
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: 6,
+                          border: "1px solid #E2E8F0",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="novos"
+                        name="Novos"
+                        stroke="#0D9488"
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "#0D9488" }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-medium text-slate-700">
+                Distribuição por gênero
+              </h3>
+              {data.porGenero.length === 0 ? (
+                <EstadoVazio />
+              ) : (
+                <div className="mt-3 h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={data.porGenero.map((g) => ({
+                          nome: `${g.genero} (${g.total})`,
+                          total: g.total,
+                        }))}
+                        dataKey="total"
+                        nameKey="nome"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={90}
+                      >
+                        {data.porGenero.map((_, idx) => (
+                          <Cell
+                            key={idx}
+                            fill={COLOR_PIE[idx % COLOR_PIE.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(v) => `${Number(v) || 0}`}
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: 6,
+                          border: "1px solid #E2E8F0",
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white">
+            <header className="px-4 py-3 border-b border-slate-200">
+              <h3 className="text-sm font-medium text-slate-700">
+                Top 10 pacientes
+              </h3>
+              <p className="text-xs text-slate-500">
+                Ordenado por consultas concluídas.
+              </p>
+            </header>
+            {data.topPacientes.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-sm text-slate-500">
+                  Nenhum paciente com consultas concluídas.
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {data.topPacientes.map((p, idx) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
+                        idx < 3
+                          ? "bg-primary text-white"
+                          : "bg-slate-100 text-slate-600",
+                      )}
+                    >
+                      {idx + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-slate-900 truncate">
+                        {p.nome}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {p.totalConsultas}{" "}
+                        {p.totalConsultas === 1 ? "consulta" : "consultas"}
+                        {p.ultimaConsulta ? (
+                          <>
+                            <span className="mx-1 text-slate-300">·</span>
+                            Última:{" "}
+                            {isoToBrDate(p.ultimaConsulta.slice(0, 10))}
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
 function csvEscape(value: string): string {
   if (value.includes(";") || value.includes('"') || value.includes("\n")) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -612,7 +994,7 @@ function CardResumo({
 }: {
   label: string;
   value: string;
-  accent: "verde" | "vermelho" | "teal" | "neutro";
+  accent: "verde" | "vermelho" | "teal" | "azul" | "neutro";
 }) {
   const accentClass =
     accent === "verde"
@@ -621,7 +1003,9 @@ function CardResumo({
         ? "text-[#991B1B]"
         : accent === "teal"
           ? "text-primary-dark"
-          : "text-slate-900";
+          : accent === "azul"
+            ? "text-[#1E40AF]"
+            : "text-slate-900";
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
