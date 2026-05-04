@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   emailCancelamento,
   emailConfirmacaoAgendamento,
+  emailSolicitarAvaliacao,
   horarioFromIso,
   dataIsoFromTimestamp,
   montarLinkAgendamento,
@@ -233,6 +234,64 @@ export async function atualizarStatusAgendamento(
     .update(update)
     .eq('id', id);
   if (updateError) return { ok: false, error: updateError.message };
+
+  // Email automatico de solicitacao de avaliacao quando concluir
+  if (novoStatus === 'concluido') {
+    try {
+      const { data: ag } = await admin
+        .from('agendamentos')
+        .select('id, paciente_id, profissional_id, tenant_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (ag) {
+        const [{ data: paciente }, { data: profissional }] = await Promise.all([
+          admin
+            .from('pacientes')
+            .select('nome, email')
+            .eq('id', ag.paciente_id as string)
+            .maybeSingle(),
+          admin
+            .from('profissionais')
+            .select('nome, logo_url, enviar_avaliacao')
+            .eq('id', ag.profissional_id as string)
+            .maybeSingle(),
+        ]);
+
+        const enviarAvaliacao =
+          (profissional?.enviar_avaliacao as boolean | null) === false
+            ? false
+            : true;
+        const destino = (paciente?.email as string | null) ?? null;
+
+        if (enviarAvaliacao && destino) {
+          const baseUrl =
+            process.env.NEXT_PUBLIC_APP_URL ??
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+          const linkAvaliacao = baseUrl
+            ? `${baseUrl.replace(/\/+$/, '')}/avaliacao/${id}`
+            : `/avaliacao/${id}`;
+
+          const tpl = emailSolicitarAvaliacao({
+            pacienteNome: (paciente?.nome as string) ?? 'Paciente',
+            profissionalNome:
+              (profissional?.nome as string) ?? 'Profissional',
+            linkAvaliacao,
+            logoUrl: (profissional?.logo_url as string | null) ?? null,
+          });
+          await enviarNotificacaoEmail({
+            tenantId: ag.tenant_id as string,
+            agendamentoId: id,
+            tipo: 'feedback',
+            destino,
+            assunto: tpl.assunto,
+            html: tpl.html,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[agendamentos] erro ao enviar email de avaliacao:', e);
+    }
+  }
 
   if (novoStatus === 'cancelado') {
     try {

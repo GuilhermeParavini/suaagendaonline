@@ -23,6 +23,7 @@ export type ProfissionalConfig = {
   assinatura_fonte: string | null;
   assinatura_url: string | null;
   logo_url: string | null;
+  enviar_avaliacao: boolean;
 };
 
 export type TenantConfig = {
@@ -92,7 +93,7 @@ export async function getConfiguracoes(): Promise<
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url',
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao',
     )
     .eq('id', ctx.profissionalId)
     .maybeSingle();
@@ -154,6 +155,8 @@ export async function getConfiguracoes(): Promise<
         assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
         assinatura_url: (prof.assinatura_url as string | null) ?? null,
         logo_url: (prof.logo_url as string | null) ?? null,
+        enviar_avaliacao:
+          (prof.enviar_avaliacao as boolean | null) === false ? false : true,
       },
       tenant: {
         id: tenant.id as string,

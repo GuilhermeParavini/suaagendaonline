@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Star } from "lucide-react";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
@@ -6,6 +7,7 @@ import MetricCard from "@/components/ui/MetricCard";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import Card from "@/components/ui/Card";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
+import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -99,6 +101,32 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  const { data: avalRows } = await admin
+    .from("avaliacoes")
+    .select("id, nota, created_at, paciente_id, pacientes(nome)")
+    .eq("profissional_id", prof.id)
+    .order("created_at", { ascending: false });
+  const avalLista = (avalRows ?? []) as Array<{
+    id: string;
+    nota: number;
+    created_at: string;
+    pacientes: { nome: string } | { nome: string }[] | null;
+  }>;
+  const avalTotal = avalLista.length;
+  const avalMedia =
+    avalTotal > 0
+      ? avalLista.reduce((acc, r) => acc + (r.nota ?? 0), 0) / avalTotal
+      : 0;
+  const avalRecentes = avalLista.slice(0, 3).map((r) => {
+    const pac = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
+    return {
+      id: r.id,
+      nota: r.nota,
+      data: format(new Date(r.created_at), "dd MMM yyyy", { locale: ptBR }),
+      paciente: (pac?.nome as string | null) ?? "Paciente",
+    };
+  });
+
   const receitaMes = (receitas ?? []).reduce(
     (sum, r: { valor: number | string }) => sum + Number(r.valor ?? 0),
     0,
@@ -163,6 +191,83 @@ export default async function DashboardPage() {
               );
             })}
           </ul>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[18px] font-semibold text-slate-900">
+            Avaliações
+          </h2>
+          {avalTotal > 0 ? (
+            <span className="text-xs text-slate-500">
+              {avalTotal} {avalTotal === 1 ? "avaliação" : "avaliações"}
+            </span>
+          ) : null}
+        </div>
+
+        {avalTotal === 0 ? (
+          <Card>
+            <p className="text-sm text-slate-500">
+              Nenhuma avaliação recebida ainda.
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            <Card className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    size={18}
+                    strokeWidth={1.5}
+                    className={cn(
+                      n <= Math.round(avalMedia)
+                        ? "fill-[#F59E0B] text-[#F59E0B]"
+                        : "fill-transparent text-slate-300",
+                    )}
+                    aria-hidden="true"
+                  />
+                ))}
+              </div>
+              <p className="text-base font-semibold text-slate-900">
+                {avalMedia.toFixed(1)}
+              </p>
+              <p className="text-xs text-slate-500">
+                média de {avalTotal} {avalTotal === 1 ? "avaliação" : "avaliações"}
+              </p>
+            </Card>
+
+            <ul className="space-y-2">
+              {avalRecentes.map((a) => (
+                <li key={a.id}>
+                  <Card className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">
+                        {a.paciente}
+                      </p>
+                      <p className="text-[11px] text-slate-500">{a.data}</p>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          size={14}
+                          strokeWidth={1.5}
+                          className={cn(
+                            n <= a.nota
+                              ? "fill-[#F59E0B] text-[#F59E0B]"
+                              : "fill-transparent text-slate-300",
+                          )}
+                          aria-hidden="true"
+                        />
+                      ))}
+                    </div>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </section>
 

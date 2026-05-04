@@ -179,6 +179,31 @@ export function emailLembrete24h(d: DadosLembrete): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosAvaliacao = {
+  pacienteNome: string;
+  profissionalNome: string;
+  linkAvaliacao: string;
+  logoUrl?: string | null;
+};
+
+export function emailSolicitarAvaliacao(d: DadosAvaliacao): {
+  assunto: string;
+  html: string;
+} {
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
+  const assunto = `Como foi sua consulta com ${profissional}?`;
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 16px 0;">Sua opinião é importante. Avalie sua consulta com ${escapeHtml(profissional)}.</p>
+    <p style="margin:20px 0;">
+      <a href="${escapeHtml(d.linkAvaliacao)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Avaliar consulta</a>
+    </p>
+    <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;">Ou copie o link: ${escapeHtml(d.linkAvaliacao)}</p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

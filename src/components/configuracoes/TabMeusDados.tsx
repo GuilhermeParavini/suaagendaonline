@@ -17,6 +17,7 @@ import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
 import LinkPreConsulta from "./LinkPreConsulta";
 import SecaoAssinatura from "./SecaoAssinatura";
+import SecaoAvaliacoes from "./SecaoAvaliacoes";
 import SecaoLogo from "./SecaoLogo";
 
 const ESPECIALIDADES = [
@@ -398,6 +399,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       <SecaoLogo profissional={profissional} onSaved={onSaved} />
 
       <SecaoAssinatura profissional={profissional} onSaved={onSaved} />
+
+      <SecaoAvaliacoes profissional={profissional} onSaved={onSaved} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <header className="flex items-center justify-between gap-2">
