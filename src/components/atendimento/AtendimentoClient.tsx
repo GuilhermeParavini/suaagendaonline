@@ -269,6 +269,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
                 template_nome: anamneseAtual.template_nome,
                 template_campos: anamneseAtual.template_campos,
                 dados: anamneseAtual.dados,
+                audio_url: null,
                 created_at: anamneseAtual.created_at,
                 updated_at: anamneseAtual.created_at,
               }}

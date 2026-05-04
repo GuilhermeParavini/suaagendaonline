@@ -46,6 +46,7 @@ export type Anamnese = {
   template_nome: string | null;
   template_campos: CampoTemplate[];
   dados: Record<string, unknown>;
+  audio_url: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -461,6 +462,7 @@ export async function getAnamneses(
       template_nome: (tplRaw?.nome as string | null) ?? null,
       template_campos: normalizarCampos(tplRaw?.campos),
       dados: (row.dados as Record<string, unknown>) ?? {},
+      audio_url: (row.audio_url as string | null) ?? null,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
     };
@@ -502,6 +504,7 @@ export async function getAnamnese(id: string): Promise<Result<Anamnese>> {
       template_nome: (tplRaw?.nome as string | null) ?? null,
       template_campos: normalizarCampos(tplRaw?.campos),
       dados: (data.dados as Record<string, unknown>) ?? {},
+      audio_url: (data.audio_url as string | null) ?? null,
       created_at: data.created_at as string,
       updated_at: data.updated_at as string,
     },
@@ -513,6 +516,7 @@ export type CriarAnamneseInput = {
   templateId?: string;
   agendamentoId?: string;
   dados: Record<string, unknown>;
+  audioUrl?: string | null;
 };
 
 export async function criarAnamnese(
@@ -549,6 +553,7 @@ export async function criarAnamnese(
       agendamento_id: input.agendamentoId ?? null,
       template_id: input.templateId ?? null,
       dados: input.dados,
+      audio_url: input.audioUrl?.trim() || null,
     })
     .select('id')
     .single();
