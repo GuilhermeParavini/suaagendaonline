@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { Copy, Pencil, Plus, Sparkles } from "lucide-react";
 import {
   atualizarTemplate,
+  definirTemplatePadraoPreConsulta,
   duplicarTemplate,
   excluirTemplate,
   getTemplate,
@@ -189,17 +190,24 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
           ) : null}
         </div>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
-          {templates.map((t) => (
-            <ItemTemplate
-              key={t.id}
-              template={t}
-              onEditar={() => abrirEditar(t)}
-              onDuplicar={() => duplicarECarregar(t)}
-              onChanged={recarregar}
-            />
-          ))}
-        </ul>
+        <>
+          <p className="text-xs text-slate-500">
+            Marque <strong>Usar na pré-consulta</strong> em um modelo para que o
+            paciente preencha apenas ele no link público (sem precisar
+            escolher).
+          </p>
+          <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+            {templates.map((t) => (
+              <ItemTemplate
+                key={t.id}
+                template={t}
+                onEditar={() => abrirEditar(t)}
+                onDuplicar={() => duplicarECarregar(t)}
+                onChanged={recarregar}
+              />
+            ))}
+          </ul>
+        </>
       )}
 
       <EditorTemplate
@@ -227,6 +235,7 @@ function ItemTemplate({
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isPendingPadrao, startPadraoTransition] = useTransition();
 
   const handleToggle = () => {
     setErro(null);
@@ -258,21 +267,41 @@ function ItemTemplate({
     }
   };
 
+  const handleTogglePadraoPreConsulta = () => {
+    setErro(null);
+    startPadraoTransition(async () => {
+      const novoEstado = !template.padrao_pre_consulta;
+      const result = await definirTemplatePadraoPreConsulta(
+        novoEstado ? template.id : null,
+      );
+      if (!result.ok) {
+        setErro(result.error);
+        return;
+      }
+      onChanged();
+    });
+  };
+
   return (
     <li
       className={cn(
-        "flex items-center gap-3 px-3 py-3 sm:px-4",
+        "flex flex-col gap-2 px-3 py-3 sm:px-4 sm:flex-row sm:items-center sm:gap-3",
         !template.ativo && "opacity-60",
       )}
     >
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-slate-900 truncate">
             {template.nome}
           </p>
           {template.padrao ? (
             <span className="inline-flex items-center rounded-full bg-primary-surface px-2 py-0.5 text-[10px] font-medium text-primary-dark">
               Padrão
+            </span>
+          ) : null}
+          {template.padrao_pre_consulta ? (
+            <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium text-white">
+              Pré-consulta
             </span>
           ) : null}
         </div>
@@ -283,36 +312,70 @@ function ItemTemplate({
         {erro ? <p className="text-xs text-red-600">{erro}</p> : null}
       </div>
 
-      <label className="flex items-center gap-1.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={template.ativo}
-          onChange={handleToggle}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:shrink-0">
+        <button
+          type="button"
+          onClick={handleTogglePadraoPreConsulta}
+          disabled={isPendingPadrao || !template.ativo}
+          aria-pressed={template.padrao_pre_consulta}
+          title={
+            template.ativo
+              ? "Usar este modelo na pré-consulta pública"
+              : "Ative o template para usá-lo na pré-consulta"
+          }
+          className={cn(
+            "inline-flex items-center gap-1.5",
+            !template.ativo && "cursor-not-allowed opacity-50",
+            template.ativo && "cursor-pointer",
+          )}
+        >
+          <span
+            aria-hidden="true"
+            className={cn(
+              "inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors",
+              template.padrao_pre_consulta
+                ? "border-primary bg-primary"
+                : "border-slate-300 bg-white",
+            )}
+          >
+            {template.padrao_pre_consulta ? (
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+            ) : null}
+          </span>
+          <span className="text-xs text-slate-600">Usar na pré-consulta</span>
+        </button>
+
+        <label className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={template.ativo}
+            onChange={handleToggle}
+            disabled={isPending}
+            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+          />
+          <span className="text-xs text-slate-600">Ativo</span>
+        </label>
+
+        <button
+          type="button"
+          onClick={() => onDuplicar()}
           disabled={isPending}
-          className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
-        />
-        <span className="text-xs text-slate-600">Ativo</span>
-      </label>
+          aria-label={`Duplicar ${template.nome}`}
+          title="Duplicar"
+          className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
+        >
+          <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
+        </button>
 
-      <button
-        type="button"
-        onClick={() => onDuplicar()}
-        disabled={isPending}
-        aria-label={`Duplicar ${template.nome}`}
-        title="Duplicar"
-        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
-      >
-        <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
-      </button>
-
-      <button
-        type="button"
-        onClick={onEditar}
-        aria-label={`Editar ${template.nome}`}
-        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-      >
-        <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
-      </button>
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Editar ${template.nome}`}
+          className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+        >
+          <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </div>
     </li>
   );
 }

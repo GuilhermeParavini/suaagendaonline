@@ -30,6 +30,7 @@ export type Template = {
   especialidade: string;
   campos: CampoTemplate[];
   padrao: boolean;
+  padrao_pre_consulta: boolean;
   ativo: boolean;
   created_at: string;
   updated_at: string;
@@ -160,6 +161,7 @@ export async function getTemplates(
     especialidade: row.especialidade as string,
     campos: normalizarCampos(row.campos),
     padrao: Boolean(row.padrao),
+    padrao_pre_consulta: Boolean(row.padrao_pre_consulta),
     ativo: Boolean(row.ativo),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
@@ -194,6 +196,7 @@ export async function getTemplate(id: string): Promise<Result<Template>> {
       especialidade: data.especialidade as string,
       campos: normalizarCampos(data.campos),
       padrao: Boolean(data.padrao),
+      padrao_pre_consulta: Boolean(data.padrao_pre_consulta),
       ativo: Boolean(data.ativo),
       created_at: data.created_at as string,
       updated_at: data.updated_at as string,
@@ -311,6 +314,69 @@ export async function atualizarTemplate(
 
 export async function excluirTemplate(id: string): Promise<Result<null>> {
   return atualizarTemplate(id, { ativo: false });
+}
+
+export async function temTemplatePadraoPreConsulta(): Promise<Result<boolean>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { count, error } = await admin
+    .from('templates_anamnese')
+    .select('id', { count: 'exact', head: true })
+    .eq('profissional_id', ctx.profissionalId)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('padrao_pre_consulta', true)
+    .eq('ativo', true);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: (count ?? 0) > 0 };
+}
+
+export async function definirTemplatePadraoPreConsulta(
+  id: string | null,
+): Promise<Result<null>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+
+  if (id) {
+    const { data: row, error: getErr } = await admin
+      .from('templates_anamnese')
+      .select('id, tenant_id, profissional_id, ativo')
+      .eq('id', id)
+      .maybeSingle();
+    if (getErr) return { ok: false, error: getErr.message };
+    if (!row) return { ok: false, error: 'Template nao encontrado.' };
+    if (row.tenant_id !== ctx.tenantId) {
+      return { ok: false, error: 'Sem permissao.' };
+    }
+    if (row.profissional_id !== ctx.profissionalId) {
+      return { ok: false, error: 'Sem permissao.' };
+    }
+    if (!row.ativo) {
+      return { ok: false, error: 'Ative o template antes de defini-lo como padrao.' };
+    }
+  }
+
+  const { error: clearErr } = await admin
+    .from('templates_anamnese')
+    .update({ padrao_pre_consulta: false })
+    .eq('profissional_id', ctx.profissionalId)
+    .eq('tenant_id', ctx.tenantId)
+    .eq('padrao_pre_consulta', true);
+  if (clearErr) return { ok: false, error: clearErr.message };
+
+  if (id) {
+    const { error: setErr } = await admin
+      .from('templates_anamnese')
+      .update({ padrao_pre_consulta: true })
+      .eq('id', id);
+    if (setErr) return { ok: false, error: setErr.message };
+  }
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: null };
 }
 
 export async function duplicarTemplate(

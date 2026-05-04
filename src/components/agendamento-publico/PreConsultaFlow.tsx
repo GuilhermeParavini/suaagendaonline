@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 
 type Step = "identificacao" | "template" | "anamnese" | "sucesso";
 
+type StepperStep = "identificacao" | "template" | "anamnese";
+
 interface PreConsultaFlowProps {
   slug: string;
   profissionalNome: string;
@@ -158,6 +160,8 @@ function PreConsultaFlow({
 
   // Step 2
   const [templates, setTemplates] = useState<TemplatePublico[]>([]);
+  const [templatePadrao, setTemplatePadrao] =
+    useState<TemplatePublico | null>(null);
   const [carregandoTpls, setCarregandoTpls] = useState(false);
   const [templateSelecionado, setTemplateSelecionado] =
     useState<TemplatePublico | null>(null);
@@ -202,11 +206,9 @@ function PreConsultaFlow({
       });
     };
 
-  // Carrega templates ao entrar no step 2
+  // Carrega templates uma vez para decidir se pula a selecao
   useEffect(() => {
-    if (step !== "template") return;
     let cancelado = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCarregandoTpls(true);
     (async () => {
       const r = await getTemplatesPreConsulta(slug);
@@ -216,20 +218,33 @@ function PreConsultaFlow({
         setErroAnamnese(r.error);
         return;
       }
-      setTemplates(r.data);
-      // Se so tem 1, ja seleciona e avanca
-      if (r.data.length === 1) {
-        setTemplateSelecionado(r.data[0]);
-        const init: Valores = {};
-        for (const c of r.data[0].campos) init[c.id] = valorInicial(c);
-        setValores(init);
-        setStep("anamnese");
-      }
+      setTemplates(r.data.templates);
+      setTemplatePadrao(r.data.padrao);
     })();
     return () => {
       cancelado = true;
     };
-  }, [step, slug]);
+  }, [slug]);
+
+  const iniciarAnamneseCom = (tpl: TemplatePublico) => {
+    setTemplateSelecionado(tpl);
+    const init: Valores = {};
+    for (const c of tpl.campos) init[c.id] = valorInicial(c);
+    setValores(init);
+    setStep("anamnese");
+  };
+
+  const prosseguirAposIdentificacao = () => {
+    if (templatePadrao) {
+      iniciarAnamneseCom(templatePadrao);
+      return;
+    }
+    if (templates.length === 1) {
+      iniciarAnamneseCom(templates[0]);
+      return;
+    }
+    setStep("template");
+  };
 
   const verificarCpf = () => {
     setCpfErro(null);
@@ -293,16 +308,12 @@ function PreConsultaFlow({
       }
       setPacienteId(r.pacienteId);
       setPacienteNome(data.nome);
-      setStep("template");
+      prosseguirAposIdentificacao();
     });
   };
 
   const escolherTemplate = (tpl: TemplatePublico) => {
-    setTemplateSelecionado(tpl);
-    const init: Valores = {};
-    for (const c of tpl.campos) init[c.id] = valorInicial(c);
-    setValores(init);
-    setStep("anamnese");
+    iniciarAnamneseCom(tpl);
   };
 
   const setValor = (id: string, valor: Valores[string]) => {
@@ -425,8 +436,16 @@ function PreConsultaFlow({
     });
   };
 
-  const stepOrder: Step[] = ["identificacao", "template", "anamnese"];
-  const stepIdx = stepOrder.indexOf(step);
+  const stepOrder: StepperStep[] = templatePadrao
+    ? ["identificacao", "anamnese"]
+    : ["identificacao", "template", "anamnese"];
+  const stepperPos: Record<Step, number> = {
+    identificacao: 0,
+    template: templatePadrao ? 0 : 1,
+    anamnese: templatePadrao ? 1 : 2,
+    sucesso: stepOrder.length - 1,
+  };
+  const stepIdx = stepperPos[step];
 
   return (
     <div className="space-y-6">
@@ -515,10 +534,11 @@ function PreConsultaFlow({
               </div>
               <button
                 type="button"
-                onClick={() => setStep("template")}
-                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-dark transition-colors"
+                onClick={prosseguirAposIdentificacao}
+                disabled={carregandoTpls}
+                className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Continuar
+                {carregandoTpls ? "Carregando..." : "Continuar"}
               </button>
             </>
           ) : null}
@@ -749,6 +769,12 @@ function PreConsultaFlow({
             <ChevronLeft size={16} strokeWidth={1.5} aria-hidden="true" />
             Voltar
           </button>
+          {!carregandoTpls && templates.length > 1 ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Dica: defina um modelo padrão em Configurações para simplificar a
+              pré-consulta.
+            </p>
+          ) : null}
           <h2 className="text-sm font-medium text-slate-700">
             Escolha o modelo de anamnese
           </h2>
@@ -787,7 +813,9 @@ function PreConsultaFlow({
           <button
             type="button"
             onClick={() =>
-              templates.length > 1 ? setStep("template") : setStep("identificacao")
+              !templatePadrao && templates.length > 1
+                ? setStep("template")
+                : setStep("identificacao")
             }
             className="inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
           >

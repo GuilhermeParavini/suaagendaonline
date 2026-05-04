@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, Check, Copy } from "lucide-react";
+import { temTemplatePadraoPreConsulta } from "@/actions/anamnese";
 
 interface LinkPreConsultaProps {
   slug: string;
@@ -9,6 +10,19 @@ interface LinkPreConsultaProps {
 
 function LinkPreConsulta({ slug }: LinkPreConsultaProps) {
   const [copiado, setCopiado] = useState(false);
+  const [temPadrao, setTemPadrao] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await temTemplatePadraoPreConsulta();
+      if (cancelado) return;
+      if (r.ok) setTemPadrao(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const url =
     typeof window !== "undefined"
@@ -59,6 +73,21 @@ function LinkPreConsulta({ slug }: LinkPreConsultaProps) {
           )}
         </button>
       </div>
+
+      {temPadrao === false ? (
+        <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2">
+          <AlertTriangle
+            size={14}
+            strokeWidth={1.5}
+            aria-hidden="true"
+            className="mt-0.5 shrink-0 text-amber-600"
+          />
+          <p className="text-xs text-amber-800 leading-relaxed">
+            Defina um modelo de anamnese padrão na aba <strong>Anamnese</strong>{" "}
+            para simplificar a pré-consulta.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

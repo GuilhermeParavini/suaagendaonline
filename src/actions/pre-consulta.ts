@@ -251,6 +251,11 @@ export type TemplatePublico = {
   campos: CampoTemplate[];
 };
 
+export type TemplatesPreConsultaResult = {
+  templates: TemplatePublico[];
+  padrao: TemplatePublico | null;
+};
+
 function normalizarCamposPub(raw: unknown): CampoTemplate[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((item, idx) => {
@@ -276,14 +281,17 @@ function normalizarCamposPub(raw: unknown): CampoTemplate[] {
 
 export async function getTemplatesPreConsulta(
   slug: string,
-): Promise<{ ok: true; data: TemplatePublico[] } | { ok: false; error: string }> {
+): Promise<
+  | { ok: true; data: TemplatesPreConsultaResult }
+  | { ok: false; error: string }
+> {
   const ctx = await resolverContextoSlug(slug);
   if (!ctx.ok) return ctx;
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('templates_anamnese')
-    .select('id, nome, campos, ativo, padrao')
+    .select('id, nome, campos, ativo, padrao, padrao_pre_consulta')
     .eq('profissional_id', ctx.profissional.id)
     .eq('tenant_id', ctx.tenantId)
     .eq('ativo', true)
@@ -291,14 +299,24 @@ export async function getTemplatesPreConsulta(
     .order('nome', { ascending: true });
   if (error) return { ok: false, error: error.message };
 
-  return {
-    ok: true,
-    data: (data ?? []).map((row) => ({
-      id: row.id as string,
-      nome: row.nome as string,
-      campos: normalizarCamposPub(row.campos),
-    })),
-  };
+  const todos: (TemplatePublico & { padrao_pre_consulta: boolean })[] = (
+    data ?? []
+  ).map((row) => ({
+    id: row.id as string,
+    nome: row.nome as string,
+    campos: normalizarCamposPub(row.campos),
+    padrao_pre_consulta: Boolean(row.padrao_pre_consulta),
+  }));
+
+  const padraoRow = todos.find((t) => t.padrao_pre_consulta) ?? null;
+  const padrao: TemplatePublico | null = padraoRow
+    ? { id: padraoRow.id, nome: padraoRow.nome, campos: padraoRow.campos }
+    : null;
+  const templates: TemplatePublico[] = todos.map(
+    ({ id, nome, campos }) => ({ id, nome, campos }),
+  );
+
+  return { ok: true, data: { templates, padrao } };
 }
 
 export async function uploadFotoAnamnesePublica(
