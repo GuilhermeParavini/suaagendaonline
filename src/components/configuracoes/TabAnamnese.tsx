@@ -77,26 +77,45 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
   const handleSeedPadrao = () => {
     setSeedMsg(null);
     setErro(null);
+
+    if (templates.length > 0) {
+      const ok = confirm(
+        `Você já tem ${templates.length} template(s). Deseja carregar os modelos padrão? Seus templates atuais serão mantidos.`,
+      );
+      if (!ok) return;
+    }
+
     startSeed(async () => {
       try {
         const resp = await fetch("/api/seed-anamnese");
         const json = (await resp.json()) as {
           sucesso?: boolean;
-          inserido?: boolean;
-          nome?: string;
+          inseridos?: number;
+          existentes?: number;
+          total?: number;
           error?: string;
         };
         if (!resp.ok || !json.sucesso) {
           setErro(json.error ?? "Falha ao carregar templates padrão.");
           return;
         }
-        setSeedMsg(
-          json.inserido
-            ? `Template "${json.nome}" carregado.`
-            : `Template padrão já estava cadastrado.`,
-        );
+        const inseridos = json.inseridos ?? 0;
+        const existentes = json.existentes ?? 0;
+        if (inseridos === 0) {
+          setSeedMsg(
+            existentes > 0
+              ? `Modelos padrão já estavam cadastrados.`
+              : `Nenhum modelo padrão disponível para esta especialidade.`,
+          );
+        } else {
+          setSeedMsg(
+            inseridos === 1
+              ? `1 modelo carregado.`
+              : `${inseridos} modelos carregados.`,
+          );
+        }
         await recarregar();
-        window.setTimeout(() => setSeedMsg(null), 3000);
+        window.setTimeout(() => setSeedMsg(null), 3500);
       } catch (e) {
         setErro(e instanceof Error ? e.message : String(e));
       }
@@ -105,20 +124,39 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-slate-500">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-sm text-slate-500 max-w-md">
           Crie templates de anamnese personalizados. Você pode ter um por
           especialidade ou variações por tipo de atendimento.
         </p>
-        <button
-          type="button"
-          onClick={abrirNovo}
-          className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors shrink-0"
-        >
-          <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
-          Novo
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {templates.length > 0 ? (
+            <button
+              type="button"
+              onClick={handleSeedPadrao}
+              disabled={carregandoSeed}
+              className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+            >
+              <Sparkles size={14} strokeWidth={1.5} aria-hidden="true" />
+              {carregandoSeed ? "Carregando..." : "Carregar modelos padrão"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={abrirNovo}
+            className="inline-flex items-center gap-1.5 rounded bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+          >
+            <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
+            Novo
+          </button>
+        </div>
       </div>
+
+      {seedMsg && templates.length > 0 ? (
+        <p className="rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]">
+          {seedMsg}
+        </p>
+      ) : null}
 
       {erro ? (
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">

@@ -43,9 +43,10 @@ export async function GET() {
     );
     return NextResponse.json({
       sucesso: true,
-      inserido: r.inserido,
-      templateId: r.templateId,
-      nome: r.nome,
+      inseridos: r.inseridos,
+      existentes: r.existentes,
+      total: r.total,
+      nomes: r.nomes,
       especialidade: prof.especialidade,
     });
   } catch (err) {

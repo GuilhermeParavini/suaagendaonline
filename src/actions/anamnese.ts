@@ -552,230 +552,345 @@ export async function uploadFotoAnamnese(
 // SEED DE TEMPLATES PADRAO POR ESPECIALIDADE
 // ============================================================
 
-function fisioterapiaCampos(): CampoTemplate[] {
+type CampoSeed = Omit<CampoTemplate, 'id'>;
+
+function comIds(campos: CampoSeed[]): CampoTemplate[] {
+  return campos.map((c, i) => ({
+    ...c,
+    id: crypto.randomUUID(),
+    ordem: c.ordem ?? i + 1,
+  }));
+}
+
+// ----- PODOLOGIA -----
+
+function podologiaPrimeiraConsulta(): CampoSeed[] {
   return [
-    { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
-    { id: crypto.randomUUID(), label: 'Inicio dos sintomas', tipo: 'data', obrigatorio: false, ordem: 2 },
-    {
-      id: crypto.randomUUID(),
-      label: 'Localizacao da dor',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: [
-        'Cervical',
-        'Toracica',
-        'Lombar',
-        'Ombro',
-        'Cotovelo',
-        'Punho',
-        'Quadril',
-        'Joelho',
-        'Tornozelo',
-        'Outro',
-      ],
-      ordem: 3,
-    },
-    {
-      id: crypto.randomUUID(),
-      label: 'Intensidade da dor',
-      tipo: 'escala_numerica',
-      obrigatorio: false,
-      min: 0,
-      max: 10,
-      ordem: 4,
-    },
-    { id: crypto.randomUUID(), label: 'Fator de melhora', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
-    { id: crypto.randomUUID(), label: 'Fator de piora', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
-    { id: crypto.randomUUID(), label: 'Pratica atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 7 },
-    { id: crypto.randomUUID(), label: 'Cirurgias anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 9 },
-    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+    { label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Inicio dos sintomas', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Menos de 1 semana', '1-4 semanas', '1-6 meses', 'Mais de 6 meses', 'Cronico'], ordem: 2 },
+    { label: 'Intensidade da dor', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 3 },
+    { label: 'Tipo de calcado habitual', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Aberto', 'Fechado', 'Esportivo', 'Salto alto', 'Bota', 'Chinelo'], ordem: 4 },
+    { label: 'Profissao (tempo em pe/sentado)', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
+    { label: 'Presenca de calos/calosidades', tipo: 'sim_nao', obrigatorio: false, ordem: 6 },
+    { label: 'Presenca de micose (unhas ou pele)', tipo: 'sim_nao', obrigatorio: false, ordem: 7 },
+    { label: 'Unha encravada', tipo: 'sim_nao', obrigatorio: false, ordem: 8 },
+    { label: 'Fissuras/rachaduras nos pes', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    { label: 'Verrugas plantares', tipo: 'sim_nao', obrigatorio: false, ordem: 10 },
+    { label: 'Diabetes', tipo: 'sim_nao', obrigatorio: true, ordem: 11 },
+    { label: 'Tipo de diabetes (se sim)', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Tipo 1', 'Tipo 2', 'Gestacional', 'Nao sabe'], ordem: 12 },
+    { label: 'Problemas circulatorios (varizes, trombose)', tipo: 'sim_nao', obrigatorio: false, ordem: 13 },
+    { label: 'Neuropatia periferica (perda de sensibilidade)', tipo: 'sim_nao', obrigatorio: false, ordem: 14 },
+    { label: 'Alergias (medicamentos, latex, esmaltes)', tipo: 'texto_livre', obrigatorio: false, ordem: 15 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 16 },
+    { label: 'Tratamentos anteriores nos pes', tipo: 'texto_livre', obrigatorio: false, ordem: 17 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 18 },
   ];
 }
 
-function podologiaCampos(): CampoTemplate[] {
+function podologiaRetorno(): CampoSeed[] {
   return [
-    { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
-    {
-      id: crypto.randomUUID(),
-      label: 'Tipo de calcado habitual',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: ['Aberto', 'Fechado', 'Esportivo', 'Salto', 'Outro'],
-      ordem: 2,
-    },
-    { id: crypto.randomUUID(), label: 'Presenca de calos', tipo: 'sim_nao', obrigatorio: false, ordem: 3 },
-    { id: crypto.randomUUID(), label: 'Presenca de micose', tipo: 'sim_nao', obrigatorio: false, ordem: 4 },
-    { id: crypto.randomUUID(), label: 'Unha encravada', tipo: 'sim_nao', obrigatorio: false, ordem: 5 },
-    { id: crypto.randomUUID(), label: 'Diabetes', tipo: 'sim_nao', obrigatorio: false, ordem: 6 },
-    { id: crypto.randomUUID(), label: 'Problemas circulatorios', tipo: 'sim_nao', obrigatorio: false, ordem: 7 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
-    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 9 },
+    { label: 'Evolucao desde a ultima consulta', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Melhorou', 'Igual', 'Piorou'], ordem: 1 },
+    { label: 'Queixa atual', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { label: 'Intensidade da dor atual', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 3 },
+    { label: 'Seguiu as orientacoes', tipo: 'sim_nao', obrigatorio: false, ordem: 4 },
+    { label: 'Mudou calcado', tipo: 'sim_nao', obrigatorio: false, ordem: 5 },
+    { label: 'Novos sintomas', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
+    { label: 'Alteracao em medicamentos', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
   ];
 }
 
-function nutricaoCampos(): CampoTemplate[] {
+function podologiaPeDiabetico(): CampoSeed[] {
   return [
-    {
-      id: crypto.randomUUID(),
-      label: 'Objetivo',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: [
-        'Emagrecimento',
-        'Ganho de massa',
-        'Saude geral',
-        'Controle de doenca',
-        'Outro',
-      ],
-      ordem: 1,
-    },
-    { id: crypto.randomUUID(), label: 'Alergias alimentares', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
-    {
-      id: crypto.randomUUID(),
-      label: 'Intolerancias',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: ['Lactose', 'Gluten', 'Outro', 'Nenhuma'],
-      ordem: 3,
-    },
-    {
-      id: crypto.randomUUID(),
-      label: 'Refeicoes por dia',
-      tipo: 'escala_numerica',
-      obrigatorio: false,
-      min: 1,
-      max: 8,
-      ordem: 4,
-    },
-    { id: crypto.randomUUID(), label: 'Consome alcool', tipo: 'sim_nao', obrigatorio: false, ordem: 5 },
-    { id: crypto.randomUUID(), label: 'Pratica atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 6 },
-    { id: crypto.randomUUID(), label: 'Frequencia atividade', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
-    { id: crypto.randomUUID(), label: 'Historico de dietas', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 9 },
-    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+    { label: 'Tipo de diabetes', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Tipo 1', 'Tipo 2', 'Gestacional'], ordem: 1 },
+    { label: 'Tempo de diagnostico', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Menos de 1 ano', '1-5 anos', '5-10 anos', 'Mais de 10 anos'], ordem: 2 },
+    { label: 'Ultima glicemia (valor)', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
+    { label: 'Hemoglobina glicada (HbA1c)', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { label: 'Sensibilidade dos pes preservada', tipo: 'sim_nao', obrigatorio: true, ordem: 5 },
+    { label: 'Pulsos pediosos palpaveis', tipo: 'sim_nao', obrigatorio: false, ordem: 6 },
+    { label: 'Presenca de feridas/ulceras', tipo: 'sim_nao', obrigatorio: true, ordem: 7 },
+    { label: 'Localizacao das lesoes', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Halux', 'Dedos', 'Planta', 'Calcanhar', 'Dorso', 'Lateral'], ordem: 8 },
+    { label: 'Deformidades (joanete, dedos em garra)', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    { label: 'Calosidades em areas de pressao', tipo: 'sim_nao', obrigatorio: false, ordem: 10 },
+    { label: 'Historico de amputacao', tipo: 'sim_nao', obrigatorio: false, ordem: 11 },
+    { label: 'Acompanhamento com endocrinologista', tipo: 'sim_nao', obrigatorio: false, ordem: 12 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 13 },
+    { label: 'Orientacoes fornecidas', tipo: 'texto_livre', obrigatorio: false, ordem: 14 },
   ];
 }
 
-function psicologiaCampos(): CampoTemplate[] {
+// ----- FISIOTERAPIA -----
+
+function fisioOrtopedica(): CampoSeed[] {
   return [
-    { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
-    { id: crypto.randomUUID(), label: 'Historico de acompanhamento psicologico', tipo: 'sim_nao', obrigatorio: false, ordem: 2 },
-    { id: crypto.randomUUID(), label: 'Uso de medicacao psiquiatrica', tipo: 'sim_nao', obrigatorio: false, ordem: 3 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
-    {
-      id: crypto.randomUUID(),
-      label: 'Qualidade do sono',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: ['Bom', 'Regular', 'Ruim', 'Insonia'],
-      ordem: 5,
-    },
-    {
-      id: crypto.randomUUID(),
-      label: 'Nivel de ansiedade',
-      tipo: 'escala_numerica',
-      obrigatorio: false,
-      min: 0,
-      max: 10,
-      ordem: 6,
-    },
-    {
-      id: crypto.randomUUID(),
-      label: 'Nivel de humor',
-      tipo: 'escala_numerica',
-      obrigatorio: false,
-      min: 0,
-      max: 10,
-      ordem: 7,
-    },
-    { id: crypto.randomUUID(), label: 'Atividade fisica regular', tipo: 'sim_nao', obrigatorio: false, ordem: 8 },
-    {
-      id: crypto.randomUUID(),
-      label: 'Rede de apoio',
-      tipo: 'selecao_multipla',
-      obrigatorio: false,
-      opcoes: ['Familia', 'Amigos', 'Parceiro', 'Terapeuta', 'Nenhuma'],
-      ordem: 9,
-    },
-    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+    { label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Inicio dos sintomas', tipo: 'data', obrigatorio: false, ordem: 2 },
+    { label: 'Mecanismo de lesao', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Trauma direto', 'Esforco repetitivo', 'Movimento brusco', 'Sem causa aparente', 'Pos-cirurgico'], ordem: 3 },
+    { label: 'Localizacao da dor', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Cervical', 'Toracica', 'Lombar', 'Ombro', 'Cotovelo', 'Punho/Mao', 'Quadril', 'Joelho', 'Tornozelo/Pe', 'Outro'], ordem: 4 },
+    { label: 'Intensidade da dor (EVA)', tipo: 'escala_numerica', obrigatorio: true, min: 0, max: 10, ordem: 5 },
+    { label: 'Tipo da dor', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Pontada', 'Queimacao', 'Peso', 'Latejante', 'Formigamento', 'Fisgada'], ordem: 6 },
+    { label: 'Fator de melhora', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Fator de piora', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
+    { label: 'Dor ao repouso', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    { label: 'Dor noturna', tipo: 'sim_nao', obrigatorio: false, ordem: 10 },
+    { label: 'Limitacao funcional', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Andar', 'Subir escada', 'Sentar/levantar', 'Carregar peso', 'Dormir', 'Trabalhar', 'Esporte'], ordem: 11 },
+    { label: 'Cirurgias anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 12 },
+    { label: 'Fraturas anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 13 },
+    { label: 'Doencas cronicas', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Hipertensao', 'Diabetes', 'Artrite', 'Artrose', 'Osteoporose', 'Fibromialgia', 'Nenhuma'], ordem: 14 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 15 },
+    { label: 'Exames de imagem realizados', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Raio-X', 'Ressonancia', 'Tomografia', 'Ultrassom', 'Nenhum'], ordem: 16 },
+    { label: 'Pratica atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 17 },
+    { label: 'Qual atividade e frequencia', tipo: 'texto_livre', obrigatorio: false, ordem: 18 },
+    { label: 'Profissao e postura no trabalho', tipo: 'texto_livre', obrigatorio: false, ordem: 19 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 20 },
   ];
 }
 
-function geralCampos(): CampoTemplate[] {
+function fisioNeurologica(): CampoSeed[] {
   return [
-    { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
-    { id: crypto.randomUUID(), label: 'Historico medico', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
-    { id: crypto.randomUUID(), label: 'Alergias', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
-    { id: crypto.randomUUID(), label: 'Cirurgias anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
-    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
+    { label: 'Diagnostico neurologico', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['AVC', 'Parkinson', 'Esclerose multipla', 'Lesao medular', 'TCE', 'Paralisia cerebral', 'Neuropatia', 'Outro'], ordem: 1 },
+    { label: 'Tempo de diagnostico', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { label: 'Lado acometido', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Direito', 'Esquerdo', 'Bilateral'], ordem: 3 },
+    { label: 'Nivel de consciencia', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Alerta', 'Sonolento', 'Confuso'], ordem: 4 },
+    { label: 'Marcha', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Independente', 'Com auxilio', 'Cadeira de rodas', 'Acamado'], ordem: 5 },
+    { label: 'Equilibrio', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Normal', 'Alterado em pe', 'Alterado sentado'], ordem: 6 },
+    { label: 'Tonus muscular', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Normal', 'Hipotonia', 'Hipertonia/Espasticidade'], ordem: 7 },
+    { label: 'Sensibilidade', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Preservada', 'Diminuida', 'Ausente'], ordem: 8 },
+    { label: 'Dor', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 9 },
+    { label: 'Dificuldade de fala/degluticao', tipo: 'sim_nao', obrigatorio: false, ordem: 10 },
+    { label: 'Incontinencia', tipo: 'sim_nao', obrigatorio: false, ordem: 11 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 12 },
+    { label: 'Fisioterapia anterior', tipo: 'sim_nao', obrigatorio: false, ordem: 13 },
+    { label: 'Objetivos do paciente', tipo: 'texto_livre', obrigatorio: false, ordem: 14 },
+    { label: 'Cuidador/Acompanhante', tipo: 'texto_livre', obrigatorio: false, ordem: 15 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 16 },
   ];
 }
 
-function templatePadraoParaEspecialidade(
-  especialidade: string,
-): { nome: string; campos: CampoTemplate[] } {
+function fisioRespiratoria(): CampoSeed[] {
+  return [
+    { label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Diagnostico respiratorio', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Asma', 'DPOC', 'Bronquite', 'Pneumonia', 'Pos-COVID', 'Fibrose', 'Pos-operatorio toracico', 'Outro'], ordem: 2 },
+    { label: 'Dispneia', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Repouso', 'Pequenos esforcos', 'Moderados esforcos', 'Grandes esforcos', 'Sem dispneia'], ordem: 3 },
+    { label: 'Tosse', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Seca', 'Produtiva', 'Noturna', 'Sem tosse'], ordem: 4 },
+    { label: 'Tabagismo', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Nunca fumou', 'Ex-tabagista', 'Fumante ativo'], ordem: 5 },
+    { label: 'Tempo de tabagismo (se aplicavel)', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
+    { label: 'Oxigenoterapia domiciliar', tipo: 'sim_nao', obrigatorio: false, ordem: 7 },
+    { label: 'Saturacao habitual', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
+    { label: 'Internacoes recentes', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+    { label: 'Exames realizados', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Espirometria', 'Raio-X torax', 'Tomografia', 'Gasometria', 'Nenhum'], ordem: 11 },
+    { label: 'Pratica atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 12 },
+    { label: 'Limitacao funcional', tipo: 'texto_livre', obrigatorio: false, ordem: 13 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 14 },
+  ];
+}
+
+// ----- NUTRICAO -----
+
+function nutricaoInicial(): CampoSeed[] {
+  return [
+    { label: 'Objetivo da consulta', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Emagrecimento', 'Ganho de massa', 'Saude geral', 'Controle de doenca', 'Gestacao', 'Esportivo', 'Vegetariano/Vegano', 'Outro'], ordem: 1 },
+    { label: 'Peso atual (kg)', tipo: 'texto_livre', obrigatorio: true, ordem: 2 },
+    { label: 'Altura (cm)', tipo: 'texto_livre', obrigatorio: true, ordem: 3 },
+    { label: 'Peso desejado (kg)', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { label: 'Historico de dietas anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
+    { label: 'Resultado das dietas', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Perdeu e manteve', 'Perdeu e recuperou (efeito sanfona)', 'Nao conseguiu seguir', 'Nunca fez dieta'], ordem: 6 },
+    { label: 'Alergias alimentares', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Intolerancias', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Lactose', 'Gluten', 'Frutose', 'Ovo', 'Frutos do mar', 'Nenhuma', 'Outro'], ordem: 8 },
+    { label: 'Restricoes alimentares', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Vegetariano', 'Vegano', 'Sem carne vermelha', 'Sem porco', 'Nenhuma'], ordem: 9 },
+    { label: 'Numero de refeicoes por dia', tipo: 'escala_numerica', obrigatorio: false, min: 1, max: 8, ordem: 10 },
+    { label: 'Pula refeicoes frequentemente', tipo: 'sim_nao', obrigatorio: false, ordem: 11 },
+    { label: 'Consumo de agua (litros/dia)', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Menos de 1L', '1-2L', '2-3L', 'Mais de 3L'], ordem: 12 },
+    { label: 'Consome alcool', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Nunca', 'Socialmente', 'Semanalmente', 'Diariamente'], ordem: 13 },
+    { label: 'Tabagismo', tipo: 'sim_nao', obrigatorio: false, ordem: 14 },
+    { label: 'Pratica atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 15 },
+    { label: 'Tipo e frequencia de atividade', tipo: 'texto_livre', obrigatorio: false, ordem: 16 },
+    { label: 'Qualidade do sono', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Boa', 'Regular', 'Ruim', 'Insonia'], ordem: 17 },
+    { label: 'Doencas cronicas', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Diabetes', 'Hipertensao', 'Colesterol alto', 'Tireoide', 'SOP', 'Gastrite/Refluxo', 'Nenhuma'], ordem: 18 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 19 },
+    { label: 'Suplementos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 20 },
+    { label: 'Funcionamento intestinal', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Regular diario', 'Irregular', 'Constipacao', 'Diarreia frequente'], ordem: 21 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 22 },
+  ];
+}
+
+function nutricaoRecordatorio(): CampoSeed[] {
+  return [
+    { label: 'Cafe da manha (horario e alimentos)', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Lanche da manha', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { label: 'Almoco (horario e alimentos)', tipo: 'texto_livre', obrigatorio: true, ordem: 3 },
+    { label: 'Lanche da tarde', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { label: 'Jantar (horario e alimentos)', tipo: 'texto_livre', obrigatorio: true, ordem: 5 },
+    { label: 'Ceia', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
+    { label: 'Beliscos entre refeicoes', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Consumo de agua no dia', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Menos de 1L', '1-2L', '2-3L', 'Mais de 3L'], ordem: 8 },
+    { label: 'Dia atipico', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    { label: 'Observacoes (humor, local, companhia)', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+  ];
+}
+
+function nutricaoRetorno(): CampoSeed[] {
+  return [
+    { label: 'Peso atual (kg)', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Seguiu o plano alimentar', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Totalmente', 'Parcialmente', 'Pouco', 'Nao conseguiu'], ordem: 2 },
+    { label: 'Dificuldades encontradas', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
+    { label: 'Mudancas percebidas', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Mais energia', 'Melhor sono', 'Menos inchaco', 'Perda de peso', 'Ganho de massa', 'Melhora digestao', 'Nenhuma'], ordem: 4 },
+    { label: 'Sintomas gastrointestinais', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Nenhum', 'Gases', 'Constipacao', 'Diarreia', 'Refluxo', 'Nausea'], ordem: 5 },
+    { label: 'Funcionamento intestinal', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Regular', 'Irregular', 'Melhorou', 'Piorou'], ordem: 6 },
+    { label: 'Mudou atividade fisica', tipo: 'sim_nao', obrigatorio: false, ordem: 7 },
+    { label: 'Novos medicamentos ou suplementos', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
+    { label: 'Alimentos que quer incluir/excluir', tipo: 'texto_livre', obrigatorio: false, ordem: 9 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+  ];
+}
+
+// ----- PSICOLOGIA -----
+
+function psicologiaEntrevistaInicial(): CampoSeed[] {
+  return [
+    { label: 'Queixa principal (motivo da consulta)', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Quando comecou a perceber o problema', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { label: 'Ja fez acompanhamento psicologico antes', tipo: 'sim_nao', obrigatorio: false, ordem: 3 },
+    { label: 'Duracao do acompanhamento anterior', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { label: 'Ja fez acompanhamento psiquiatrico', tipo: 'sim_nao', obrigatorio: false, ordem: 5 },
+    { label: 'Uso de medicacao psiquiatrica', tipo: 'sim_nao', obrigatorio: false, ordem: 6 },
+    { label: 'Medicamentos em uso (psiquiatricos e outros)', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Nivel de ansiedade atual', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 8 },
+    { label: 'Nivel de humor/animo atual', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 9 },
+    { label: 'Qualidade do sono', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Bom', 'Regular', 'Ruim', 'Insonia', 'Sono excessivo'], ordem: 10 },
+    { label: 'Apetite', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Normal', 'Aumentado', 'Diminuido', 'Variavel'], ordem: 11 },
+    { label: 'Pratica atividade fisica regular', tipo: 'sim_nao', obrigatorio: false, ordem: 12 },
+    { label: 'Consome alcool ou outras substancias', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Nao', 'Alcool socialmente', 'Alcool frequente', 'Tabaco', 'Outras substancias'], ordem: 13 },
+    { label: 'Rede de apoio', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Familia', 'Amigos', 'Parceiro(a)', 'Comunidade religiosa', 'Nenhuma'], ordem: 14 },
+    { label: 'Estado civil', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Solteiro(a)', 'Casado(a)/Uniao estavel', 'Divorciado(a)', 'Viuvo(a)'], ordem: 15 },
+    { label: 'Filhos', tipo: 'sim_nao', obrigatorio: false, ordem: 16 },
+    { label: 'Expectativa em relacao a terapia', tipo: 'texto_livre', obrigatorio: false, ordem: 17 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 18 },
+  ];
+}
+
+function psicologiaAcompanhamento(): CampoSeed[] {
+  return [
+    { label: 'Como esta se sentindo desde a ultima sessao', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Nivel de ansiedade', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 2 },
+    { label: 'Nivel de humor/animo', tipo: 'escala_numerica', obrigatorio: false, min: 0, max: 10, ordem: 3 },
+    { label: 'Qualidade do sono na semana', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Bom', 'Regular', 'Ruim'], ordem: 4 },
+    { label: 'Eventos significativos na semana', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
+    { label: 'Conseguiu aplicar o que discutimos', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Sim totalmente', 'Parcialmente', 'Nao conseguiu'], ordem: 6 },
+    { label: 'Temas que quer abordar hoje', tipo: 'texto_livre', obrigatorio: false, ordem: 7 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 8 },
+  ];
+}
+
+// ----- GERAL (fallback) -----
+
+function geralCampos(): CampoSeed[] {
+  return [
+    { label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Historico medico', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { label: 'Alergias', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
+    { label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { label: 'Cirurgias anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
+    { label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
+  ];
+}
+
+type ModeloSeed = { nome: string; campos: CampoTemplate[] };
+
+function modelosParaEspecialidade(especialidade: string): ModeloSeed[] {
   const esp = (especialidade ?? '').toLowerCase();
-  if (esp.includes('fisio')) {
-    return { nome: 'Anamnese Fisioterapia', campos: fisioterapiaCampos() };
-  }
   if (esp.includes('podolog')) {
-    return { nome: 'Anamnese Podologia', campos: podologiaCampos() };
+    return [
+      { nome: 'Anamnese Podologia - Primeira consulta', campos: comIds(podologiaPrimeiraConsulta()) },
+      { nome: 'Anamnese Podologia - Retorno', campos: comIds(podologiaRetorno()) },
+      { nome: 'Anamnese Podologia - Pe diabetico', campos: comIds(podologiaPeDiabetico()) },
+    ];
+  }
+  if (esp.includes('fisio')) {
+    return [
+      { nome: 'Avaliacao Ortopedica', campos: comIds(fisioOrtopedica()) },
+      { nome: 'Avaliacao Neurologica', campos: comIds(fisioNeurologica()) },
+      { nome: 'Avaliacao Respiratoria', campos: comIds(fisioRespiratoria()) },
+    ];
   }
   if (esp.includes('nutri')) {
-    return { nome: 'Anamnese Nutricao', campos: nutricaoCampos() };
+    return [
+      { nome: 'Consulta Inicial Nutricao', campos: comIds(nutricaoInicial()) },
+      { nome: 'Recordatorio Alimentar 24h', campos: comIds(nutricaoRecordatorio()) },
+      { nome: 'Retorno Nutricional', campos: comIds(nutricaoRetorno()) },
+    ];
   }
   if (esp.includes('psico')) {
-    return { nome: 'Anamnese Psicologia', campos: psicologiaCampos() };
+    return [
+      { nome: 'Entrevista Inicial Psicologia', campos: comIds(psicologiaEntrevistaInicial()) },
+      { nome: 'Acompanhamento Psicologia', campos: comIds(psicologiaAcompanhamento()) },
+    ];
   }
-  return { nome: 'Anamnese Geral', campos: geralCampos() };
+  return [{ nome: 'Anamnese Geral', campos: comIds(geralCampos()) }];
 }
+
+export type SeedTemplatesResultado = {
+  inseridos: number;
+  existentes: number;
+  total: number;
+  nomes: string[];
+};
 
 export async function seedTemplatesAnamnese(
   profissionalId: string,
   tenantId: string,
   especialidade: string,
-): Promise<{ inserido: boolean; templateId: string | null; nome: string }> {
+): Promise<SeedTemplatesResultado> {
   const admin = createAdminClient();
+  const modelos = modelosParaEspecialidade(especialidade);
 
-  const tpl = templatePadraoParaEspecialidade(especialidade);
+  const nomes = modelos.map((m) => m.nome);
 
   const { data: existentes, error: errBusca } = await admin
     .from('templates_anamnese')
     .select('id, nome')
     .eq('profissional_id', profissionalId)
     .eq('tenant_id', tenantId)
-    .eq('nome', tpl.nome)
-    .limit(1);
+    .in('nome', nomes);
   if (errBusca) {
     throw new Error(`seedTemplatesAnamnese busca: ${errBusca.message}`);
   }
-  if (existentes && existentes.length > 0) {
+
+  const jaExistentes = new Set(
+    (existentes ?? []).map((r) => r.nome as string),
+  );
+  const aInserir = modelos.filter((m) => !jaExistentes.has(m.nome));
+
+  if (aInserir.length === 0) {
     return {
-      inserido: false,
-      templateId: existentes[0].id as string,
-      nome: tpl.nome,
+      inseridos: 0,
+      existentes: jaExistentes.size,
+      total: modelos.length,
+      nomes: modelos.map((m) => m.nome),
     };
   }
 
-  const { data, error } = await admin
-    .from('templates_anamnese')
-    .insert({
-      tenant_id: tenantId,
-      profissional_id: profissionalId,
-      nome: tpl.nome,
-      especialidade,
-      campos: tpl.campos,
-      padrao: true,
-      ativo: true,
-    })
-    .select('id')
-    .single();
-  if (error || !data) {
-    throw new Error(
-      `seedTemplatesAnamnese insert: ${error?.message ?? 'falha desconhecida'}`,
-    );
+  const rows = aInserir.map((m, i) => ({
+    tenant_id: tenantId,
+    profissional_id: profissionalId,
+    nome: m.nome,
+    especialidade,
+    campos: m.campos,
+    // Primeiro modelo da especialidade vira o padrao se nao houver outro padrao
+    padrao: i === 0 && jaExistentes.size === 0,
+    ativo: true,
+  }));
+
+  const { error } = await admin.from('templates_anamnese').insert(rows);
+  if (error) {
+    throw new Error(`seedTemplatesAnamnese insert: ${error.message}`);
   }
-  return { inserido: true, templateId: data.id as string, nome: tpl.nome };
+
+  return {
+    inseridos: rows.length,
+    existentes: jaExistentes.size,
+    total: modelos.length,
+    nomes: modelos.map((m) => m.nome),
+  };
 }

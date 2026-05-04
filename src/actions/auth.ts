@@ -217,7 +217,7 @@ export async function completeOnboarding(data: {
           data.specialty,
         );
         console.log(
-          `✅ Template anamnese: ${r.inserido ? 'criado' : 'ja existia'} (${r.nome})`,
+          `✅ Templates anamnese: ${r.inseridos} inseridos, ${r.existentes} existentes (de ${r.total} modelos)`,
         );
       } catch (seedErr) {
         console.error(
