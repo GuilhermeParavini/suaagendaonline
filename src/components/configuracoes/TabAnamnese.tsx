@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Sparkles } from "lucide-react";
 import {
   atualizarTemplate,
   excluirTemplate,
@@ -21,6 +21,8 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
   const [erro, setErro] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editando, setEditando] = useState<Template | null>(null);
+  const [carregandoSeed, startSeed] = useTransition();
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   const recarregar = useCallback(async () => {
     setErro(null);
@@ -53,6 +55,35 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
     setEditorOpen(true);
   };
 
+  const handleSeedPadrao = () => {
+    setSeedMsg(null);
+    setErro(null);
+    startSeed(async () => {
+      try {
+        const resp = await fetch("/api/seed-anamnese");
+        const json = (await resp.json()) as {
+          sucesso?: boolean;
+          inserido?: boolean;
+          nome?: string;
+          error?: string;
+        };
+        if (!resp.ok || !json.sucesso) {
+          setErro(json.error ?? "Falha ao carregar templates padrão.");
+          return;
+        }
+        setSeedMsg(
+          json.inserido
+            ? `Template "${json.nome}" carregado.`
+            : `Template padrão já estava cadastrado.`,
+        );
+        await recarregar();
+        window.setTimeout(() => setSeedMsg(null), 3000);
+      } catch (e) {
+        setErro(e instanceof Error ? e.message : String(e));
+      }
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
@@ -81,10 +112,24 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
           <p className="text-sm text-slate-500">Carregando...</p>
         </div>
       ) : templates.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
+        <div className="rounded-lg border border-slate-200 bg-white p-6 text-center space-y-3">
           <p className="text-sm text-slate-500">
             Nenhum template cadastrado.
           </p>
+          <button
+            type="button"
+            onClick={handleSeedPadrao}
+            disabled={carregandoSeed}
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+          >
+            <Sparkles size={14} strokeWidth={1.5} aria-hidden="true" />
+            {carregandoSeed
+              ? "Carregando..."
+              : "Carregar templates padrão"}
+          </button>
+          {seedMsg ? (
+            <p className="text-xs font-medium text-[#115E59]">{seedMsg}</p>
+          ) : null}
         </div>
       ) : (
         <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
