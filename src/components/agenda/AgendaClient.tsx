@@ -11,6 +11,7 @@ import {
   type IndisponivelDia,
   type StatusAgendamento,
 } from "@/actions/agendamentos";
+import { getBloqueioTipoMeta } from "@/lib/bloqueio-tipos";
 import CalendarioSemanal, { type ViewMode } from "./CalendarioSemanal";
 import ListaHorarios from "./ListaHorarios";
 import AgendamentoModal from "./AgendamentoModal";
@@ -134,10 +135,17 @@ function AgendaClient({
                     {indisponivel.nome}
                   </span>
                 ) : (
-                  <span>
-                    <strong className="font-semibold">Dia bloqueado</strong>
-                    {indisponivel.motivo ? ` · ${indisponivel.motivo}` : ""}
-                  </span>
+                  (() => {
+                    const meta = getBloqueioTipoMeta(indisponivel.bloqueioTipo);
+                    return (
+                      <span>
+                        <strong className="font-semibold">{meta.label}</strong>
+                        {indisponivel.motivo
+                          ? ` · ${indisponivel.motivo}`
+                          : ""}
+                      </span>
+                    );
+                  })()
                 )}
               </div>
             ) : null}

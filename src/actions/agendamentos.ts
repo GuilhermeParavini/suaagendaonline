@@ -34,7 +34,17 @@ export type AgendamentoDia = {
 
 export type IndisponivelDia =
   | { tipo: 'feriado'; nome: string }
-  | { tipo: 'bloqueio'; motivo: string | null };
+  | {
+      tipo: 'bloqueio';
+      motivo: string | null;
+      bloqueioTipo:
+        | 'ferias'
+        | 'folga'
+        | 'congresso'
+        | 'licenca'
+        | 'feriado'
+        | 'outro';
+    };
 
 type GetAgendamentosResult =
   | {
@@ -155,7 +165,11 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
         cur = somarDiasIso(cur, 1);
       }
       if (b.data_inicio <= data && b.data_fim >= data && !indisponivel) {
-        indisponivel = { tipo: 'bloqueio', motivo: b.motivo };
+        indisponivel = {
+          tipo: 'bloqueio',
+          motivo: b.motivo,
+          bloqueioTipo: b.tipo,
+        };
       }
     }
     datasIndisponiveisSemana = Array.from(setIndisp).sort();

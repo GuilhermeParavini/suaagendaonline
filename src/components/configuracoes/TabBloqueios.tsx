@@ -13,13 +13,16 @@ import {
   excluirBloqueio,
   getBloqueiosEFeriados,
   type Bloqueio,
+  type BloqueioTipo,
 } from "@/actions/bloqueios";
 import {
   criarFeriadoCustom,
   excluirFeriado,
 } from "@/actions/feriados";
 import type { FeriadoRow } from "@/lib/feriados-bloqueios";
+import { BLOQUEIO_TIPOS, getBloqueioTipoMeta } from "@/lib/bloqueio-tipos";
 import { cn } from "@/lib/utils";
+import DateInputBR from "@/components/ui/DateInputBR";
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
@@ -32,9 +35,15 @@ function formatarDataIsoExtenso(iso: string): string {
   return format(dt, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
 }
 
-function formatarRange(inicio: string, fim: string): string {
-  if (inicio === fim) return formatarDataIsoExtenso(inicio);
-  return `${formatarDataIsoExtenso(inicio)} - ${formatarDataIsoExtenso(fim)}`;
+function formatarDataBR(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return format(dt, "dd/MM/yyyy", { locale: ptBR });
+}
+
+function formatarRangeBR(inicio: string, fim: string): string {
+  if (inicio === fim) return formatarDataBR(inicio);
+  return `${formatarDataBR(inicio)} a ${formatarDataBR(fim)}`;
 }
 
 function TabBloqueios() {
@@ -220,14 +229,30 @@ function ItemBloqueio({
     });
   };
 
+  const meta = getBloqueioTipoMeta(bloqueio.tipo);
+  const TipoIcon = meta.Icon;
+
   return (
     <li className="flex items-center gap-3 px-3 py-3 sm:px-4">
+      <span
+        aria-hidden="true"
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-surface text-primary-dark"
+      >
+        <TipoIcon size={14} strokeWidth={1.5} aria-hidden="true" />
+      </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-900">
-          {formatarRange(bloqueio.data_inicio, bloqueio.data_fim)}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium text-slate-900">
+            {formatarRangeBR(bloqueio.data_inicio, bloqueio.data_fim)}
+          </p>
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+            {meta.label}
+          </span>
+        </div>
         {bloqueio.motivo ? (
-          <p className="text-xs text-slate-500 truncate">{bloqueio.motivo}</p>
+          <p className="mt-0.5 text-xs text-slate-500 truncate">
+            {bloqueio.motivo}
+          </p>
         ) : null}
         {erro ? <p className={errorClass}>{erro}</p> : null}
       </div>
@@ -320,6 +345,7 @@ function ItemFeriado({
 
 const schemaBloqueio = z
   .object({
+    tipo: z.enum(["ferias", "folga", "congresso", "licenca", "outro"]),
     data_inicio: z
       .string()
       .refine((s) => /^\d{4}-\d{2}-\d{2}$/.test(s), "Data inicial inválida"),
@@ -351,16 +377,26 @@ function DialogNovoBloqueio({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormBloqueioData>({
     resolver: zodResolver(schemaBloqueio),
     mode: "onBlur",
-    defaultValues: { data_inicio: "", data_fim: "", motivo: "" },
+    defaultValues: {
+      tipo: "ferias",
+      data_inicio: "",
+      data_fim: "",
+      motivo: "",
+    },
   });
+
+  const dataInicioWatch = watch("data_inicio");
+  const dataFimWatch = watch("data_fim");
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
-      reset({ data_inicio: "", data_fim: "", motivo: "" });
+      reset({ tipo: "ferias", data_inicio: "", data_fim: "", motivo: "" });
       setErro(null);
     }
     onOpenChange(next);
@@ -370,6 +406,7 @@ function DialogNovoBloqueio({
     setErro(null);
     startTransition(async () => {
       const result = await criarBloqueio({
+        tipo: data.tipo as BloqueioTipo,
         data_inicio: data.data_inicio,
         data_fim: data.data_fim,
         motivo: data.motivo,
@@ -412,37 +449,57 @@ function DialogNovoBloqueio({
             onSubmit={handleSubmit(onSubmit)}
             className="mt-4 space-y-4 overflow-y-auto"
           >
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className={labelClass}>Início *</label>
-                <input
-                  {...register("data_inicio")}
-                  type="date"
-                  className={inputClass}
-                />
-                {errors.data_inicio ? (
-                  <p className={errorClass}>{errors.data_inicio.message}</p>
-                ) : null}
-              </div>
-              <div className="space-y-1">
-                <label className={labelClass}>Fim *</label>
-                <input
-                  {...register("data_fim")}
-                  type="date"
-                  className={inputClass}
-                />
-                {errors.data_fim ? (
-                  <p className={errorClass}>{errors.data_fim.message}</p>
-                ) : null}
-              </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Tipo *</label>
+              <select {...register("tipo")} className={inputClass}>
+                {BLOQUEIO_TIPOS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              {errors.tipo ? (
+                <p className={errorClass}>{errors.tipo.message}</p>
+              ) : null}
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <DateInputBR
+                label="Início"
+                required
+                value={dataInicioWatch ?? ""}
+                onChange={(iso) =>
+                  setValue("data_inicio", iso, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+              />
+              <DateInputBR
+                label="Fim"
+                required
+                value={dataFimWatch ?? ""}
+                onChange={(iso) =>
+                  setValue("data_fim", iso, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
+              />
+            </div>
+            {errors.data_inicio ? (
+              <p className={errorClass}>{errors.data_inicio.message}</p>
+            ) : null}
+            {errors.data_fim ? (
+              <p className={errorClass}>{errors.data_fim.message}</p>
+            ) : null}
 
             <div className="space-y-1">
               <label className={labelClass}>Motivo (opcional)</label>
               <input
                 {...register("motivo")}
                 type="text"
-                placeholder="Ex.: Férias, congresso, viagem..."
+                placeholder="Detalhe se necessário"
                 maxLength={200}
                 className={inputClass}
               />

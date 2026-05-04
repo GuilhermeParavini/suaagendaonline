@@ -16,7 +16,7 @@ export type BloqueioRow = {
   data_inicio: string;
   data_fim: string;
   motivo: string | null;
-  tipo: 'ferias' | 'folga' | 'feriado' | 'outro';
+  tipo: 'ferias' | 'folga' | 'congresso' | 'licenca' | 'feriado' | 'outro';
   created_at: string;
 };
 

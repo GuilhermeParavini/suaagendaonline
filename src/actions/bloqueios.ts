@@ -4,7 +4,22 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { getFeriadosForTenant, type FeriadoRow } from '@/lib/feriados-bloqueios';
 
-export type BloqueioTipo = 'ferias' | 'folga' | 'feriado' | 'outro';
+export type BloqueioTipo =
+  | 'ferias'
+  | 'folga'
+  | 'congresso'
+  | 'licenca'
+  | 'feriado'
+  | 'outro';
+
+const TIPOS_VALIDOS: BloqueioTipo[] = [
+  'ferias',
+  'folga',
+  'congresso',
+  'licenca',
+  'feriado',
+  'outro',
+];
 
 export type Bloqueio = {
   id: string;
@@ -127,7 +142,7 @@ export async function criarBloqueio(
   }
 
   const tipo: BloqueioTipo = input.tipo ?? 'ferias';
-  if (!['ferias', 'folga', 'feriado', 'outro'].includes(tipo)) {
+  if (!TIPOS_VALIDOS.includes(tipo)) {
     return { ok: false, error: 'Tipo de bloqueio invalido.' };
   }
 
