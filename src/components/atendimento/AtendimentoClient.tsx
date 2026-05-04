@@ -247,12 +247,17 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
       >
         {anamneseAtual && anamneseAtual.id !== "novo" ? (
           <div className="space-y-2">
-            <p className="text-xs text-slate-500">
-              {anamneseAtual.template_nome ?? "Anamnese"} ·{" "}
-              {format(new Date(anamneseAtual.created_at), "dd/MM/yyyy", {
-                locale: ptBR,
-              })}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full bg-[#D1FAE5] px-2.5 py-[3px] text-[11px] font-medium leading-none text-[#065F46]">
+                Anamnese preenchida
+              </span>
+              <p className="text-xs text-slate-500">
+                {anamneseAtual.template_nome ?? "Anamnese"} ·{" "}
+                {format(new Date(anamneseAtual.created_at), "dd/MM/yyyy", {
+                  locale: ptBR,
+                })}
+              </p>
+            </div>
             <AnamneseDetalhe
               anamnese={{
                 id: anamneseAtual.id,

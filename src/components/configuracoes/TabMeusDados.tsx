@@ -15,6 +15,7 @@ import { getRegistroSugestao } from "@/lib/registro-profissional";
 import RegistroInput from "@/components/ui/RegistroInput";
 import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
+import LinkPreConsulta from "./LinkPreConsulta";
 import SecaoAssinatura from "./SecaoAssinatura";
 import SecaoLogo from "./SecaoLogo";
 
@@ -224,6 +225,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
     <div className="space-y-6">
       <LinkAgendamento slug={tenant.slug} />
       <LinkCadastroPaciente slug={tenant.slug} />
+      <LinkPreConsulta slug={tenant.slug} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <header className="flex items-center justify-between gap-2">
