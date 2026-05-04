@@ -313,6 +313,58 @@ export async function excluirTemplate(id: string): Promise<Result<null>> {
   return atualizarTemplate(id, { ativo: false });
 }
 
+export async function duplicarTemplate(
+  id: string,
+): Promise<Result<{ id: string }>> {
+  if (!id) return { ok: false, error: 'Template invalido.' };
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data: row, error: getErr } = await admin
+    .from('templates_anamnese')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: getErr.message };
+  if (!row) return { ok: false, error: 'Template nao encontrado.' };
+  if (row.tenant_id !== ctx.tenantId) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  // Regenera ids dos campos para nao conflitar com o original
+  const camposOriginais = normalizarCampos(row.campos);
+  const camposCopia = camposOriginais.map((c) => ({
+    ...c,
+    id: crypto.randomUUID(),
+  }));
+
+  const nomeOriginal = (row.nome as string) ?? 'Template';
+  const nomeCopia = nomeOriginal.startsWith('Copia de ')
+    ? nomeOriginal
+    : `Copia de ${nomeOriginal}`;
+
+  const { data, error } = await admin
+    .from('templates_anamnese')
+    .insert({
+      tenant_id: ctx.tenantId,
+      profissional_id: ctx.profissionalId,
+      nome: nomeCopia,
+      especialidade: row.especialidade as string,
+      campos: camposCopia,
+      padrao: false,
+      ativo: true,
+    })
+    .select('id')
+    .single();
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Falha ao duplicar.' };
+  }
+
+  revalidatePath('/configuracoes');
+  return { ok: true, data: { id: data.id as string } };
+}
+
 export async function getAnamneses(
   pacienteId: string,
 ): Promise<Result<Anamnese[]>> {
@@ -605,12 +657,57 @@ function nutricaoCampos(): CampoTemplate[] {
   ];
 }
 
+function psicologiaCampos(): CampoTemplate[] {
+  return [
+    { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { id: crypto.randomUUID(), label: 'Historico de acompanhamento psicologico', tipo: 'sim_nao', obrigatorio: false, ordem: 2 },
+    { id: crypto.randomUUID(), label: 'Uso de medicacao psiquiatrica', tipo: 'sim_nao', obrigatorio: false, ordem: 3 },
+    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    {
+      id: crypto.randomUUID(),
+      label: 'Qualidade do sono',
+      tipo: 'selecao_multipla',
+      obrigatorio: false,
+      opcoes: ['Bom', 'Regular', 'Ruim', 'Insonia'],
+      ordem: 5,
+    },
+    {
+      id: crypto.randomUUID(),
+      label: 'Nivel de ansiedade',
+      tipo: 'escala_numerica',
+      obrigatorio: false,
+      min: 0,
+      max: 10,
+      ordem: 6,
+    },
+    {
+      id: crypto.randomUUID(),
+      label: 'Nivel de humor',
+      tipo: 'escala_numerica',
+      obrigatorio: false,
+      min: 0,
+      max: 10,
+      ordem: 7,
+    },
+    { id: crypto.randomUUID(), label: 'Atividade fisica regular', tipo: 'sim_nao', obrigatorio: false, ordem: 8 },
+    {
+      id: crypto.randomUUID(),
+      label: 'Rede de apoio',
+      tipo: 'selecao_multipla',
+      obrigatorio: false,
+      opcoes: ['Familia', 'Amigos', 'Parceiro', 'Terapeuta', 'Nenhuma'],
+      ordem: 9,
+    },
+    { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 10 },
+  ];
+}
+
 function geralCampos(): CampoTemplate[] {
   return [
     { id: crypto.randomUUID(), label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
-    { id: crypto.randomUUID(), label: 'Historico de doencas', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
-    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
-    { id: crypto.randomUUID(), label: 'Alergias', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
+    { id: crypto.randomUUID(), label: 'Historico medico', tipo: 'texto_livre', obrigatorio: false, ordem: 2 },
+    { id: crypto.randomUUID(), label: 'Alergias', tipo: 'texto_livre', obrigatorio: false, ordem: 3 },
+    { id: crypto.randomUUID(), label: 'Medicamentos em uso', tipo: 'texto_livre', obrigatorio: false, ordem: 4 },
     { id: crypto.randomUUID(), label: 'Cirurgias anteriores', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
     { id: crypto.randomUUID(), label: 'Observacoes', tipo: 'texto_livre', obrigatorio: false, ordem: 6 },
   ];
@@ -628,6 +725,9 @@ function templatePadraoParaEspecialidade(
   }
   if (esp.includes('nutri')) {
     return { nome: 'Anamnese Nutricao', campos: nutricaoCampos() };
+  }
+  if (esp.includes('psico')) {
+    return { nome: 'Anamnese Psicologia', campos: psicologiaCampos() };
   }
   return { nome: 'Anamnese Geral', campos: geralCampos() };
 }

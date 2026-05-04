@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Pencil, Plus, Sparkles } from "lucide-react";
+import { Copy, Pencil, Plus, Sparkles } from "lucide-react";
 import {
   atualizarTemplate,
+  duplicarTemplate,
   excluirTemplate,
+  getTemplate,
   getTemplates,
   type Template,
 } from "@/actions/anamnese";
@@ -52,6 +54,23 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
 
   const abrirEditar = (t: Template) => {
     setEditando(t);
+    setEditorOpen(true);
+  };
+
+  const duplicarECarregar = async (t: Template) => {
+    setErro(null);
+    const r = await duplicarTemplate(t.id);
+    if (!r.ok) {
+      setErro(r.error);
+      return;
+    }
+    const novo = await getTemplate(r.data.id);
+    if (!novo.ok) {
+      setErro(novo.error);
+      return;
+    }
+    await recarregar();
+    setEditando(novo.data);
     setEditorOpen(true);
   };
 
@@ -138,6 +157,7 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
               key={t.id}
               template={t}
               onEditar={() => abrirEditar(t)}
+              onDuplicar={() => duplicarECarregar(t)}
               onChanged={recarregar}
             />
           ))}
@@ -159,10 +179,12 @@ function TabAnamnese({ especialidade }: TabAnamneseProps) {
 function ItemTemplate({
   template,
   onEditar,
+  onDuplicar,
   onChanged,
 }: {
   template: Template;
   onEditar: () => void;
+  onDuplicar: () => void | Promise<void>;
   onChanged: () => void;
 }) {
   const [erro, setErro] = useState<string | null>(null);
@@ -233,6 +255,17 @@ function ItemTemplate({
         />
         <span className="text-xs text-slate-600">Ativo</span>
       </label>
+
+      <button
+        type="button"
+        onClick={() => onDuplicar()}
+        disabled={isPending}
+        aria-label={`Duplicar ${template.nome}`}
+        title="Duplicar"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
+      >
+        <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
+      </button>
 
       <button
         type="button"
