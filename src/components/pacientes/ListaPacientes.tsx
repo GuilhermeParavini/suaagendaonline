@@ -79,7 +79,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
             inputMode="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome ou CPF"
+            placeholder="Buscar por nome ou telefone"
             aria-label="Buscar paciente"
             className="w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition"
           />

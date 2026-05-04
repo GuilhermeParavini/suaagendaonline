@@ -9,7 +9,6 @@ export type PacienteListItem = {
   id: string;
   nome: string;
   telefone: string;
-  cpf: string;
   menor_idade: boolean;
   ultima_consulta: string | null;
 };
@@ -30,19 +29,23 @@ async function buildList(
 ): Promise<PacienteListItem[]> {
   let pacientesQuery = admin
     .from('pacientes')
-    .select('id, nome, telefone, cpf, menor_idade')
+    .select('id, nome, telefone, menor_idade')
     .eq('tenant_id', tenantId)
     .eq('ativo', true);
 
   const q = query?.trim() ?? '';
   if (q.length > 0) {
     const digits = cleanDigits(q);
+    // PostgREST .or() trata virgula e parenteses como separadores;
+    // sanitiza o termo de nome para nao quebrar a query.
+    const safeNome = q.replace(/[,()*]/g, ' ').trim();
     if (digits.length >= 3) {
+      // LGPD: busca por nome OU telefone (sem CPF), ignorando mascara.
       pacientesQuery = pacientesQuery.or(
-        `nome.ilike.%${q}%,cpf.ilike.%${digits}%`,
+        `nome.ilike.*${safeNome}*,telefone.ilike.*${digits}*`,
       );
     } else {
-      pacientesQuery = pacientesQuery.ilike('nome', `%${q}%`);
+      pacientesQuery = pacientesQuery.ilike('nome', `%${safeNome}%`);
     }
   }
 
@@ -77,7 +80,6 @@ async function buildList(
     id: p.id as string,
     nome: p.nome as string,
     telefone: (p.telefone as string) ?? '',
-    cpf: (p.cpf as string) ?? '',
     menor_idade: Boolean(p.menor_idade),
     ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
   }));
