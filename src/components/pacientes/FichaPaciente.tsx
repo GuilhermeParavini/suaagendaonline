@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Avatar from "@/components/ui/Avatar";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
-import { formatPhone, formatCPF, formatCEP } from "@/lib/masks";
+import { formatPhone, formatCEP } from "@/lib/masks";
 import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { getAnamneses, type Anamnese } from "@/actions/anamnese";
@@ -308,7 +308,6 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DadoLinha label="CPF" value={formatCPF(paciente.cpf)} />
                 <DadoLinha
                   label="Telefone"
                   value={formatPhone(paciente.telefone)}
@@ -335,7 +334,6 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                     label="Parentesco"
                     value={parentescoLabel[responsavel.grau_parentesco]}
                   />
-                  <DadoLinha label="CPF" value={formatCPF(responsavel.cpf)} />
                   <DadoLinha
                     label="Telefone"
                     value={formatPhone(responsavel.telefone)}
