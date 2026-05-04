@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanCEP, cleanPhone } from '@/lib/masks';
 import { validateCPF, isValidBirthDate, isMinor } from '@/lib/validators';
+import { enviarNotificacaoEmail } from '@/lib/notificacoes';
+import {
+  emailConfirmacaoCadastro,
+  montarLinkAgendamento,
+} from '@/lib/email-templates';
 
 export type PacienteListItem = {
   id: string;
@@ -566,7 +571,7 @@ export async function cadastrarPacienteAvulso(
 
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('nome')
+    .select('nome, especialidade, logo_url')
     .eq('tenant_id', tenantId)
     .eq('ativo', true)
     .order('created_at', { ascending: true })
@@ -574,6 +579,9 @@ export async function cadastrarPacienteAvulso(
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   const profissionalNome = (prof?.nome as string | null) ?? 'profissional';
+  const profissionalEspecialidade =
+    (prof?.especialidade as string | null) ?? null;
+  const profissionalLogoUrl = (prof?.logo_url as string | null) ?? null;
 
   const nome = input.nome?.trim() ?? '';
   if (nome.length < 3) return { ok: false, error: 'Nome invalido.' };
@@ -724,6 +732,35 @@ export async function cadastrarPacienteAvulso(
       ok: false,
       error: `Falha ao registrar consentimento: ${consErr.message}`,
     };
+  }
+
+  // Envia confirmacao ao paciente (se tiver email)
+  try {
+    if (email) {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+      const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
+
+      const tpl = emailConfirmacaoCadastro({
+        pacienteNome: nome,
+        profissionalNome,
+        profissionalEspecialidade,
+        linkAgendamento,
+        logoUrl: profissionalLogoUrl,
+      });
+
+      await enviarNotificacaoEmail({
+        tenantId,
+        agendamentoId: null,
+        tipo: 'boas_vindas',
+        destino: email,
+        assunto: tpl.assunto,
+        html: tpl.html,
+      });
+    }
+  } catch (e) {
+    console.error('[cadastro-avulso] erro ao confirmar para paciente:', e);
   }
 
   return { ok: true, pacienteId, profissionalNome };
