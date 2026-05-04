@@ -368,7 +368,7 @@ export async function salvarAssinatura(
 // LOGO DA CLINICA
 // ============================================================
 
-const LOGO_BUCKET = 'avatares';
+const LOGO_BUCKET = 'logos';
 const MAX_LOGO_BYTES = 1 * 1024 * 1024;
 const TIPOS_LOGO_VALIDOS = [
   'image/png',
@@ -388,12 +388,16 @@ async function removerLogoStorage(
   url: string | null,
 ) {
   if (!url) return;
-  const marker = `/${LOGO_BUCKET}/`;
+  // Aceita tanto o bucket atual quanto o legacy 'avatares' (logos antigas).
+  const marker = url.includes(`/${LOGO_BUCKET}/`)
+    ? `/${LOGO_BUCKET}/`
+    : '/avatares/';
   const idx = url.indexOf(marker);
   if (idx === -1) return;
   const path = url.slice(idx + marker.length);
   if (!path) return;
-  await admin.storage.from(LOGO_BUCKET).remove([path]).catch(() => {});
+  const bucket = marker === '/avatares/' ? 'avatares' : LOGO_BUCKET;
+  await admin.storage.from(bucket).remove([path]).catch(() => {});
 }
 
 export async function salvarLogo(
@@ -414,7 +418,16 @@ export async function salvarLogo(
   }
 
   const ext = extLogo(arquivo.type);
-  const path = `logos/${ctx.profissionalId}/logo-${Date.now()}.${ext}`;
+  // Path dentro do bucket: <profissional_id>/logo-<ts>.<ext>
+  // O bucket ja se chama "logos", portanto NAO prefixar logos/ aqui.
+  const path = `${ctx.profissionalId}/logo-${Date.now()}.${ext}`;
+
+  console.log('[salvarLogo] upload', {
+    bucket: LOGO_BUCKET,
+    path,
+    mime: arquivo.type,
+    bytes: arquivo.size,
+  });
 
   const buffer = new Uint8Array(await arquivo.arrayBuffer());
   const admin = createAdminClient();
@@ -423,14 +436,16 @@ export async function salvarLogo(
     .from(LOGO_BUCKET)
     .upload(path, buffer, {
       contentType: arquivo.type,
-      upsert: false,
+      upsert: true,
     });
   if (upErr) {
+    console.error('[salvarLogo] erro no upload:', upErr.message);
     return { ok: false, error: `Falha no upload: ${upErr.message}` };
   }
 
   const { data: pub } = admin.storage.from(LOGO_BUCKET).getPublicUrl(path);
   const url = pub?.publicUrl ?? null;
+  console.log('[salvarLogo] URL publica gerada:', url);
   if (!url) return { ok: false, error: 'Falha ao gerar URL publica.' };
 
   // Remove logo anterior se existir
@@ -452,8 +467,12 @@ export async function salvarLogo(
     .from('profissionais')
     .update({ logo_url: url })
     .eq('id', ctx.profissionalId);
-  if (updErr) return { ok: false, error: updErr.message };
+  if (updErr) {
+    console.error('[salvarLogo] erro ao atualizar logo_url:', updErr.message);
+    return { ok: false, error: updErr.message };
+  }
 
+  console.log('[salvarLogo] logo_url salva no banco:', url);
   revalidatePath('/configuracoes');
   return { ok: true, data: { url } };
 }
