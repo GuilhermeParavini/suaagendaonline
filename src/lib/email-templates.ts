@@ -179,6 +179,47 @@ export function emailLembrete24h(d: DadosLembrete): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosFollowup = {
+  pacienteNome: string;
+  profissionalNome: string;
+  dataIso: string;
+  telefoneProfissional: string | null;
+  mensagemPersonalizada: string | null;
+  logoUrl?: string | null;
+};
+
+function formatarTelefoneBR(digits: string | null): string | null {
+  if (!digits) return null;
+  const d = digits.replace(/\D/g, '');
+  if (d.length === 11) {
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  }
+  if (d.length === 10) {
+    return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  }
+  return digits;
+}
+
+export function emailFollowupConsulta(d: DadosFollowup): {
+  assunto: string;
+  html: string;
+} {
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
+  const assunto = `Como você está, ${nome}?`;
+  const telefone = formatarTelefoneBR(d.telefoneProfissional);
+  const mensagem = (d.mensagemPersonalizada ?? '').trim();
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 12px 0;">Esperamos que esteja bem após sua consulta com ${escapeHtml(profissional)} em ${escapeHtml(dataPorExtenso(d.dataIso))}.</p>
+    <p style="margin:0 0 12px 0;">Se tiver dúvidas ou precisar de algo, entre em contato${telefone ? `: <strong>${escapeHtml(telefone)}</strong>` : ''}.</p>
+    ${mensagem ? `<p style="margin:16px 0 0 0;padding:12px;background-color:#F0FDFA;border-left:3px solid #0D9488;color:#0F172A;">${escapeHtml(mensagem)}</p>` : ''}
+    <p style="margin:20px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosAvaliacao = {
   pacienteNome: string;
   profissionalNome: string;

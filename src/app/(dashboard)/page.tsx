@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Star } from "lucide-react";
+import { Heart, Star } from "lucide-react";
 import { startOfDay, endOfDay, startOfMonth, endOfMonth, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
@@ -7,6 +7,11 @@ import MetricCard from "@/components/ui/MetricCard";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import Card from "@/components/ui/Card";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
+import AcompanhamentoLista from "@/components/dashboard/AcompanhamentoLista";
+import {
+  getPacientesParaAcompanhar,
+  type PacienteAcompanhamento,
+} from "@/actions/followup";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -35,7 +40,7 @@ export default async function DashboardPage() {
 
   const { data: prof } = await admin
     .from("profissionais")
-    .select("id, tenant_id")
+    .select("id, tenant_id, nome, mostrar_acompanhamento")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -126,6 +131,24 @@ export default async function DashboardPage() {
       paciente: (pac?.nome as string | null) ?? "Paciente",
     };
   });
+
+  const mostrarAcompanhamento =
+    (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
+
+  let acompanhamentoLista: PacienteAcompanhamento[] = [];
+  if (mostrarAcompanhamento) {
+    const r = await getPacientesParaAcompanhar();
+    if (r.ok) acompanhamentoLista = r.data;
+  }
+
+  const { data: tenantInfo } = await admin
+    .from("tenants")
+    .select("nome_empresa")
+    .eq("id", prof.tenant_id)
+    .maybeSingle();
+  const clinicaNome =
+    (tenantInfo?.nome_empresa as string | null) ?? "Sua clínica";
+  const profissionalNome = (prof.nome as string | null) ?? "Profissional";
 
   const receitaMes = (receitas ?? []).reduce(
     (sum, r: { valor: number | string }) => sum + Number(r.valor ?? 0),
@@ -270,6 +293,33 @@ export default async function DashboardPage() {
           </div>
         )}
       </section>
+
+      {mostrarAcompanhamento ? (
+        <section className="space-y-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Heart
+                size={18}
+                strokeWidth={1.5}
+                className="text-primary"
+                aria-hidden="true"
+              />
+              <h2 className="text-[18px] font-semibold text-slate-900">
+                Acompanhamento
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pacientes atendidos ontem
+            </p>
+          </div>
+
+          <AcompanhamentoLista
+            inicial={acompanhamentoLista}
+            profissionalNome={profissionalNome}
+            clinicaNome={clinicaNome}
+          />
+        </section>
+      ) : null}
 
       <NovoAgendamentoFab />
     </div>

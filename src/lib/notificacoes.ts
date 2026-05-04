@@ -6,7 +6,9 @@ type TipoNotificacao =
   | "lembrete_24h"
   | "cancelamento"
   | "feedback"
-  | "boas_vindas";
+  | "boas_vindas"
+  | "followup"
+  | "followup_whatsapp";
 
 type EnviarNotificacaoInput = {
   tenantId: string;

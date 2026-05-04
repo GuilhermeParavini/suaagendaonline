@@ -24,6 +24,9 @@ export type ProfissionalConfig = {
   assinatura_url: string | null;
   logo_url: string | null;
   enviar_avaliacao: boolean;
+  enviar_followup: boolean;
+  mostrar_acompanhamento: boolean;
+  followup_mensagem: string | null;
 };
 
 export type TenantConfig = {
@@ -93,7 +96,7 @@ export async function getConfiguracoes(): Promise<
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao',
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao, enviar_followup, mostrar_acompanhamento, followup_mensagem',
     )
     .eq('id', ctx.profissionalId)
     .maybeSingle();
@@ -157,6 +160,13 @@ export async function getConfiguracoes(): Promise<
         logo_url: (prof.logo_url as string | null) ?? null,
         enviar_avaliacao:
           (prof.enviar_avaliacao as boolean | null) === false ? false : true,
+        enviar_followup:
+          (prof.enviar_followup as boolean | null) === false ? false : true,
+        mostrar_acompanhamento:
+          (prof.mostrar_acompanhamento as boolean | null) === false
+            ? false
+            : true,
+        followup_mensagem: (prof.followup_mensagem as string | null) ?? null,
       },
       tenant: {
         id: tenant.id as string,
