@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
+import { verificarLimiteTranscricaoPorTenant } from '@/actions/transcricao';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -184,6 +185,20 @@ export async function POST(request: Request) {
     const n = Number(duracaoSegundosRaw);
     return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
   })();
+
+  const limite = await verificarLimiteTranscricaoPorTenant(
+    admin,
+    prof.tenant_id as string,
+  );
+  if (!limite.ok) {
+    return NextResponse.json({ erro: limite.error }, { status: 500 });
+  }
+  if (!limite.data.permitido) {
+    return NextResponse.json(
+      { erro: limite.data.mensagem, uso: limite.data.uso },
+      { status: 403 },
+    );
+  }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
