@@ -20,12 +20,17 @@ import {
 import {
   ChevronDown,
   ChevronUp,
+  Clock,
   Download,
   Filter,
 } from "lucide-react";
 import {
+  getRelatorioAgendamentos,
   getRelatorioFaturamento,
   getRelatorioPacientes,
+  listarProcedimentosRelatorios,
+  type AgendamentosData,
+  type AgendamentosFiltros,
   type FaixaEtaria,
   type FaturamentoData,
   type FaturamentoFiltros,
@@ -118,18 +123,9 @@ function RelatoriosClient({
         </Tabs.Content>
 
         <Tabs.Content value="agendamentos" className="focus:outline-none">
-          <EmBreve titulo="Relatório de Agendamentos" />
+          <AgendamentosTab initialPeriodo={initialPeriodo} />
         </Tabs.Content>
       </Tabs.Root>
-    </div>
-  );
-}
-
-function EmBreve({ titulo }: { titulo: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
-      <p className="text-sm font-medium text-slate-700">{titulo}</p>
-      <p className="mt-1 text-xs text-slate-500">Em breve.</p>
     </div>
   );
 }
@@ -972,6 +968,402 @@ function PacientesTab({ initialPeriodo }: PacientesTabProps) {
                   </li>
                 ))}
               </ul>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// AGENDAMENTOS TAB
+// ============================================================
+
+const STATUS_AGENDAMENTO_LABEL: Record<
+  | "todos"
+  | "agendado"
+  | "confirmado"
+  | "em_atendimento"
+  | "concluido"
+  | "faltou"
+  | "cancelado",
+  string
+> = {
+  todos: "Todos",
+  agendado: "Agendado",
+  confirmado: "Confirmado",
+  em_atendimento: "Em atendimento",
+  concluido: "Concluído",
+  faltou: "Falta",
+  cancelado: "Cancelado",
+};
+
+interface AgendamentosTabProps {
+  initialPeriodo: { dataInicio: string; dataFim: string };
+}
+
+function AgendamentosTab({ initialPeriodo }: AgendamentosTabProps) {
+  const [dataInicioBr, setDataInicioBr] = useState(
+    isoToBrDate(initialPeriodo.dataInicio),
+  );
+  const [dataFimBr, setDataFimBr] = useState(
+    isoToBrDate(initialPeriodo.dataFim),
+  );
+  const [status, setStatus] = useState<
+    keyof typeof STATUS_AGENDAMENTO_LABEL
+  >("todos");
+  const [procedimentoId, setProcedimentoId] = useState<string>("");
+  const [procedimentos, setProcedimentos] = useState<
+    { id: string; nome: string }[]
+  >([]);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+
+  const [data, setData] = useState<AgendamentosData | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [isLoading, startLoading] = useTransition();
+  const initialLoadRef = useRef(false);
+
+  const carregar = (filtros: AgendamentosFiltros) => {
+    setErro(null);
+    startLoading(async () => {
+      const r = await getRelatorioAgendamentos(filtros);
+      if (!r.ok) {
+        setErro(r.error);
+        return;
+      }
+      setData(r.data);
+    });
+  };
+
+  useEffect(() => {
+    if (initialLoadRef.current) return;
+    initialLoadRef.current = true;
+    (async () => {
+      const procRes = await listarProcedimentosRelatorios();
+      if (procRes.ok) setProcedimentos(procRes.data);
+    })();
+    carregar({
+      dataInicio: initialPeriodo.dataInicio,
+      dataFim: initialPeriodo.dataFim,
+      status: "todos",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const aplicarFiltros = () => {
+    setErro(null);
+    const ini = brDateToIso(dataInicioBr);
+    const fim = brDateToIso(dataFimBr);
+    if (!ini || !fim) {
+      setErro("Datas inválidas. Use DD/MM/AAAA.");
+      return;
+    }
+    if (fim < ini) {
+      setErro("Data fim anterior à data inicio.");
+      return;
+    }
+    carregar({
+      dataInicio: ini,
+      dataFim: fim,
+      status,
+      procedimentoId: procedimentoId || undefined,
+    });
+  };
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-lg border border-slate-200 bg-white">
+        <button
+          type="button"
+          onClick={() => setFiltrosAbertos((v) => !v)}
+          className="flex w-full items-center justify-between gap-2 px-4 py-3 sm:hidden"
+        >
+          <span className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <Filter size={16} strokeWidth={1.5} aria-hidden="true" />
+            Filtros
+          </span>
+          {filtrosAbertos ? (
+            <ChevronUp
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-500"
+            />
+          ) : (
+            <ChevronDown
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-500"
+            />
+          )}
+        </button>
+        <div
+          className={cn(
+            "px-4 pb-4 pt-2 sm:p-4 sm:block",
+            !filtrosAbertos && "hidden sm:block",
+          )}
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <label className={labelClass}>Data início</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/AAAA"
+                value={dataInicioBr}
+                onChange={(e) => setDataInicioBr(formatDate(e.target.value))}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Data fim</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="DD/MM/AAAA"
+                value={dataFimBr}
+                onChange={(e) => setDataFimBr(formatDate(e.target.value))}
+                className={inputClass}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Status</label>
+              <select
+                value={status}
+                onChange={(e) =>
+                  setStatus(e.target.value as typeof status)
+                }
+                className={inputClass}
+              >
+                {Object.entries(STATUS_AGENDAMENTO_LABEL).map(([v, lbl]) => (
+                  <option key={v} value={v}>
+                    {lbl}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Procedimento</label>
+              <select
+                value={procedimentoId}
+                onChange={(e) => setProcedimentoId(e.target.value)}
+                className={inputClass}
+              >
+                <option value="">Todos</option>
+                {procedimentos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {erro ? (
+            <p className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={aplicarFiltros}
+              disabled={isLoading}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark disabled:opacity-50 transition-colors"
+            >
+              {isLoading ? "Atualizando..." : "Aplicar"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {isLoading || !data ? (
+        <Skeleton />
+      ) : (
+        <>
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <CardResumo
+              label="Total agendamentos"
+              value={String(data.total)}
+              accent="teal"
+            />
+            <CardResumo
+              label="Concluídos"
+              value={String(data.concluidos)}
+              accent="verde"
+            />
+            <CardResumo
+              label="Faltas"
+              value={String(data.faltas)}
+              accent="vermelho"
+            />
+            <CardResumo
+              label="Taxa de presença"
+              value={`${data.taxaPresenca.toFixed(1).replace(".", ",")}%`}
+              accent="teal"
+            />
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-surface text-primary-dark">
+                <Clock size={22} strokeWidth={1.5} aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  Horário de pico
+                </p>
+                <p className="text-xl font-semibold leading-tight text-slate-900">
+                  {data.horarioPico}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Horário com mais agendamentos
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-medium text-slate-700">
+                Agendamentos por dia da semana
+              </h3>
+              {data.porDiaSemana.every((d) => d.total === 0) ? (
+                <EstadoVazio />
+              ) : (
+                <div className="mt-3 h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={data.porDiaSemana}
+                      margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis
+                        dataKey="dia"
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        formatter={(v) => [`${Number(v) || 0}`, "Agendamentos"]}
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: 6,
+                          border: "1px solid #E2E8F0",
+                        }}
+                      />
+                      <Bar
+                        dataKey="total"
+                        name="Agendamentos"
+                        fill="#0D9488"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-medium text-slate-700">
+                Top 5 procedimentos
+              </h3>
+              {data.porProcedimento.length === 0 ? (
+                <EstadoVazio />
+              ) : (
+                <div className="mt-3 h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={data.porProcedimento}
+                      layout="vertical"
+                      margin={{ top: 10, right: 16, left: 0, bottom: 0 }}
+                    >
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#E2E8F0"
+                        horizontal={false}
+                      />
+                      <XAxis
+                        type="number"
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                        allowDecimals={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="nome"
+                        tick={{ fontSize: 11, fill: "#64748B" }}
+                        width={120}
+                      />
+                      <Tooltip
+                        formatter={(v) => [`${Number(v) || 0}`, "Agendamentos"]}
+                        contentStyle={{
+                          fontSize: 12,
+                          borderRadius: 6,
+                          border: "1px solid #E2E8F0",
+                        }}
+                      />
+                      <Bar
+                        dataKey="total"
+                        name="Agendamentos"
+                        fill="#0D9488"
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-medium text-slate-700">
+              Agendamentos por mês (últimos 6 meses)
+            </h3>
+            {data.porMes.every((m) => m.total === 0) ? (
+              <EstadoVazio />
+            ) : (
+              <div className="mt-3 h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={data.porMes}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis
+                      dataKey="mes"
+                      tick={{ fontSize: 11, fill: "#64748B" }}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#64748B" }}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      formatter={(v) => [`${Number(v) || 0}`, "Agendamentos"]}
+                      contentStyle={{
+                        fontSize: 12,
+                        borderRadius: 6,
+                        border: "1px solid #E2E8F0",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="total"
+                      name="Agendamentos"
+                      stroke="#0D9488"
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: "#0D9488" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </section>
         </>
