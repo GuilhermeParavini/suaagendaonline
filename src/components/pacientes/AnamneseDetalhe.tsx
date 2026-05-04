@@ -1,11 +1,14 @@
 "use client";
 
+import { Download } from "lucide-react";
 import type { Anamnese, CampoTemplate } from "@/actions/anamnese";
 import { isoToBrDate } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 
 interface AnamneseDetalheProps {
   anamnese: Anamnese;
+  /** Mostra o botao "Exportar PDF" no rodape */
+  showExportar?: boolean;
 }
 
 function valorVazio(v: unknown): boolean {
@@ -121,7 +124,10 @@ function CampoValor({
   }
 }
 
-function AnamneseDetalhe({ anamnese }: AnamneseDetalheProps) {
+function AnamneseDetalhe({
+  anamnese,
+  showExportar = true,
+}: AnamneseDetalheProps) {
   const campos = (anamnese.template_campos ?? [])
     .slice()
     .sort((a, b) => a.ordem - b.ordem);
@@ -134,20 +140,38 @@ function AnamneseDetalhe({ anamnese }: AnamneseDetalheProps) {
     );
   }
 
+  const podeExportar = showExportar && anamnese.id && anamnese.id !== "novo";
+
   return (
-    <ul className="space-y-3">
-      {campos.map((c) => {
-        const valor = anamnese.dados[c.id];
-        return (
-          <li key={c.id} className="space-y-1">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-              {c.label}
-            </p>
-            <CampoValor campo={c} valor={valor} />
-          </li>
-        );
-      })}
-    </ul>
+    <div className="space-y-3">
+      <ul className="space-y-3">
+        {campos.map((c) => {
+          const valor = anamnese.dados[c.id];
+          return (
+            <li key={c.id} className="space-y-1">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                {c.label}
+              </p>
+              <CampoValor campo={c} valor={valor} />
+            </li>
+          );
+        })}
+      </ul>
+
+      {podeExportar ? (
+        <div className="flex justify-end pt-2">
+          <a
+            href={`/anamnese/${anamnese.id}/print?auto=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+          >
+            <Download size={13} strokeWidth={1.5} aria-hidden="true" />
+            Exportar PDF
+          </a>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
