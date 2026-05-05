@@ -15,6 +15,7 @@ import TabHorarios from "./TabHorarios";
 import TabProcedimentos from "./TabProcedimentos";
 import TabBloqueios from "./TabBloqueios";
 import TabAnamnese from "./TabAnamnese";
+import TabEquipe from "./TabEquipe";
 
 interface ConfiguracoesClientProps {
   initialProfissional: ProfissionalConfig;
@@ -70,6 +71,9 @@ function ConfiguracoesClient({
             { value: "procedimentos", label: "Procedimentos" },
             { value: "anamnese", label: "Anamnese" },
             { value: "bloqueios", label: "Bloqueios" },
+            ...(profissional.role === "admin"
+              ? [{ value: "equipe", label: "Equipe" }]
+              : []),
           ].map((t) => (
             <Tabs.Trigger
               key={t.value}
@@ -111,6 +115,12 @@ function ConfiguracoesClient({
         <Tabs.Content value="bloqueios" className="focus:outline-none">
           <TabBloqueios />
         </Tabs.Content>
+
+        {profissional.role === "admin" ? (
+          <Tabs.Content value="equipe" className="focus:outline-none">
+            <TabEquipe />
+          </Tabs.Content>
+        ) : null}
       </Tabs.Root>
     </div>
   );
