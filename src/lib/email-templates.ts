@@ -1,7 +1,22 @@
-const MESES_EXTENSO = [
+export const MESES_EXTENSO = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
+
+export function mesPorExtenso(mes: number): string {
+  if (!Number.isInteger(mes) || mes < 1 || mes > 12) return "";
+  return MESES_EXTENSO[mes - 1];
+}
+
+export function mesAnoPorExtenso(mesAno: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(mesAno);
+  if (!m) return mesAno;
+  const ano = Number(m[1]);
+  const mes = Number(m[2]);
+  const nome = mesPorExtenso(mes);
+  if (!nome) return mesAno;
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} de ${ano}`;
+}
 
 // Conjuncoes/preposicoes que ficam em minuscula no meio de um nome
 const MINUSCULAS_NOME = new Set([
@@ -520,5 +535,349 @@ export function emailCancelamento(d: DadosCancelamento): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
+// ============================================================
+// Comissoes mensais
+// ============================================================
+
+const formatadorBRL = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+function brl(value: number): string {
+  return formatadorBRL.format(Number.isFinite(value) ? value : 0);
+}
+
+const FORMA_PAGAMENTO_LABEL_COM: Record<string, string> = {
+  dinheiro: "Dinheiro",
+  pix: "PIX",
+  cartao_credito: "Cartão de Crédito",
+  cartao_debito: "Cartão de Débito",
+  convenio: "Convênio",
+  transferencia: "Transferência",
+  outro: "Outro",
+};
+
+function formaLabelCom(key: string): string {
+  return FORMA_PAGAMENTO_LABEL_COM[key] ?? key;
+}
+
+export type DadosRelatorioProfissional = {
+  nome: string;
+  mesAno: string;
+  faturamentoBruto: number;
+  totalAtendimentos: number;
+  detalhamentoPagamentos:
+    | Record<string, number | { valor: number; quantidade: number }>
+    | null;
+  percentual: number;
+  valorComissaoPercentual: number;
+  valorFixoMensal: number;
+  totalComissao: number;
+  valorLiquido: number;
+  totalDespesas: number;
+  detalhamentoDespesas: Record<string, number> | null;
+  lucroReal: number;
+  appUrl: string | null;
+  logoUrl?: string | null;
+};
+
+function listaPagamentosHtml(
+  detalhamento:
+    | Record<string, number | { valor: number; quantidade: number }>
+    | null,
+  showCount: boolean,
+  totalForPercent?: number,
+): string {
+  if (!detalhamento) return "";
+  const linhas: string[] = [];
+  for (const [forma, val] of Object.entries(detalhamento)) {
+    const valor =
+      typeof val === "number" ? val : ((val as { valor?: number }).valor ?? 0);
+    const qtd =
+      typeof val === "object" && val !== null
+        ? ((val as { quantidade?: number }).quantidade ?? 0)
+        : 0;
+    const pct =
+      totalForPercent && totalForPercent > 0
+        ? `${Math.round((valor / totalForPercent) * 100)}% — `
+        : "";
+    const sufixo =
+      showCount && qtd > 0
+        ? ` (${qtd} ${qtd === 1 ? "atendimento" : "atendimentos"})`
+        : "";
+    linhas.push(
+      `<li style="margin:4px 0;color:#0F172A;font-size:14px;">${escapeHtml(formaLabelCom(forma))}: ${pct}<strong>${escapeHtml(brl(valor))}</strong>${escapeHtml(sufixo)}</li>`,
+    );
+  }
+  if (linhas.length === 0) return "";
+  return `<ul style="margin:6px 0 0 0;padding:0 0 0 18px;">${linhas.join("")}</ul>`;
+}
+
+function despesasHtml(detalhamento: Record<string, number> | null): string {
+  if (!detalhamento) return "";
+  const linhas: string[] = [];
+  for (const [cat, valor] of Object.entries(detalhamento)) {
+    linhas.push(
+      `<li style="margin:4px 0;color:#0F172A;font-size:14px;">${escapeHtml(cat)}: <strong>${escapeHtml(brl(Number(valor) || 0))}</strong></li>`,
+    );
+  }
+  if (linhas.length === 0) return "";
+  return `<ul style="margin:6px 0 0 0;padding:0 0 0 18px;">${linhas.join("")}</ul>`;
+}
+
+export function emailRelatorioProfissional(
+  d: DadosRelatorioProfissional,
+): { assunto: string; html: string } {
+  const m = /^(\d{4})-(\d{2})$/.exec(d.mesAno);
+  const ano = m ? m[1] : "";
+  const mesNum = m ? Number(m[2]) : 0;
+  const mesNome = mesPorExtenso(mesNum);
+  const mesLabel = `${mesNome.charAt(0).toUpperCase()}${mesNome.slice(1)}`;
+
+  const assunto = `Relatorio Mensal — ${mesLabel}/${ano} | Sua Agenda Online`;
+  const nome = capitalizeNome(d.nome);
+
+  const linkRelatorio = d.appUrl
+    ? `${d.appUrl.replace(/\/+$/, "")}/financeiro`
+    : null;
+
+  const secaoFormas = listaPagamentosHtml(
+    d.detalhamentoPagamentos,
+    true,
+    d.faturamentoBruto,
+  );
+
+  const secaoDespesas =
+    d.totalDespesas > 0
+      ? `
+    <div style="margin:16px 0 0 0;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background-color:#F8FAFC;">
+      <p style="margin:0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Despesas do mes</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Total: <strong>${escapeHtml(brl(d.totalDespesas))}</strong></p>
+      ${despesasHtml(d.detalhamentoDespesas)}
+    </div>`
+      : "";
+
+  const linhaFixo =
+    d.valorFixoMensal > 0
+      ? `<p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Valor fixo mensal: <strong>${escapeHtml(brl(d.valorFixoMensal))}</strong></p>`
+      : "";
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}!</p>
+    <p style="margin:0 0 16px 0;color:#0F172A;">Aqui esta seu relatorio de ${escapeHtml(mesNome)}/${escapeHtml(ano)}:</p>
+
+    <div style="margin:0;padding:14px 16px;background-color:#F1F5F9;border-radius:10px;">
+      <p style="margin:0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Resumo do mes</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Total de atendimentos: <strong>${d.totalAtendimentos}</strong></p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Faturamento bruto: <strong>${escapeHtml(brl(d.faturamentoBruto))}</strong></p>
+    </div>
+
+    ${
+      secaoFormas
+        ? `
+      <div style="margin:14px 0 0 0;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background-color:#FFFFFF;">
+        <p style="margin:0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Por forma de pagamento</p>
+        ${secaoFormas}
+      </div>`
+        : ""
+    }
+
+    <div style="margin:14px 0 0 0;padding:14px 16px;background-color:#FFFBEB;border:1px solid #FCD34D;border-radius:10px;">
+      <p style="margin:0;color:#92400E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Comissao da clinica</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Percentual: <strong>${String(d.percentual).replace(".", ",")}%</strong></p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Valor da comissao: <strong>${escapeHtml(brl(d.valorComissaoPercentual))}</strong></p>
+      ${linhaFixo}
+      <p style="margin:8px 0 0 0;color:#92400E;font-size:16px;">Total a pagar: <strong>${escapeHtml(brl(d.totalComissao))}</strong></p>
+    </div>
+
+    <div style="margin:14px 0 0 0;padding:16px;background-color:#F0FDFA;border:1px solid #99F6E4;border-radius:10px;text-align:center;">
+      <p style="margin:0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Seu liquido</p>
+      <p style="margin:8px 0 0 0;color:#0F172A;font-size:24px;font-weight:700;">${escapeHtml(brl(d.valorLiquido))}</p>
+    </div>
+
+    ${secaoDespesas}
+
+    <div style="margin:14px 0 0 0;padding:14px 16px;background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;">
+      <p style="margin:0;color:#15803D;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Resultado final</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Liquido apos comissao: ${escapeHtml(brl(d.valorLiquido))}</p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Menos despesas: ${escapeHtml(brl(d.totalDespesas))}</p>
+      <p style="margin:8px 0 0 0;color:#15803D;font-size:18px;font-weight:700;">Lucro real: ${escapeHtml(brl(d.lucroReal))}</p>
+    </div>
+
+    <p style="margin:16px 0 0 0;text-align:center;">
+      <span style="display:inline-block;background-color:#FEF3C7;color:#92400E;padding:4px 10px;border-radius:9999px;font-size:12px;font-weight:600;">Status: Pendente</span>
+    </p>
+
+    ${
+      linkRelatorio
+        ? `
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(linkRelatorio)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Ver Relatorio Completo</a>
+    </p>`
+        : ""
+    }
+  `;
+
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
+export type DadosRelatorioAdminProfissional = {
+  nome: string;
+  faturado: number;
+  percentual: number;
+  comissao: number;
+  fixo: number;
+  total: number;
+  status: "aberto" | "pago" | "cancelado";
+};
+
+export type DadosRelatorioAdmin = {
+  nomeAdmin: string;
+  mesAno: string;
+  faturamentoTotal: number;
+  totalAtendimentosGeral: number;
+  ticketMedio: number;
+  profissionais: DadosRelatorioAdminProfissional[];
+  totalComissoesReceber: number;
+  totalFixosReceber: number;
+  detalhamentoPagamentosGeral: Record<string, number> | null;
+  adminAtende: boolean;
+  adminAtendimentos: number;
+  adminFaturamento: number;
+  appUrl: string | null;
+  logoUrl?: string | null;
+};
+
+export function emailRelatorioAdmin(
+  d: DadosRelatorioAdmin,
+): { assunto: string; html: string } {
+  const m = /^(\d{4})-(\d{2})$/.exec(d.mesAno);
+  const ano = m ? m[1] : "";
+  const mesNum = m ? Number(m[2]) : 0;
+  const mesNome = mesPorExtenso(mesNum);
+  const mesLabel = `${mesNome.charAt(0).toUpperCase()}${mesNome.slice(1)}`;
+
+  const assunto = `Relatorio da Clinica — ${mesLabel}/${ano} | Sua Agenda Online`;
+  const nome = capitalizeNome(d.nomeAdmin);
+
+  const linkFinanceiro = d.appUrl
+    ? `${d.appUrl.replace(/\/+$/, "")}/financeiro`
+    : null;
+
+  const linhasTabela = d.profissionais
+    .map((p) => {
+      const statusLbl = p.status === "pago" ? "Pago" : "Pendente";
+      const statusBg = p.status === "pago" ? "#D1FAE5" : "#FEF3C7";
+      const statusColor = p.status === "pago" ? "#065F46" : "#92400E";
+      return `
+      <tr>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;color:#0F172A;font-size:13px;">${escapeHtml(p.nome)}</td>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;color:#0F172A;font-size:13px;text-align:right;">${escapeHtml(brl(p.faturado))}</td>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;color:#0F172A;font-size:13px;text-align:right;">${String(p.percentual).replace(".", ",")}%</td>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;color:#0F172A;font-size:13px;text-align:right;">${escapeHtml(brl(p.comissao))}</td>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;color:#0F172A;font-size:13px;text-align:right;">${escapeHtml(brl(p.fixo))}</td>
+        <td style="padding:8px;border-bottom:1px solid #E2E8F0;text-align:center;"><span style="display:inline-block;background-color:${statusBg};color:${statusColor};padding:3px 8px;border-radius:9999px;font-size:11px;font-weight:600;">${statusLbl}</span></td>
+      </tr>`;
+    })
+    .join("");
+
+  const totalFaturado = d.profissionais.reduce(
+    (acc, p) => acc + p.faturado,
+    0,
+  );
+  const totalComissao = d.profissionais.reduce(
+    (acc, p) => acc + p.comissao,
+    0,
+  );
+  const totalFixo = d.profissionais.reduce((acc, p) => acc + p.fixo, 0);
+
+  const linhaTotal = `
+    <tr>
+      <td style="padding:10px 8px;color:#0F172A;font-size:13px;font-weight:700;">Total</td>
+      <td style="padding:10px 8px;color:#0F172A;font-size:13px;font-weight:700;text-align:right;">${escapeHtml(brl(totalFaturado))}</td>
+      <td style="padding:10px 8px;color:#0F172A;font-size:13px;text-align:right;">—</td>
+      <td style="padding:10px 8px;color:#92400E;font-size:13px;font-weight:700;text-align:right;">${escapeHtml(brl(totalComissao))}</td>
+      <td style="padding:10px 8px;color:#1E40AF;font-size:13px;font-weight:700;text-align:right;">${escapeHtml(brl(totalFixo))}</td>
+      <td style="padding:10px 8px;"></td>
+    </tr>`;
+
+  const tabelaProfissionais =
+    d.profissionais.length > 0
+      ? `
+    <div style="margin:14px 0 0 0;">
+      <p style="margin:0 0 8px 0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Comissoes a receber</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;">
+        <thead>
+          <tr style="background-color:#F8FAFC;">
+            <th style="padding:8px;text-align:left;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">Profissional</th>
+            <th style="padding:8px;text-align:right;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">Faturado</th>
+            <th style="padding:8px;text-align:right;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">%</th>
+            <th style="padding:8px;text-align:right;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">Comissao</th>
+            <th style="padding:8px;text-align:right;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">Fixo</th>
+            <th style="padding:8px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748B;font-weight:600;">Status</th>
+          </tr>
+        </thead>
+        <tbody>${linhasTabela}${linhaTotal}</tbody>
+      </table>
+    </div>`
+      : "";
+
+  const secaoFormas = listaPagamentosHtml(
+    d.detalhamentoPagamentosGeral,
+    false,
+    d.faturamentoTotal,
+  );
+
+  const secaoAdmin = d.adminAtende
+    ? `
+    <div style="margin:14px 0 0 0;padding:14px 16px;background-color:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;">
+      <p style="margin:0;color:#1E40AF;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Seus atendimentos</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Atendimentos: <strong>${d.adminAtendimentos}</strong></p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Faturamento: <strong>${escapeHtml(brl(d.adminFaturamento))}</strong></p>
+      <p style="margin:6px 0 0 0;color:#475569;font-size:12px;font-style:italic;">(Sem comissao — voce e a admin)</p>
+    </div>`
+    : "";
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}!</p>
+    <p style="margin:0 0 16px 0;color:#0F172A;">Aqui esta o relatorio geral da clinica em ${escapeHtml(mesNome)}/${escapeHtml(ano)}:</p>
+
+    <div style="margin:0;padding:14px 16px;background-color:#F0FDFA;border:1px solid #99F6E4;border-radius:10px;">
+      <p style="margin:0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Consolidado da clinica</p>
+      <p style="margin:6px 0 0 0;color:#0F172A;font-size:14px;">Faturamento total: <strong>${escapeHtml(brl(d.faturamentoTotal))}</strong></p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Total de atendimentos: <strong>${d.totalAtendimentosGeral}</strong></p>
+      <p style="margin:4px 0 0 0;color:#0F172A;font-size:14px;">Ticket medio: <strong>${escapeHtml(brl(d.ticketMedio))}</strong></p>
+    </div>
+
+    ${tabelaProfissionais}
+
+    ${
+      secaoFormas
+        ? `
+      <div style="margin:14px 0 0 0;padding:12px 14px;border:1px solid #E2E8F0;border-radius:10px;background-color:#FFFFFF;">
+        <p style="margin:0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Formas de pagamento (geral)</p>
+        ${secaoFormas}
+      </div>`
+        : ""
+    }
+
+    ${secaoAdmin}
+
+    <p style="margin:12px 0 0 0;color:#475569;font-size:13px;">A receber em comissoes: <strong>${escapeHtml(brl(d.totalComissoesReceber))}</strong> · A receber em fixos: <strong>${escapeHtml(brl(d.totalFixosReceber))}</strong></p>
+
+    ${
+      linkFinanceiro
+        ? `
+    <p style="margin:20px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(linkFinanceiro)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">Gerenciar Comissoes</a>
+    </p>`
+        : ""
+    }
+  `;
+
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }

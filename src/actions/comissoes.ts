@@ -440,15 +440,13 @@ function rangeMesAno(mesAno: string): { inicio: string; fim: string } {
   return { inicio, fim };
 }
 
-export async function recalcularFechamento(
-  mesAno: string,
+export async function recalcularFechamentoInterno(
+  tenantId: string,
   profissionalId: string,
+  mesAno: string,
 ): Promise<Result<ComissaoMensal>> {
-  const ctx = await exigirAdmin();
-  if (!ctx.ok) return ctx;
-
-  if (!profissionalId) {
-    return { ok: false, error: 'Profissional invalido.' };
+  if (!tenantId || !profissionalId) {
+    return { ok: false, error: 'Tenant ou profissional invalido.' };
   }
   if (!/^\d{4}-\d{2}$/.test(mesAno)) {
     return { ok: false, error: 'Mes/ano invalido. Use YYYY-MM.' };
@@ -472,7 +470,7 @@ export async function recalcularFechamento(
     .eq('id', profissionalId)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
-  if (!prof || prof.tenant_id !== ctx.tenantId) {
+  if (!prof || prof.tenant_id !== tenantId) {
     return { ok: false, error: 'Profissional nao encontrado neste tenant.' };
   }
 
@@ -498,7 +496,7 @@ export async function recalcularFechamento(
     .select(
       'tipo, valor, forma_pagamento, agendamento_id, categoria_despesa, comissao_aplicavel',
     )
-    .eq('tenant_id', ctx.tenantId)
+    .eq('tenant_id', tenantId)
     .eq('profissional_id', profissionalId)
     .gte('data_lancamento', inicio)
     .lt('data_lancamento', fim);
@@ -548,7 +546,7 @@ export async function recalcularFechamento(
     Math.round((valorLiquido - totalDespesas) * 100) / 100;
 
   const payload = {
-    tenant_id: ctx.tenantId,
+    tenant_id: tenantId,
     profissional_id: profissionalId,
     mes_ano: mesAno,
     faturamento_bruto: faturamentoBruto,
@@ -569,7 +567,7 @@ export async function recalcularFechamento(
   const { data: existente } = await admin
     .from('comissoes_mensais')
     .select('id, status')
-    .eq('tenant_id', ctx.tenantId)
+    .eq('tenant_id', tenantId)
     .eq('profissional_id', profissionalId)
     .eq('mes_ano', mesAno)
     .maybeSingle();
@@ -606,4 +604,13 @@ export async function recalcularFechamento(
 
   revalidatePath('/financeiro');
   return { ok: true, data: mapComissaoMensal(row) };
+}
+
+export async function recalcularFechamento(
+  mesAno: string,
+  profissionalId: string,
+): Promise<Result<ComissaoMensal>> {
+  const ctx = await exigirAdmin();
+  if (!ctx.ok) return ctx;
+  return recalcularFechamentoInterno(ctx.tenantId, profissionalId, mesAno);
 }
