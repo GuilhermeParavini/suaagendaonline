@@ -8,6 +8,7 @@ import {
   Users,
   Wallet,
   BarChart3,
+  ClipboardList,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   logoUrl?: string | null;
+  contagemListaEspera?: number;
 }
 
 type SidebarItem = {
@@ -22,12 +24,19 @@ type SidebarItem = {
   label: string;
   Icon: LucideIcon;
   exact?: boolean;
+  badgeKey?: "listaEspera";
 };
 
 const items: SidebarItem[] = [
   { href: "/", label: "Dashboard", Icon: Home, exact: true },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
   { href: "/pacientes", label: "Pacientes", Icon: Users },
+  {
+    href: "/lista-espera",
+    label: "Lista de espera",
+    Icon: ClipboardList,
+    badgeKey: "listaEspera",
+  },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
@@ -38,7 +47,10 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Sidebar({ logoUrl }: SidebarProps = {}) {
+function Sidebar({
+  logoUrl,
+  contagemListaEspera = 0,
+}: SidebarProps = {}) {
   const pathname = usePathname();
 
   return (
@@ -61,8 +73,12 @@ function Sidebar({ logoUrl }: SidebarProps = {}) {
       </div>
       <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {items.map(({ href, label, Icon, exact }) => {
+          {items.map(({ href, label, Icon, exact, badgeKey }) => {
             const active = isActive(pathname, href, exact);
+            const badge =
+              badgeKey === "listaEspera" && contagemListaEspera > 0
+                ? contagemListaEspera
+                : null;
             return (
               <li key={href}>
                 <Link
@@ -76,7 +92,12 @@ function Sidebar({ logoUrl }: SidebarProps = {}) {
                   )}
                 >
                   <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
-                  <span>{label}</span>
+                  <span className="flex-1">{label}</span>
+                  {badge ? (
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                      {badge}
+                    </span>
+                  ) : null}
                 </Link>
               </li>
             );

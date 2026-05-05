@@ -31,6 +31,8 @@ interface NovoAgendamentoModalProps {
   onCriado?: () => void;
   initialDateIso?: string;
   initialHora?: string;
+  initialPaciente?: PacienteOpcao;
+  initialProcedimentoId?: string;
 }
 
 const inputClass =
@@ -53,6 +55,8 @@ function NovoAgendamentoModal({
   onCriado,
   initialDateIso,
   initialHora,
+  initialPaciente,
+  initialProcedimentoId,
 }: NovoAgendamentoModalProps) {
   const [termoBusca, setTermoBusca] = useState("");
   const [resultados, setResultados] = useState<PacienteOpcao[]>([]);
@@ -122,6 +126,13 @@ function NovoAgendamentoModal({
     }
     if (initialHora) {
       setHoraSelecionada(initialHora);
+    }
+    if (initialPaciente) {
+      setPacienteSelecionado(initialPaciente);
+      setTermoBusca(initialPaciente.nome);
+    }
+    if (initialProcedimentoId) {
+      setProcedimentoId(initialProcedimentoId);
     }
     let cancelado = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect

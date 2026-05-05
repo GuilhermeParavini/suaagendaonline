@@ -10,11 +10,13 @@ import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
 import AcompanhamentoLista from "@/components/dashboard/AcompanhamentoLista";
 import CardUsoTranscricao from "@/components/dashboard/CardUsoTranscricao";
 import BannerUsoTranscricao from "@/components/dashboard/BannerUsoTranscricao";
+import CardListaEspera from "@/components/dashboard/CardListaEspera";
 import {
   getPacientesParaAcompanhar,
   type PacienteAcompanhamento,
 } from "@/actions/followup";
 import { getUsoTranscricao } from "@/actions/transcricao";
+import { getContagemListaEspera } from "@/actions/lista-espera";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -141,6 +143,9 @@ export default async function DashboardPage() {
     ? uso.limiteSegundos > 0 || uso.usadoSegundos > 0
     : false;
 
+  const contagemEsperaRes = await getContagemListaEspera();
+  const contagemListaEspera = contagemEsperaRes.ok ? contagemEsperaRes.data : 0;
+
   const mostrarAcompanhamento =
     (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
 
@@ -179,6 +184,8 @@ export default async function DashboardPage() {
       </section>
 
       {mostrarCardUso && uso ? <CardUsoTranscricao uso={uso} /> : null}
+
+      <CardListaEspera contagem={contagemListaEspera} />
 
       {/* Próximos agendamentos */}
       <section className="space-y-3">

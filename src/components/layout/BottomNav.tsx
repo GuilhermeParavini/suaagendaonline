@@ -7,6 +7,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import {
   BarChart3,
   Calendar,
+  ClipboardList,
   Menu,
   Settings,
   Users,
@@ -15,6 +16,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface BottomNavProps {
+  contagemListaEspera?: number;
+}
 
 const itensFixos: {
   href: string;
@@ -26,7 +31,20 @@ const itensFixos: {
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
 ];
 
-const itensMais: { href: string; label: string; Icon: LucideIcon }[] = [
+type ItemMais = {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  badgeKey?: "listaEspera";
+};
+
+const itensMais: ItemMais[] = [
+  {
+    href: "/lista-espera",
+    label: "Lista de espera",
+    Icon: ClipboardList,
+    badgeKey: "listaEspera",
+  },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
@@ -35,10 +53,11 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function BottomNav() {
+function BottomNav({ contagemListaEspera = 0 }: BottomNavProps = {}) {
   const pathname = usePathname();
   const [maisOpen, setMaisOpen] = useState(false);
   const maisAtivo = itensMais.some((it) => isActive(pathname, it.href));
+  const temBadgeMais = contagemListaEspera > 0;
 
   return (
     <nav
@@ -71,12 +90,17 @@ function BottomNav() {
                 type="button"
                 aria-label="Mais"
                 className={cn(
-                  "flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                  "relative flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
                   maisAtivo ? "text-primary" : "text-slate-400",
                 )}
               >
                 <Menu size={24} strokeWidth={1.5} aria-hidden="true" />
                 <span>Mais</span>
+                {temBadgeMais ? (
+                  <span className="absolute right-3 top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
+                    {contagemListaEspera}
+                  </span>
+                ) : null}
               </button>
             </Dialog.Trigger>
             <Dialog.Portal>
@@ -100,8 +124,12 @@ function BottomNav() {
                   </Dialog.Close>
                 </div>
                 <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-                  {itensMais.map(({ href, label, Icon }) => {
+                  {itensMais.map(({ href, label, Icon, badgeKey }) => {
                     const active = isActive(pathname, href);
+                    const badge =
+                      badgeKey === "listaEspera" && contagemListaEspera > 0
+                        ? contagemListaEspera
+                        : null;
                     return (
                       <li key={href}>
                         <Link
@@ -119,7 +147,12 @@ function BottomNav() {
                             strokeWidth={1.5}
                             aria-hidden="true"
                           />
-                          {label}
+                          <span className="flex-1">{label}</span>
+                          {badge ? (
+                            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                              {badge}
+                            </span>
+                          ) : null}
                         </Link>
                       </li>
                     );
