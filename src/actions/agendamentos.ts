@@ -50,6 +50,8 @@ export type IndisponivelDia =
         | 'outro';
     };
 
+export type JanelaDisponivel = { hora_inicio: string; hora_fim: string };
+
 type GetAgendamentosResult =
   | {
       ok: true;
@@ -1136,4 +1138,115 @@ export async function reagendarConsulta(
   revalidatePath('/agenda');
   revalidatePath('/');
   return { ok: true, novoAgendamentoId: novoId };
+}
+
+// ============================================================
+// Visualizacao DIARIA: agendamentos do dia + janelas configuradas
+// ============================================================
+
+export type AgendamentosDoDiaResult =
+  | {
+      ok: true;
+      agendamentos: AgendamentoDia[];
+      indisponivel: IndisponivelDia | null;
+      janelas: JanelaDisponivel[];
+    }
+  | { ok: false; error: string };
+
+export async function getAgendamentosDoDia(
+  data: string,
+): Promise<AgendamentosDoDiaResult> {
+  if (!isIsoDate(data)) {
+    return { ok: false, error: 'Data invalida.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const inicio = `${data}T00:00:00.000Z`;
+  const fim = `${data}T23:59:59.999Z`;
+
+  const { data: rows, error } = await admin
+    .from('agendamentos')
+    .select(
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome)',
+    )
+    .eq('profissional_id', prof.id)
+    .gte('data_hora', inicio)
+    .lte('data_hora', fim)
+    .order('data_hora', { ascending: true });
+  if (error) return { ok: false, error: error.message };
+
+  const agendamentos: AgendamentoDia[] = (rows ?? []).map((r) => {
+    const paciente = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
+    const procedimento = Array.isArray(r.procedimentos)
+      ? r.procedimentos[0]
+      : r.procedimentos;
+    return {
+      id: r.id as string,
+      data_hora: r.data_hora as string,
+      duracao_min: r.duracao_min as number,
+      status: r.status as AgendamentoDia['status'],
+      paciente: paciente
+        ? { id: paciente.id as string, nome: paciente.nome as string }
+        : null,
+      procedimento: procedimento
+        ? {
+            id: procedimento.id as string,
+            nome: procedimento.nome as string,
+          }
+        : null,
+      reagendado_de: (r.reagendado_de as string | null) ?? null,
+    };
+  });
+
+  // Janelas de disponibilidade do profissional para o dia da semana
+  const [y, m, d] = data.split('-').map(Number);
+  const diaSemana = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const { data: horariosRaw } = await admin
+    .from('horarios_disponiveis')
+    .select('hora_inicio, hora_fim')
+    .eq('profissional_id', prof.id as string)
+    .eq('ativo', true)
+    .eq('dia_semana', diaSemana)
+    .order('hora_inicio', { ascending: true });
+  const janelas: JanelaDisponivel[] = (horariosRaw ?? []).map((h) => ({
+    hora_inicio: (h.hora_inicio as string).slice(0, 5),
+    hora_fim: (h.hora_fim as string).slice(0, 5),
+  }));
+
+  // Feriado / bloqueio do dia (mesmo padrao do semanal)
+  let indisponivel: IndisponivelDia | null = null;
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(prof.tenant_id as string, data, data),
+      getBloqueiosForProfissional(prof.id as string, data, data),
+    ]);
+    if (feriados.length > 0) {
+      indisponivel = { tipo: 'feriado', nome: feriados[0].nome };
+    } else if (bloqueios.length > 0) {
+      const b = bloqueios[0];
+      indisponivel = {
+        tipo: 'bloqueio',
+        motivo: b.motivo,
+        bloqueioTipo: b.tipo,
+      };
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao verificar dia:', e);
+  }
+
+  return { ok: true, agendamentos, indisponivel, janelas };
 }
