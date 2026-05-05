@@ -32,6 +32,15 @@ const formaPagamentoOptions: { value: FormaPagamento; label: string }[] = [
   { value: "outro", label: "Outro" },
 ];
 
+const CATEGORIAS_DESPESA = [
+  "Produtos",
+  "Equipamentos",
+  "Descartaveis",
+  "Aluguel",
+  "Marketing",
+  "Outros",
+] as const;
+
 const formSchema = z.object({
   tipo: z.enum(["receita", "despesa"]),
   descricao: z
@@ -47,6 +56,8 @@ const formSchema = z.object({
     .min(1, "Data obrigatoria")
     .refine((s) => /^\d{2}\/\d{2}\/\d{4}$/.test(s) && isValidDate(s), "Data invalida"),
   categoria: z.string().optional(),
+  categoria_despesa: z.string().optional(),
+  fornecedor: z.string().optional(),
   pago: z.boolean(),
   paciente_id: z.string().optional(),
   convenio: z.string().optional(),
@@ -114,6 +125,8 @@ function FormLancamento({
       forma_pagamento: "",
       data_lancamento: todayBR(),
       categoria: "",
+      categoria_despesa: "",
+      fornecedor: "",
       pago: true,
       paciente_id: "",
       convenio: "",
@@ -177,6 +190,12 @@ function FormLancamento({
         categoria: data.categoria?.trim() || undefined,
         observacoes: obsCombinada || undefined,
         paciente_id: data.paciente_id?.trim() || null,
+        categoria_despesa:
+          data.tipo === "despesa"
+            ? data.categoria_despesa?.trim() || null
+            : null,
+        fornecedor:
+          data.tipo === "despesa" ? data.fornecedor?.trim() || null : null,
       });
       if (!result.ok) {
         setApiError(result.error);
@@ -332,29 +351,59 @@ function FormLancamento({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className={labelClass}>Categoria</label>
-                <input
-                  {...register("categoria")}
-                  type="text"
-                  placeholder="Ex.: consulta, material"
-                  className={inputClass}
-                />
-              </div>
+            {tipo === "receita" ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className={labelClass}>Categoria</label>
+                  <input
+                    {...register("categoria")}
+                    type="text"
+                    placeholder="Ex.: consulta, material"
+                    className={inputClass}
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <label className={labelClass}>Vincular a paciente</label>
-                <select {...register("paciente_id")} className={inputClass}>
-                  <option value="">Nenhum</option>
-                  {pacientes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nome}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-1">
+                  <label className={labelClass}>Vincular a paciente</label>
+                  <select {...register("paciente_id")} className={inputClass}>
+                    <option value="">Nenhum</option>
+                    {pacientes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className={labelClass}>Categoria</label>
+                  <select
+                    {...register("categoria_despesa")}
+                    className={inputClass}
+                  >
+                    <option value="">Selecione</option>
+                    {CATEGORIAS_DESPESA.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelClass}>Fornecedor</label>
+                  <input
+                    {...register("fornecedor")}
+                    type="text"
+                    maxLength={120}
+                    placeholder="Nome do fornecedor"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            )}
 
             <label className="flex items-center gap-2 cursor-pointer">
               <input

@@ -4,7 +4,8 @@ import {
   getResumoFinanceiro,
   listarPacientesOptions,
 } from "@/actions/financeiro";
-import { createClient } from "@/lib/supabase/server";
+import { getComissoesTenant } from "@/actions/comissoes";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 import FinanceiroClient from "@/components/financeiro/FinanceiroClient";
 
 export const dynamic = "force-dynamic";
@@ -16,21 +17,36 @@ export default async function FinanceiroPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const admin = createAdminClient();
+  const { data: prof } = await admin
+    .from("profissionais")
+    .select("id, role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const role =
+    (prof?.role as "admin" | "profissional" | "secretaria" | null) ??
+    "profissional";
+
   const hoje = new Date();
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
 
-  const [resumoRes, lancamentosRes, pacientesRes] = await Promise.all([
-    getResumoFinanceiro(mes, ano),
-    getLancamentos({
-      mes,
-      ano,
-      tipo: "receita",
-      forma_pagamento: "todos",
-      status: "todos",
-    }),
-    listarPacientesOptions(),
-  ]);
+  const [resumoRes, lancamentosRes, pacientesRes, comissoesRes] =
+    await Promise.all([
+      getResumoFinanceiro(mes, ano),
+      getLancamentos({
+        mes,
+        ano,
+        tipo: "receita",
+        forma_pagamento: "todos",
+        status: "todos",
+      }),
+      listarPacientesOptions(),
+      role === "admin"
+        ? getComissoesTenant()
+        : Promise.resolve({ ok: true as const, data: [] }),
+    ]);
 
   if (!resumoRes.ok) {
     return (
@@ -54,6 +70,10 @@ export default async function FinanceiroPage() {
     );
   }
 
+  const totalComissoesAtivas = comissoesRes.ok
+    ? comissoesRes.data.filter((c) => c.ativo).length
+    : 0;
+
   return (
     <FinanceiroClient
       initialMes={mes}
@@ -61,6 +81,8 @@ export default async function FinanceiroPage() {
       initialResumo={resumoRes.data}
       initialLancamentos={lancamentosRes.data}
       pacientes={pacientesRes.data}
+      role={role}
+      totalComissoesAtivas={totalComissoesAtivas}
     />
   );
 }

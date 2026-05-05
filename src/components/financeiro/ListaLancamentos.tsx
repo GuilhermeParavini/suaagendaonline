@@ -76,6 +76,10 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
           : `- ${valorFormatado}`;
         const titulo = l.paciente?.nome ?? l.descricao;
         const subtitulo = l.paciente ? l.descricao : l.categoria ?? null;
+        const valorComissao = Number(l.valor_comissao) || 0;
+        const percentualComissao = Number(l.percentual_comissao) || 0;
+        const valorLiquido = ehReceita ? l.valor - valorComissao : 0;
+        const mostrarComissao = ehReceita && l.comissao_aplicavel && valorComissao > 0;
 
         return (
           <li key={l.id} className="px-3 py-3 sm:px-4">
@@ -93,10 +97,20 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
                 {subtitulo ? (
                   <p className="text-xs text-slate-500 truncate">{subtitulo}</p>
                 ) : null}
+                {!ehReceita && l.fornecedor ? (
+                  <p className="text-xs text-slate-500 truncate">
+                    {l.fornecedor}
+                  </p>
+                ) : null}
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   {l.forma_pagamento ? (
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-[2px] text-[11px] font-medium text-slate-700">
                       {formaLabels[l.forma_pagamento]}
+                    </span>
+                  ) : null}
+                  {!ehReceita && l.categoria_despesa ? (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-[2px] text-[11px] font-medium text-slate-600">
+                      {l.categoria_despesa}
                     </span>
                   ) : null}
                   <button
@@ -132,6 +146,19 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
                 >
                   {valorTexto}
                 </span>
+                {mostrarComissao ? (
+                  <>
+                    <span className="text-[11px] text-slate-500">
+                      Comissao: {formatCurrency(valorComissao)}
+                      {percentualComissao > 0
+                        ? ` (${String(percentualComissao).replace(".", ",")}%)`
+                        : ""}
+                    </span>
+                    <span className="text-[11px] font-semibold text-primary-dark">
+                      Liquido: {formatCurrency(valorLiquido)}
+                    </span>
+                  </>
+                ) : null}
                 <div className="flex items-center gap-1">
                   {ehReceita && l.pago ? (
                     <Link

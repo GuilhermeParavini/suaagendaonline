@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
-import { Filter, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, Plus } from "lucide-react";
 import {
   getLancamentos,
   getResumoFinanceiro,
@@ -13,11 +13,16 @@ import {
   type PacienteOption,
   type ResumoFinanceiro,
 } from "@/actions/financeiro";
+import {
+  getComissoesMensais,
+  type ComissaoMensal,
+} from "@/actions/comissoes";
 import MetricCard from "@/components/ui/MetricCard";
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import ListaLancamentos from "./ListaLancamentos";
 import FormLancamento from "./FormLancamento";
+import FinanceiroAdmin from "./FinanceiroAdmin";
 
 interface FinanceiroClientProps {
   initialMes: number;
@@ -25,6 +30,8 @@ interface FinanceiroClientProps {
   initialResumo: ResumoFinanceiro;
   initialLancamentos: Lancamento[];
   pacientes: PacienteOption[];
+  role: "admin" | "profissional" | "secretaria";
+  totalComissoesAtivas: number;
 }
 
 const MESES = [
@@ -43,16 +50,28 @@ const formaPagamentoOptions: { value: FormaPagamento | "todos"; label: string }[
   { value: "outro", label: "Outro" },
 ];
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function mesAnterior(mes: number, ano: number): { mes: number; ano: number } {
+  if (mes === 1) return { mes: 12, ano: ano - 1 };
+  return { mes: mes - 1, ano };
+}
+
 function FinanceiroClient({
   initialMes,
   initialAno,
   initialResumo,
   initialLancamentos,
   pacientes,
+  role,
+  totalComissoesAtivas,
 }: FinanceiroClientProps) {
   const [mes, setMes] = useState(initialMes);
   const [ano, setAno] = useState(initialAno);
   const [tipo, setTipo] = useState<FinanceiroTipo>("receita");
+  const [vista, setVista] = useState<"lancamentos" | "comissoes">("lancamentos");
   const [formaPagamento, setFormaPagamento] = useState<
     FormaPagamento | "todos"
   >("todos");
@@ -67,6 +86,11 @@ function FinanceiroClient({
   const [modalAberto, setModalAberto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const [fechAnt, setFechAnt] = useState<ComissaoMensal | null>(null);
+  const [fechExpandido, setFechExpandido] = useState(false);
+
+  const mostrarTabComissoes = role === "admin" && totalComissoesAtivas > 0;
 
   const recarregar = useCallback(
     (
@@ -102,6 +126,29 @@ function FinanceiroClient({
     },
     [],
   );
+
+  // Carregar fechamento do mes anterior se ha comissao
+  useEffect(() => {
+    if (!resumo.temComissao) {
+      setFechAnt(null);
+      return;
+    }
+    let cancelado = false;
+    const ant = mesAnterior(mes, ano);
+    const mesAno = `${ant.ano}-${pad2(ant.mes)}`;
+    (async () => {
+      const r = await getComissoesMensais({ mesAno });
+      if (cancelado) return;
+      if (r.ok && r.data.length > 0) {
+        setFechAnt(r.data[0]);
+      } else {
+        setFechAnt(null);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [mes, ano, resumo.temComissao]);
 
   const handleTipoChange = (next: string) => {
     if (next !== "receita" && next !== "despesa") return;
@@ -186,164 +233,259 @@ function FinanceiroClient({
         </p>
       </header>
 
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
-        <MetricCard
-          label="Receita do mês"
-          value={
-            <span className="text-[#16A34A]">
-              {formatCurrency(resumo.receita)}
-            </span>
-          }
-        />
-        <MetricCard
-          label="Despesas"
-          value={
-            <span className="text-danger">{formatCurrency(resumo.despesa)}</span>
-          }
-        />
-        <MetricCard
-          label="Saldo"
-          value={
-            <span className={saldoColor}>{formatCurrency(resumo.saldo)}</span>
-          }
-        />
-      </div>
+      {resumo.temComissao ? (
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+          <MetricCard
+            label="Faturado"
+            value={
+              <span className="text-[#16A34A]">
+                {formatCurrency(resumo.receita)}
+              </span>
+            }
+          />
+          <MetricCard
+            label="Comissao clinica"
+            value={
+              <span className="text-[#92400E]">
+                {formatCurrency(resumo.totalComissao)}
+              </span>
+            }
+          />
+          <MetricCard
+            label="Liquido"
+            value={
+              <span className="text-primary-dark">
+                {formatCurrency(resumo.valorLiquido)}
+              </span>
+            }
+          />
+          <MetricCard
+            label="Despesas"
+            value={
+              <span className="text-danger">
+                {formatCurrency(resumo.despesa)}
+              </span>
+            }
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <MetricCard
+            label="Receita do mês"
+            value={
+              <span className="text-[#16A34A]">
+                {formatCurrency(resumo.receita)}
+              </span>
+            }
+          />
+          <MetricCard
+            label="Despesas"
+            value={
+              <span className="text-danger">{formatCurrency(resumo.despesa)}</span>
+            }
+          />
+          <MetricCard
+            label="Saldo"
+            value={
+              <span className={saldoColor}>{formatCurrency(resumo.saldo)}</span>
+            }
+          />
+        </div>
+      )}
 
-      <div className="flex items-center gap-2">
-        <Tabs.Root value={tipo} onValueChange={handleTipoChange} className="flex-1">
+      {fechAnt && resumo.temComissao ? (
+        <FechamentoMesAnteriorCard
+          fechamento={fechAnt}
+          expandido={fechExpandido}
+          onToggle={() => setFechExpandido((v) => !v)}
+        />
+      ) : null}
+
+      {mostrarTabComissoes ? (
+        <Tabs.Root
+          value={vista}
+          onValueChange={(v) =>
+            setVista(v === "comissoes" ? "comissoes" : "lancamentos")
+          }
+        >
           <Tabs.List
-            className="inline-flex w-full rounded-lg border border-slate-200 bg-white p-1"
-            aria-label="Tipo de lançamento"
+            aria-label="Visao do financeiro"
+            className="inline-flex w-full rounded-lg border border-slate-200 bg-white p-1 sm:w-auto"
           >
             <Tabs.Trigger
-              value="receita"
+              value="lancamentos"
               className={cn(
-                "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                "flex-1 rounded px-4 py-1.5 text-sm font-medium transition-colors sm:flex-initial",
                 "data-[state=active]:bg-primary-surface data-[state=active]:text-primary-dark",
                 "text-slate-500 hover:text-slate-900",
               )}
             >
-              Receitas
+              Lancamentos
             </Tabs.Trigger>
             <Tabs.Trigger
-              value="despesa"
+              value="comissoes"
               className={cn(
-                "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
-                "data-[state=active]:bg-[#FEE2E2] data-[state=active]:text-[#991B1B]",
+                "flex-1 rounded px-4 py-1.5 text-sm font-medium transition-colors sm:flex-initial",
+                "data-[state=active]:bg-primary-surface data-[state=active]:text-primary-dark",
                 "text-slate-500 hover:text-slate-900",
               )}
             >
-              Despesas
+              Comissoes
             </Tabs.Trigger>
           </Tabs.List>
         </Tabs.Root>
-
-        <button
-          type="button"
-          onClick={() => setFiltrosAbertos((v) => !v)}
-          aria-expanded={filtrosAbertos}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors",
-            filtrosAbertos && "border-primary text-primary-dark bg-primary-surface",
-          )}
-        >
-          <Filter size={14} strokeWidth={1.5} aria-hidden="true" />
-          Filtros
-        </button>
-      </div>
-
-      {filtrosAbertos ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
-              Mês
-            </label>
-            <select
-              value={mes}
-              onChange={(e) => handleMesChange(Number(e.target.value))}
-              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              {MESES.map((nome, i) => (
-                <option key={i} value={i + 1}>
-                  {nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
-              Ano
-            </label>
-            <select
-              value={ano}
-              onChange={(e) => handleAnoChange(Number(e.target.value))}
-              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              {anos.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
-              Forma de pagamento
-            </label>
-            <select
-              value={formaPagamento}
-              onChange={(e) =>
-                handleFormaChange(e.target.value as FormaPagamento | "todos")
-              }
-              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              {formaPagamentoOptions.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
-              Status
-            </label>
-            <select
-              value={statusPago}
-              onChange={(e) =>
-                handleStatusChange(
-                  e.target.value as "todos" | "pago" | "pendente",
-                )
-              }
-              className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              <option value="todos">Todos</option>
-              <option value="pago">Pago</option>
-              <option value="pendente">Pendente</option>
-            </select>
-          </div>
-        </div>
       ) : null}
 
-      <section
-        aria-busy={isPending}
-        aria-live="polite"
-        className={isPending ? "opacity-60 transition-opacity" : "transition-opacity"}
-      >
-        {error ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
+      {vista === "comissoes" && mostrarTabComissoes ? (
+        <FinanceiroAdmin mes={mes} ano={ano} />
+      ) : (
+        <>
+          <div className="flex items-center gap-2">
+            <Tabs.Root
+              value={tipo}
+              onValueChange={handleTipoChange}
+              className="flex-1"
+            >
+              <Tabs.List
+                className="inline-flex w-full rounded-lg border border-slate-200 bg-white p-1"
+                aria-label="Tipo de lançamento"
+              >
+                <Tabs.Trigger
+                  value="receita"
+                  className={cn(
+                    "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                    "data-[state=active]:bg-primary-surface data-[state=active]:text-primary-dark",
+                    "text-slate-500 hover:text-slate-900",
+                  )}
+                >
+                  Receitas
+                </Tabs.Trigger>
+                <Tabs.Trigger
+                  value="despesa"
+                  className={cn(
+                    "flex-1 rounded px-3 py-1.5 text-sm font-medium transition-colors",
+                    "data-[state=active]:bg-[#FEE2E2] data-[state=active]:text-[#991B1B]",
+                    "text-slate-500 hover:text-slate-900",
+                  )}
+                >
+                  Despesas
+                </Tabs.Trigger>
+              </Tabs.List>
+            </Tabs.Root>
+
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos((v) => !v)}
+              aria-expanded={filtrosAbertos}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors",
+                filtrosAbertos &&
+                  "border-primary text-primary-dark bg-primary-surface",
+              )}
+            >
+              <Filter size={14} strokeWidth={1.5} aria-hidden="true" />
+              Filtros
+            </button>
           </div>
-        ) : (
-          <ListaLancamentos
-            lancamentos={lancamentos}
-            onChanged={handleAtualizado}
-          />
-        )}
-      </section>
+
+          {filtrosAbertos ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="block text-[13px] font-medium text-slate-700">
+                  Mês
+                </label>
+                <select
+                  value={mes}
+                  onChange={(e) => handleMesChange(Number(e.target.value))}
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  {MESES.map((nome, i) => (
+                    <option key={i} value={i + 1}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[13px] font-medium text-slate-700">
+                  Ano
+                </label>
+                <select
+                  value={ano}
+                  onChange={(e) => handleAnoChange(Number(e.target.value))}
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  {anos.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[13px] font-medium text-slate-700">
+                  Forma de pagamento
+                </label>
+                <select
+                  value={formaPagamento}
+                  onChange={(e) =>
+                    handleFormaChange(
+                      e.target.value as FormaPagamento | "todos",
+                    )
+                  }
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  {formaPagamentoOptions.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[13px] font-medium text-slate-700">
+                  Status
+                </label>
+                <select
+                  value={statusPago}
+                  onChange={(e) =>
+                    handleStatusChange(
+                      e.target.value as "todos" | "pago" | "pendente",
+                    )
+                  }
+                  className="w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="todos">Todos</option>
+                  <option value="pago">Pago</option>
+                  <option value="pendente">Pendente</option>
+                </select>
+              </div>
+            </div>
+          ) : null}
+
+          <section
+            aria-busy={isPending}
+            aria-live="polite"
+            className={
+              isPending ? "opacity-60 transition-opacity" : "transition-opacity"
+            }
+          >
+            {error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            ) : (
+              <ListaLancamentos
+                lancamentos={lancamentos}
+                onChanged={handleAtualizado}
+              />
+            )}
+          </section>
+        </>
+      )}
 
       <FormLancamento
         open={modalAberto}
@@ -360,6 +502,99 @@ function FinanceiroClient({
       >
         <Plus size={24} strokeWidth={2} aria-hidden="true" />
       </button>
+    </div>
+  );
+}
+
+function FechamentoMesAnteriorCard({
+  fechamento,
+  expandido,
+  onToggle,
+}: {
+  fechamento: ComissaoMensal;
+  expandido: boolean;
+  onToggle: () => void;
+}) {
+  const [anoStr, mesStr] = fechamento.mes_ano.split("-");
+  const mesIdx = Math.max(0, Math.min(11, Number(mesStr) - 1));
+  const titulo = `Fechamento ${MESES[mesIdx]} / ${anoStr}`;
+  const isPago = fechamento.status === "pago";
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left transition-colors rounded-lg hover:bg-slate-50"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-900 truncate">
+            {titulo}
+          </p>
+          <p className="text-xs text-slate-500">
+            Comissao: {formatCurrency(fechamento.total_comissao)} · Liquido:{" "}
+            {formatCurrency(fechamento.valor_liquido)}
+          </p>
+        </div>
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-[2px] text-[11px] font-medium",
+            isPago
+              ? "bg-[#D1FAE5] text-[#065F46]"
+              : "bg-[#FEF3C7] text-[#92400E]",
+          )}
+        >
+          {isPago ? "Pago" : "Pendente"}
+        </span>
+        {expandido ? (
+          <ChevronUp size={16} strokeWidth={1.5} className="text-slate-400" />
+        ) : (
+          <ChevronDown size={16} strokeWidth={1.5} className="text-slate-400" />
+        )}
+      </button>
+      {expandido ? (
+        <div className="grid grid-cols-2 gap-3 border-t border-slate-100 px-4 py-3 text-sm">
+          <Linha
+            label="Faturado"
+            value={formatCurrency(fechamento.faturamento_bruto)}
+            cor="text-[#16A34A]"
+          />
+          <Linha
+            label="Comissao"
+            value={formatCurrency(fechamento.total_comissao)}
+            cor="text-[#92400E]"
+          />
+          <Linha
+            label="Despesas"
+            value={formatCurrency(fechamento.total_despesas)}
+            cor="text-danger"
+          />
+          <Linha
+            label="Lucro real"
+            value={formatCurrency(fechamento.lucro_real)}
+            cor="text-primary-dark"
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function Linha({
+  label,
+  value,
+  cor,
+}: {
+  label: string;
+  value: string;
+  cor: string;
+}) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className={cn("text-sm font-semibold", cor)}>{value}</p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import {
   Loader2,
   Mail,
+  Percent,
   RotateCcw,
   Shield,
   ShieldOff,
@@ -19,6 +20,12 @@ import {
   type ProfissionalEquipe,
   type ResumoEquipe,
 } from "@/actions/equipe";
+import {
+  getComissoesTenant,
+  type ComissaoProfissionalComNome,
+} from "@/actions/comissoes";
+import { formatCurrency } from "@/lib/masks";
+import ModalComissao from "./ModalComissao";
 import {
   cancelarConvite,
   convidarProfissional,
@@ -64,44 +71,57 @@ function TabEquipe() {
   const [equipe, setEquipe] = useState<ProfissionalEquipe[]>([]);
   const [convites, setConvites] = useState<Convite[]>([]);
   const [resumo, setResumo] = useState<ResumoEquipe | null>(null);
+  const [comissoes, setComissoes] = useState<ComissaoProfissionalComNome[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [convidarOpen, setConvidarOpen] = useState(false);
+  const [comissaoTarget, setComissaoTarget] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
   const [, startTransition] = useTransition();
 
   const recarregar = useCallback(() => {
     startTransition(async () => {
-      const [eq, cv, rs] = await Promise.all([
+      const [eq, cv, rs, cm] = await Promise.all([
         listarEquipe(),
         listarConvites(),
         getResumoEquipe(),
+        getComissoesTenant(),
       ]);
       if (eq.ok) setEquipe(eq.data);
       else setErro(eq.error);
       if (cv.ok) setConvites(cv.data);
       if (rs.ok) setResumo(rs.data);
+      if (cm.ok) setComissoes(cm.data);
     });
   }, []);
 
   useEffect(() => {
     let cancelado = false;
     (async () => {
-      const [eq, cv, rs] = await Promise.all([
+      const [eq, cv, rs, cm] = await Promise.all([
         listarEquipe(),
         listarConvites(),
         getResumoEquipe(),
+        getComissoesTenant(),
       ]);
       if (cancelado) return;
       if (eq.ok) setEquipe(eq.data);
       else setErro(eq.error);
       if (cv.ok) setConvites(cv.data);
       if (rs.ok) setResumo(rs.data);
+      if (cm.ok) setComissoes(cm.data);
       setCarregando(false);
     })();
     return () => {
       cancelado = true;
     };
   }, []);
+
+  const comissoesPorProf = new Map(
+    comissoes.map((c) => [c.profissional_id, c]),
+  );
 
   const conviteslPendentes = convites.filter(
     (c) => c.status === "pendente" || c.status === "expirado",
@@ -153,7 +173,15 @@ function TabEquipe() {
         ) : (
           <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
             {equipe.map((p) => (
-              <ItemProfissional key={p.id} prof={p} onChanged={recarregar} />
+              <ItemProfissional
+                key={p.id}
+                prof={p}
+                comissao={comissoesPorProf.get(p.id) ?? null}
+                onChanged={recarregar}
+                onAbrirComissao={() =>
+                  setComissaoTarget({ id: p.id, nome: p.nome })
+                }
+              />
             ))}
           </ul>
         )}
@@ -179,16 +207,47 @@ function TabEquipe() {
         onConvidado={recarregar}
         podeConvidar={podeConvidar}
       />
+
+      {comissaoTarget ? (
+        <ModalComissao
+          key={`comissao-${comissaoTarget.id}`}
+          open={true}
+          onOpenChange={(next) => {
+            if (!next) setComissaoTarget(null);
+          }}
+          profissional={comissaoTarget}
+          onSaved={recarregar}
+        />
+      ) : null}
     </div>
   );
 }
 
+function descreverComissao(c: ComissaoProfissionalComNome): string {
+  const partes: string[] = [];
+  if (c.tipo_cobranca === "percentual" || c.tipo_cobranca === "misto") {
+    if (c.percentual > 0) {
+      partes.push(`${String(c.percentual).replace(".", ",")}%`);
+    }
+  }
+  if (c.tipo_cobranca === "fixo" || c.tipo_cobranca === "misto") {
+    if (c.valor_fixo_mensal > 0) {
+      partes.push(formatCurrency(c.valor_fixo_mensal));
+    }
+  }
+  return partes.length > 0 ? partes.join(" + ") : "Configurada";
+}
+
 function ItemProfissional({
   prof,
+  comissao,
   onChanged,
+  onAbrirComissao,
 }: {
   prof: ProfissionalEquipe;
+  comissao: ComissaoProfissionalComNome | null;
   onChanged: () => void;
+  onAbrirComissao: () => void;
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -253,6 +312,16 @@ function ItemProfissional({
               Inativo
             </span>
           ) : null}
+          {comissao && comissao.ativo ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              <Percent
+                size={9}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              {descreverComissao(comissao)}
+            </span>
+          ) : null}
         </div>
         <p className="text-xs text-slate-500 truncate">
           {prof.email} · {prof.especialidade}
@@ -260,6 +329,19 @@ function ItemProfissional({
         {erro ? <p className="text-xs text-red-600">{erro}</p> : null}
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {prof.role !== "admin" && prof.ativo ? (
+          <button
+            type="button"
+            onClick={onAbrirComissao}
+            disabled={isPending}
+            aria-label="Configurar comissao"
+            title="Comissao"
+            className="inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+          >
+            <Percent size={12} strokeWidth={1.75} aria-hidden="true" />
+            Comissao
+          </button>
+        ) : null}
         <select
           value={role}
           onChange={(e) =>
