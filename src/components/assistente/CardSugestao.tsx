@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Calendar,
   CalendarPlus,
+  ClipboardList,
   Clock,
   DollarSign,
   MessageCircle,
@@ -20,6 +21,7 @@ const ICONE_MAP: Record<string, LucideIcon> = {
   Users,
   DollarSign,
   Clock,
+  ClipboardList,
 };
 
 interface CardSugestaoProps {

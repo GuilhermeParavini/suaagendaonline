@@ -4,8 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Send, Sparkles, X } from "lucide-react";
 import type { CardSugestao as CardSugestaoData } from "@/actions/assistente-sugestoes";
+import {
+  parseRespostaAssistente,
+  type FollowUpCard,
+} from "@/lib/assistente-parser";
 import CardSugestao from "./CardSugestao";
 import FeedbackInline from "./FeedbackInline";
+import FollowUpCards from "./FollowUpCards";
 import LoadingDots from "./LoadingDots";
 import MensagemChat from "./MensagemChat";
 import { cn } from "@/lib/utils";
@@ -17,6 +22,7 @@ type Mensagem = {
   tipo: "usuario" | "assistente";
   texto: string;
   historicoId?: string;
+  followUps?: FollowUpCard[];
   timestamp: Date;
 };
 
@@ -24,12 +30,15 @@ interface AssistenteChatProps {
   profissionalId: string;
   profissionalNome: string;
   plano: string;
+  pagina?: string;
+  pacienteId?: string | null;
   onClose: () => void;
 }
 
 interface SugestoesResponse {
   cards?: CardSugestaoData[];
   saudacao?: string;
+  log_id?: string | null;
 }
 
 interface AssistenteResponse {
@@ -52,10 +61,13 @@ function AssistenteChat({
   profissionalId,
   profissionalNome,
   plano,
+  pagina = "dashboard",
+  pacienteId = null,
   onClose,
 }: AssistenteChatProps) {
   const [cards, setCards] = useState<CardSugestaoData[]>([]);
   const [saudacao, setSaudacao] = useState<string>("");
+  const [logId, setLogId] = useState<string | null>(null);
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
   const [loading, setLoading] = useState(false);
   const [limiteAtingido, setLimiteAtingido] = useState(false);
@@ -65,16 +77,21 @@ function AssistenteChat({
   const mensagensRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Carrega sugestões iniciais
+  // Carrega sugestões iniciais (recarrega ao mudar de pagina/paciente)
   useEffect(() => {
     let cancelado = false;
     (async () => {
       try {
-        const r = await fetch("/api/assistente/sugestoes?pagina=dashboard");
+        const params = new URLSearchParams({ pagina });
+        if (pacienteId) params.set("paciente_id", pacienteId);
+        const r = await fetch(
+          `/api/assistente/sugestoes?${params.toString()}`,
+        );
         if (!r.ok) return;
         const json = (await r.json()) as SugestoesResponse;
         if (cancelado) return;
         setCards(json.cards ?? []);
+        setLogId(json.log_id ?? null);
         setSaudacao(
           json.saudacao ??
             (profissionalNome
@@ -88,7 +105,7 @@ function AssistenteChat({
     return () => {
       cancelado = true;
     };
-  }, [profissionalNome]);
+  }, [profissionalNome, pagina, pacienteId]);
 
   // Auto-scroll para o fim
   useEffect(() => {
@@ -105,6 +122,15 @@ function AssistenteChat({
     const max = 3 * 24; // ~3 linhas
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }, [inputTexto]);
+
+  const registrarClickCard = (cardId: string) => {
+    if (!logId) return;
+    void fetch("/api/assistente/sugestoes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ log_id: logId, card_id: cardId }),
+    }).catch(() => {});
+  };
 
   const enviarPergunta = async (
     texto: string,
@@ -132,7 +158,8 @@ function AssistenteChat({
         body: JSON.stringify({
           pergunta: conteudo,
           profissional_id: profissionalId,
-          pagina_atual: "dashboard",
+          pagina_atual: pagina,
+          paciente_id: pacienteId,
           origem,
           card_id: cardId ?? null,
         }),
@@ -170,15 +197,18 @@ function AssistenteChat({
         return;
       }
 
+      const respostaBruta =
+        json.resposta ?? "Não consegui responder agora. Tente novamente.";
+      const parsed = parseRespostaAssistente(respostaBruta);
+
       setMensagens((prev) => [
         ...prev,
         {
           id: gerarId(),
           tipo: "assistente",
-          texto:
-            json.resposta ??
-            "Não consegui responder agora. Tente novamente.",
+          texto: parsed.texto || respostaBruta,
           historicoId: json.historico_id,
+          followUps: parsed.followUps,
           timestamp: new Date(),
         },
       ]);
@@ -199,7 +229,12 @@ function AssistenteChat({
   };
 
   const handleClickCard = (card: CardSugestaoData) => {
+    registrarClickCard(card.id);
     void enviarPergunta(card.pergunta_formatada, "card_inicial", card.id);
+  };
+
+  const handleClickFollowUp = (pergunta: string) => {
+    void enviarPergunta(pergunta, "card_follow_up");
   };
 
   const handleSubmit = () => {
@@ -262,12 +297,19 @@ function AssistenteChat({
           </>
         ) : (
           mensagens.map((m) => (
-            <div key={m.id} className="space-y-1">
+            <div key={m.id} className="space-y-1.5">
               <MensagemChat
                 tipo={m.tipo}
                 texto={m.texto}
                 timestamp={m.timestamp}
               />
+              {m.tipo === "assistente" && m.followUps && m.followUps.length > 0 ? (
+                <FollowUpCards
+                  followUps={m.followUps}
+                  onClick={handleClickFollowUp}
+                  disabled={loading || !podeEnviar}
+                />
+              ) : null}
               {m.tipo === "assistente" && m.historicoId ? (
                 <FeedbackInline historicoId={m.historicoId} />
               ) : null}

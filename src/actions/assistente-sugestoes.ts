@@ -318,6 +318,79 @@ async function cardFaturamentoMes(
   };
 }
 
+async function cardHistoricoPaciente(
+  admin: Admin,
+  tenantId: string,
+  profissionalId: string,
+  pacienteId: string,
+): Promise<CardSugestao | null> {
+  const { data: ag } = await admin
+    .from('agendamentos')
+    .select('data_hora, procedimentos(nome)')
+    .eq('tenant_id', tenantId)
+    .eq('profissional_id', profissionalId)
+    .eq('paciente_id', pacienteId)
+    .eq('status', 'concluido')
+    .order('data_hora', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!ag) {
+    return {
+      id: 'historico_paciente',
+      icone: 'Calendar',
+      titulo: 'Histórico do paciente',
+      preview: 'Sem consultas concluídas',
+      pergunta_formatada:
+        'Me mostra o histórico completo deste paciente.',
+      prioridade: 9,
+    };
+  }
+  const dh = ag.data_hora as string;
+  const partes = partesSP(new Date(dh));
+  const dataFmt = `${pad2(partes.day)}/${pad2(partes.month)}`;
+  const procRaw = Array.isArray(ag.procedimentos)
+    ? ag.procedimentos[0]
+    : ag.procedimentos;
+  const proc = (procRaw?.nome as string | null) ?? null;
+  const preview = proc
+    ? `Última consulta: ${dataFmt} — ${proc}`
+    : `Última consulta: ${dataFmt}`;
+  return {
+    id: 'historico_paciente',
+    icone: 'Calendar',
+    titulo: 'Histórico do paciente',
+    preview,
+    pergunta_formatada: 'Me mostra o histórico completo deste paciente.',
+    prioridade: 9,
+  };
+}
+
+async function cardUltimaAnamnese(
+  admin: Admin,
+  tenantId: string,
+  pacienteId: string,
+): Promise<CardSugestao | null> {
+  const { data } = await admin
+    .from('anamneses')
+    .select('created_at')
+    .eq('tenant_id', tenantId)
+    .eq('paciente_id', pacienteId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const partes = partesSP(new Date(data.created_at as string));
+  const dataFmt = `${pad2(partes.day)}/${pad2(partes.month)}`;
+  return {
+    id: 'ultima_anamnese',
+    icone: 'ClipboardList',
+    titulo: 'Última anamnese',
+    preview: `Anamnese preenchida em ${dataFmt}`,
+    pergunta_formatada: 'Qual foi a última anamnese deste paciente?',
+    prioridade: 8,
+  };
+}
+
 async function cardFaltasHoje(
   admin: Admin,
   tenantId: string,
@@ -378,20 +451,37 @@ function saudacaoPorTurno(
 // Função principal
 // ============================================================
 
+export type SugestoesContexto = {
+  pagina?: string | null;
+  pacienteId?: string | null;
+};
+
+function ehUuid(v: string | null | undefined): v is string {
+  return (
+    typeof v === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+  );
+}
+
 export async function getSugestoesCards(
   tenantId: string,
   profissionalId: string,
   _role: string,
-  _paginaAtual: string,
+  paginaAtual: string,
   profissionalNome?: string | null,
+  contexto?: SugestoesContexto,
 ): Promise<RespostaSugestoes> {
   const admin = createAdminClient();
   const agora = new Date();
   const partes = partesSP(agora);
   const turno = turnoDoHora(partes.hour);
 
+  const pagina = (contexto?.pagina ?? paginaAtual ?? 'dashboard').toLowerCase();
+  const pacienteId = contexto?.pacienteId ?? null;
+
   const fns: Array<Promise<CardSugestao | null>> = [];
 
+  // Cards por horario (sempre adicionados)
   if (turno === 'manha') {
     fns.push(
       cardAgendaHoje(admin, tenantId, profissionalId, agora),
@@ -417,15 +507,38 @@ export async function getSugestoesCards(
     fns.push(cardAgendaHoje(admin, tenantId, profissionalId, agora));
   }
 
+  // Cards contextuais por pagina (adicionais — nao substituem)
+  const cardsForcadosPorPagina = new Set<string>();
+  if (pagina === 'pacientes' && ehUuid(pacienteId)) {
+    fns.push(
+      cardHistoricoPaciente(admin, tenantId, profissionalId, pacienteId),
+      cardUltimaAnamnese(admin, tenantId, pacienteId),
+    );
+    cardsForcadosPorPagina.add('historico_paciente');
+    cardsForcadosPorPagina.add('ultima_anamnese');
+  } else if (pagina === 'financeiro') {
+    cardsForcadosPorPagina.add('faturamento_mes');
+    cardsForcadosPorPagina.add('pendencias_financeiras');
+  } else if (pagina === 'agenda') {
+    cardsForcadosPorPagina.add('agenda_hoje');
+    cardsForcadosPorPagina.add('faltas_hoje');
+  }
+
   const resultados = await Promise.all(fns);
-  const cards = resultados
+  const todos = resultados
     .filter((c): c is CardSugestao => c !== null)
-    // dedupe por id (caso cardAgendaHoje seja adicionado duas vezes)
     .filter(
       (c, idx, arr) => arr.findIndex((x) => x.id === c.id) === idx,
-    )
-    .sort((a, b) => b.prioridade - a.prioridade)
-    .slice(0, 4);
+    );
+
+  // Boost de prioridade quando o card esta na pagina atual
+  const boosted = todos.map((c) =>
+    cardsForcadosPorPagina.has(c.id)
+      ? { ...c, prioridade: c.prioridade + 100 }
+      : c,
+  );
+
+  const cards = boosted.sort((a, b) => b.prioridade - a.prioridade).slice(0, 4);
 
   return {
     cards,

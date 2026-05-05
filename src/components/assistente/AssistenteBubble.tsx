@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X } from "lucide-react";
 import AssistenteChat from "./AssistenteChat";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,29 @@ interface AssistenteBubbleProps {
 
 const PULSE_KEY = "assistente-pulse-shown";
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function detectarContextoPagina(pathname: string): {
+  pagina: string;
+  pacienteId: string | null;
+} {
+  if (!pathname) return { pagina: "dashboard", pacienteId: null };
+  const partes = pathname.split("/").filter(Boolean);
+  const root = partes[0] ?? "";
+  if (root === "pacientes") {
+    const id = partes[1] ?? null;
+    return {
+      pagina: "pacientes",
+      pacienteId: id && UUID_RE.test(id) ? id : null,
+    };
+  }
+  if (root === "financeiro") return { pagina: "financeiro", pacienteId: null };
+  if (root === "agenda") return { pagina: "agenda", pacienteId: null };
+  if (root === "atendimento") return { pagina: "atendimento", pacienteId: null };
+  return { pagina: "dashboard", pacienteId: null };
+}
+
 function AssistenteBubble({
   profissionalId,
   profissionalNome,
@@ -20,6 +44,11 @@ function AssistenteBubble({
 }: AssistenteBubbleProps) {
   const [aberto, setAberto] = useState(false);
   const [pulsar, setPulsar] = useState(false);
+  const pathname = usePathname() ?? "/";
+  const { pagina, pacienteId } = useMemo(
+    () => detectarContextoPagina(pathname),
+    [pathname],
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -68,6 +97,8 @@ function AssistenteBubble({
             profissionalId={profissionalId}
             profissionalNome={profissionalNome}
             plano={plano}
+            pagina={pagina}
+            pacienteId={pacienteId}
             onClose={fechar}
           />
         </div>
