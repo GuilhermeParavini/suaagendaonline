@@ -66,6 +66,7 @@ export default async function AgendarPublicoPage({
       contexto={ctx.data}
       diasSemanaDisponiveis={diasSemanaDisponiveis}
       datasIndisponiveis={datasIndisponiveis}
+      slug={slug}
     />
   );
 }

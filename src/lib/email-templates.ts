@@ -427,6 +427,56 @@ export function emailConviteProfissional(d: DadosConvite): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosNovaListaEspera = {
+  profissionalNome: string;
+  pacienteNome: string;
+  procedimentoNome: string | null;
+  dataPreferencia: string | null;
+  turnoPreferencia: string | null;
+  observacoes: string | null;
+  linkLista: string;
+  logoUrl?: string | null;
+};
+
+const TURNO_LABEL_EMAIL: Record<string, string> = {
+  manha: 'Manhã',
+  tarde: 'Tarde',
+  qualquer: 'Qualquer turno',
+};
+
+export function emailNovaListaEspera(d: DadosNovaListaEspera): {
+  assunto: string;
+  html: string;
+} {
+  const profissional = capitalizeNome(d.profissionalNome);
+  const paciente = capitalizeNome(d.pacienteNome);
+  const procedimento = (d.procedimentoNome ?? '').trim();
+  const turnoLbl = d.turnoPreferencia
+    ? TURNO_LABEL_EMAIL[d.turnoPreferencia] ?? d.turnoPreferencia
+    : null;
+  const obs = (d.observacoes ?? '').trim();
+  const dataPref = d.dataPreferencia
+    ? dataPorExtenso(d.dataPreferencia)
+    : null;
+  const assunto = 'Novo paciente na lista de espera';
+
+  const detalhes: string[] = [];
+  if (procedimento) detalhes.push(row('Procedimento', procedimento));
+  if (dataPref) detalhes.push(row('Data preferida', dataPref));
+  if (turnoLbl) detalhes.push(row('Turno', turnoLbl));
+  if (obs) detalhes.push(row('Observações', obs));
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(profissional)}.</p>
+    <p style="margin:0 0 8px 0;"><strong>${escapeHtml(paciente)}</strong> entrou na lista de espera.</p>
+    ${detalhes.join('')}
+    <p style="margin:20px 0 0 0;">
+      <a href="${escapeHtml(d.linkLista)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Ver lista de espera</a>
+    </p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

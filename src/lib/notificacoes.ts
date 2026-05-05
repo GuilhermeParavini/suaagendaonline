@@ -10,7 +10,8 @@ type TipoNotificacao =
   | "followup"
   | "followup_whatsapp"
   | "reagendamento"
-  | "convite";
+  | "convite"
+  | "lista_espera";
 
 type EnviarNotificacaoInput = {
   tenantId: string;

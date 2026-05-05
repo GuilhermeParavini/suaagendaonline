@@ -14,6 +14,11 @@ import {
   type ProcedimentoOpcao,
   type SlotPainel,
 } from "@/actions/agendamentos";
+import {
+  buscarSugestoesListaEspera,
+  type SugestaoListaEspera,
+} from "@/actions/lista-espera";
+import { cleanPhone } from "@/lib/masks";
 import CalendarioMensal from "@/components/agendamento-publico/CalendarioMensal";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +62,8 @@ function ModalReagendamento({
   const [erro, setErro] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [sugestaoEspera, setSugestaoEspera] =
+    useState<SugestaoListaEspera | null>(null);
 
   const resetar = useCallback(() => {
     setProcedimentos([]);
@@ -171,6 +178,26 @@ function ModalReagendamento({
         return;
       }
       setOkMsg(true);
+
+      // Verifica se ha alguem na lista de espera para o horario antigo
+      if (agendamento && agendamento.profissional?.id) {
+        const oldDataIso = agendamento.data_hora.slice(0, 10);
+        const oldHora = new Date(agendamento.data_hora).toLocaleTimeString(
+          "pt-BR",
+          { hour: "2-digit", minute: "2-digit", timeZone: "UTC" },
+        );
+        const sug = await buscarSugestoesListaEspera({
+          profissionalId: agendamento.profissional.id,
+          dataIso: oldDataIso,
+          hora: oldHora,
+        });
+        if (sug.ok && sug.data.length > 0) {
+          setSugestaoEspera(sug.data[0]);
+          // nao auto-fecha, deixa o usuario decidir
+          return;
+        }
+      }
+
       window.setTimeout(() => {
         onReagendado?.(r.novoAgendamentoId);
         handleOpenChange(false);
@@ -343,6 +370,53 @@ function ModalReagendamento({
                 <Check size={14} strokeWidth={2} aria-hidden="true" />
                 Reagendamento confirmado.
               </p>
+            ) : null}
+
+            {sugestaoEspera ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <p className="text-sm font-medium text-amber-900">
+                  {sugestaoEspera.pacienteNome} está na lista de espera
+                </p>
+                <p className="text-xs text-amber-800">
+                  O horário antigo foi liberado. Deseja notificá-lo?
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tel = cleanPhone(
+                        sugestaoEspera.pacienteTelefone,
+                      );
+                      if (!tel) return;
+                      const primeiro =
+                        sugestaoEspera.pacienteNome.split(" ")[0];
+                      const profNome =
+                        agendamento?.profissional?.nome ?? "o profissional";
+                      const msg = `Olá ${primeiro}! Surgiu um horário disponível na agenda de ${profNome}. Gostaria de agendar?`;
+                      window.open(
+                        `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,
+                        "_blank",
+                        "noopener,noreferrer",
+                      );
+                    }}
+                    disabled={!sugestaoEspera.pacienteTelefone}
+                    className="inline-flex items-center gap-1.5 rounded bg-[#25D366] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1ebe5a] disabled:opacity-50 transition-colors"
+                  >
+                    Notificar por WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSugestaoEspera(null);
+                      onReagendado?.("");
+                      handleOpenChange(false);
+                    }}
+                    className="rounded px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                  >
+                    Ignorar e fechar
+                  </button>
+                </div>
+              </div>
             ) : null}
           </div>
 

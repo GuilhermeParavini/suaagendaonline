@@ -11,6 +11,11 @@ import {
   type Slot,
   type NovoPacientePublico,
 } from "@/actions/agendamento-publico";
+import {
+  adicionarListaEsperaPublica,
+  type TurnoPreferencia,
+} from "@/actions/lista-espera";
+import { cleanCPF, formatCPF } from "@/lib/masks";
 import type {
   Procedimento,
   ProfissionalPublico,
@@ -28,6 +33,7 @@ interface AgendarFlowProps {
   contexto: ProfissionalPublico;
   diasSemanaDisponiveis: number[];
   datasIndisponiveis: string[];
+  slug: string;
 }
 
 function isoDate(d: Date): string {
@@ -38,7 +44,9 @@ function AgendarFlow({
   contexto,
   diasSemanaDisponiveis,
   datasIndisponiveis,
+  slug,
 }: AgendarFlowProps) {
+  const extrairSlug = () => slug;
   const [step, setStep] = useState<Step>("procedimento");
   const [procedimento, setProcedimento] = useState<Procedimento | null>(null);
   const [visibleMonth, setVisibleMonth] = useState<Date>(startOfMonth(new Date()));
@@ -286,6 +294,35 @@ function AgendarFlow({
               />
             </div>
           )}
+
+          {!slotsLoading &&
+          !slotsError &&
+          !diaIndisponivel &&
+          slots.length > 0 &&
+          slots.every((s) => !s.available) ? (
+            <ListaEsperaInline
+              slug={extrairSlug()}
+              profissionalId={contexto.profissional.id}
+              procedimentoId={procedimento?.id ?? null}
+              dataPreferenciaIso={
+                selectedDate ? isoDate(selectedDate) : null
+              }
+            />
+          ) : null}
+
+          {!slotsLoading &&
+          !slotsError &&
+          !diaIndisponivel &&
+          slots.length === 0 ? (
+            <ListaEsperaInline
+              slug={extrairSlug()}
+              profissionalId={contexto.profissional.id}
+              procedimentoId={procedimento?.id ?? null}
+              dataPreferenciaIso={
+                selectedDate ? isoDate(selectedDate) : null
+              }
+            />
+          ) : null}
         </section>
       ) : null}
 
@@ -386,6 +423,181 @@ function Stepper({ step }: { step: Step }) {
         );
       })}
     </ol>
+  );
+}
+
+interface ListaEsperaInlineProps {
+  slug: string;
+  profissionalId: string;
+  procedimentoId: string | null;
+  dataPreferenciaIso: string | null;
+}
+
+function ListaEsperaInline({
+  slug,
+  profissionalId,
+  procedimentoId,
+  dataPreferenciaIso,
+}: ListaEsperaInlineProps) {
+  const [aberto, setAberto] = useState(false);
+  const [cpfInput, setCpfInput] = useState("");
+  const [turno, setTurno] = useState<TurnoPreferencia>("qualquer");
+  const [observacoes, setObservacoes] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [precisaCadastro, setPrecisaCadastro] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = () => {
+    setErro(null);
+    setPrecisaCadastro(false);
+    if (cleanCPF(cpfInput).length !== 11) {
+      setErro("Informe um CPF válido.");
+      return;
+    }
+    startTransition(async () => {
+      const r = await adicionarListaEsperaPublica({
+        slug,
+        profissionalId,
+        cpf: cleanCPF(cpfInput),
+        procedimentoId,
+        dataPreferencia: dataPreferenciaIso,
+        turnoPreferencia: turno,
+        observacoes: observacoes.trim() || undefined,
+      });
+      if (!r.ok) {
+        setErro(r.error);
+        if (r.precisaCadastro) setPrecisaCadastro(true);
+        return;
+      }
+      setSucesso(true);
+    });
+  };
+
+  if (sucesso) {
+    return (
+      <div className="rounded-lg border border-[#CCFBF1] bg-[#F0FDFA] p-4">
+        <p className="text-sm font-medium text-[#115E59]">
+          Você entrou na lista de espera!
+        </p>
+        <p className="mt-1 text-xs text-[#115E59]">
+          O profissional entrará em contato quando houver disponibilidade.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+      <p className="text-sm font-medium text-amber-800">
+        Não há horários disponíveis nesta data.
+      </p>
+      {!aberto ? (
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+        >
+          Entrar na lista de espera
+        </button>
+      ) : (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <label className="block text-[13px] font-medium text-slate-700">
+              CPF
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={14}
+              placeholder="000.000.000-00"
+              value={cpfInput}
+              onChange={(e) => setCpfInput(formatCPF(e.target.value))}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10"
+            />
+            <p className="text-[11px] text-slate-500">
+              Usamos seu CPF para identificar seu cadastro.
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-[13px] font-medium text-slate-700">
+              Turno de preferência
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  { v: "manha", lbl: "Manhã" },
+                  { v: "tarde", lbl: "Tarde" },
+                  { v: "qualquer", lbl: "Qualquer" },
+                ] as { v: TurnoPreferencia; lbl: string }[]
+              ).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setTurno(opt.v)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    turno === opt.v
+                      ? "border-primary bg-primary text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
+                >
+                  {opt.lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-[13px] font-medium text-slate-700">
+              Observação (opcional)
+            </label>
+            <textarea
+              value={observacoes}
+              onChange={(e) => setObservacoes(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="Ex.: prefiro tarde da semana"
+              className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10"
+            />
+          </div>
+
+          {erro ? (
+            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              <p>{erro}</p>
+              {precisaCadastro ? (
+                <a
+                  href={`/cadastro-paciente/${slug}`}
+                  className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                >
+                  Fazer meu cadastro →
+                </a>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setAberto(false)}
+              disabled={isPending}
+              className="rounded px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || cleanCPF(cpfInput).length !== 11}
+              className="rounded bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50 transition-colors"
+            >
+              {isPending ? "Enviando..." : "Confirmar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

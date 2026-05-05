@@ -9,6 +9,11 @@ import {
   type AgendamentoDia,
   type StatusAgendamento,
 } from "@/actions/agendamentos";
+import {
+  buscarSugestoesListaEspera,
+  type SugestaoListaEspera,
+} from "@/actions/lista-espera";
+import { cleanPhone, formatPhone } from "@/lib/masks";
 import StatusPill from "@/components/ui/StatusPill";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -86,6 +91,8 @@ function AgendamentoModal({
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [reagendamentoOpen, setReagendamentoOpen] = useState(false);
+  const [sugestaoEspera, setSugestaoEspera] =
+    useState<SugestaoListaEspera | null>(null);
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,6 +133,21 @@ function AgendamentoModal({
     minute: "2-digit",
     timeZone: "UTC",
   });
+  const dataIsoAg = agendamento.data_hora.slice(0, 10);
+
+  const checarSugestoesEspera = async () => {
+    if (!agendamento.profissional?.id) return;
+    const r = await buscarSugestoesListaEspera({
+      profissionalId: agendamento.profissional.id,
+      dataIso: dataIsoAg,
+      hora: horario,
+    });
+    if (r.ok && r.data.length > 0) {
+      setSugestaoEspera(r.data[0]);
+    }
+  };
+
+  const profissionalNome = agendamento.profissional?.nome ?? "o profissional";
 
   const nomePaciente = agendamento.paciente?.nome ?? "Paciente";
   const nomeProcedimento = agendamento.procedimento?.nome ?? null;
@@ -159,6 +181,16 @@ function AgendamentoModal({
       if (novoStatus === "em_atendimento") {
         handleOpenChange(false);
         router.push(`/atendimento/${agendamento.id}`);
+        return;
+      }
+
+      // Quando o horário é liberado por cancelamento, oferecer sugestão da
+      // lista de espera antes de fechar o modal.
+      if (novoStatus === "cancelado") {
+        await checarSugestoesEspera();
+        toastTimerRef.current = setTimeout(() => {
+          setToast(null);
+        }, TOAST_DURATION_MS);
         return;
       }
 
@@ -217,6 +249,55 @@ function AgendamentoModal({
             >
               <Check size={14} strokeWidth={2} aria-hidden="true" />
               <span>{toast}</span>
+            </div>
+          ) : null}
+
+          {sugestaoEspera ? (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <p className="text-sm font-medium text-amber-900">
+                {sugestaoEspera.pacienteNome} está na lista de espera
+              </p>
+              <p className="text-xs text-amber-800">
+                {sugestaoEspera.procedimentoNome
+                  ? `Quer ${sugestaoEspera.procedimentoNome}.`
+                  : "Quer agendar uma consulta."}
+                {sugestaoEspera.observacoes
+                  ? ` "${sugestaoEspera.observacoes}"`
+                  : ""}
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tel = cleanPhone(sugestaoEspera.pacienteTelefone);
+                    if (!tel) return;
+                    const primeiroNome =
+                      sugestaoEspera.pacienteNome.split(" ")[0];
+                    const msg = `Olá ${primeiroNome}! Surgiu um horário disponível na agenda de ${profissionalNome}. Gostaria de agendar?`;
+                    window.open(
+                      `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }}
+                  disabled={!sugestaoEspera.pacienteTelefone}
+                  className="inline-flex items-center gap-1.5 rounded bg-[#25D366] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1ebe5a] disabled:opacity-50 transition-colors"
+                  title={
+                    sugestaoEspera.pacienteTelefone
+                      ? formatPhone(sugestaoEspera.pacienteTelefone)
+                      : "Sem telefone cadastrado"
+                  }
+                >
+                  Notificar por WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSugestaoEspera(null)}
+                  className="rounded px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  Ignorar
+                </button>
+              </div>
             </div>
           ) : null}
 
