@@ -63,6 +63,13 @@ const profSchema = z
       return d.length === 10 || d.length === 11;
     }, "Telefone inválido"),
     bio: z.string().max(300, "Máximo de 300 caracteres").optional(),
+    intervalo_entre_consultas_min: z
+      .number()
+      .int()
+      .refine(
+        (n) => [0, 5, 10, 15, 20, 30].includes(n),
+        "Intervalo inválido",
+      ),
   })
   .superRefine((data, ctx) => {
     const sug = getRegistroSugestao(data.especialidade);
@@ -126,6 +133,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       registro_profissional: profissional.registro_profissional ?? "",
       telefone: profissional.telefone ? formatPhone(profissional.telefone) : "",
       bio: profissional.bio ?? "",
+      intervalo_entre_consultas_min:
+        profissional.intervalo_entre_consultas_min ?? 0,
     },
   });
 
@@ -167,6 +176,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       registro_profissional: profissional.registro_profissional ?? "",
       telefone: profissional.telefone ? formatPhone(profissional.telefone) : "",
       bio: profissional.bio ?? "",
+      intervalo_entre_consultas_min:
+        profissional.intervalo_entre_consultas_min ?? 0,
     });
     setEditandoProf(false);
     setErroProf(null);
@@ -192,6 +203,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
         registro_profissional: data.registro_profissional?.trim() || undefined,
         telefone: data.telefone,
         bio: data.bio?.trim() || undefined,
+        intervalo_entre_consultas_min: data.intervalo_entre_consultas_min,
       });
       if (!result.ok) {
         setErroProf(result.error);
@@ -342,6 +354,32 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
                 </p>
               ) : null}
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className={labelClass}>Intervalo entre consultas</label>
+            <select
+              {...profForm.register("intervalo_entre_consultas_min", {
+                valueAsNumber: true,
+              })}
+              disabled={!editandoProf}
+              className={inputClass}
+            >
+              <option value={0}>0 min</option>
+              <option value={5}>5 min</option>
+              <option value={10}>10 min</option>
+              <option value={15}>15 min</option>
+              <option value={20}>20 min</option>
+              <option value={30}>30 min</option>
+            </select>
+            <p className="text-xs text-slate-500">
+              Tempo de descanso entre um paciente e outro
+            </p>
+            {profForm.formState.errors.intervalo_entre_consultas_min ? (
+              <p className={errorClass}>
+                {profForm.formState.errors.intervalo_entre_consultas_min.message}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-1">

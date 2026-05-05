@@ -571,13 +571,15 @@ export async function getDisponibilidadePainel(
   const admin = createAdminClient();
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('id, tenant_id, duracao_padrao_min')
+    .select('id, tenant_id, duracao_padrao_min, intervalo_entre_consultas_min')
     .eq('user_id', user.id)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
 
-  const intervaloMin = (prof.duracao_padrao_min as number) ?? 30;
+  const duracaoPadraoMin = (prof.duracao_padrao_min as number) ?? 30;
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
 
   const { data: proc, error: procErr } = await admin
     .from('procedimentos')
@@ -588,7 +590,7 @@ export async function getDisponibilidadePainel(
   if (!proc || proc.tenant_id !== prof.tenant_id || !proc.ativo) {
     return { ok: false, error: 'Procedimento invalido.' };
   }
-  const duracaoMin = (proc.duracao_min as number) ?? intervaloMin;
+  const duracaoMin = (proc.duracao_min as number) ?? duracaoPadraoMin;
 
   // Bloqueia feriados — feriados sao estritos (erro fatal se a consulta falhar)
   let feriados: Awaited<ReturnType<typeof getFeriadosForTenant>> = [];
@@ -667,13 +669,14 @@ export async function getDisponibilidadePainel(
 
   const ocupados = (existentes ?? []).map((row) => {
     const start = new Date(row.data_hora as string).getTime();
-    const dur = (row.duracao_min as number) ?? intervaloMin;
-    return { start, end: start + dur * 60_000 };
+    const dur = (row.duracao_min as number) ?? duracaoPadraoMin;
+    return { start, end: start + (dur + intervaloEntreMin) * 60_000 };
   });
 
   const agora = Date.now();
   const slots: SlotPainel[] = [];
   const seen = new Set<string>();
+  const passoMin = duracaoMin + intervaloEntreMin;
 
   for (const range of horarios) {
     const [hi, mi] = (range.hora_inicio as string).split(':').map(Number);
@@ -681,7 +684,7 @@ export async function getDisponibilidadePainel(
     const startMin = hi * 60 + mi;
     const endMin = hf * 60 + mf;
 
-    for (let cur = startMin; cur + duracaoMin <= endMin; cur += intervaloMin) {
+    for (let cur = startMin; cur + duracaoMin <= endMin; cur += passoMin) {
       const h = Math.floor(cur / 60);
       const mm = cur % 60;
       const time = `${pad2(h)}:${pad2(mm)}`;
@@ -690,7 +693,7 @@ export async function getDisponibilidadePainel(
 
       const slotIso = buildIsoDateTime(dataIso, time);
       const slotStart = new Date(slotIso).getTime();
-      const slotEnd = slotStart + duracaoMin * 60_000;
+      const slotEnd = slotStart + (duracaoMin + intervaloEntreMin) * 60_000;
       const isPast = slotStart <= agora;
       const isOccupied = ocupados.some(
         (o) => slotStart < o.end && slotEnd > o.start,
@@ -728,7 +731,9 @@ export async function criarAgendamentoPainel(
   const admin = createAdminClient();
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('id, tenant_id, nome, tolerancia_atraso_min, logo_url')
+    .select(
+      'id, tenant_id, nome, tolerancia_atraso_min, intervalo_entre_consultas_min, logo_url',
+    )
     .eq('user_id', user.id)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
@@ -736,6 +741,8 @@ export async function criarAgendamentoPainel(
 
   const tenantId = prof.tenant_id as string;
   const profissionalId = prof.id as string;
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
 
   // Paciente
   const { data: pac, error: pacErr } = await admin
@@ -762,7 +769,7 @@ export async function criarAgendamentoPainel(
 
   const dataHoraIso = buildIsoDateTime(input.dataIso, input.hora);
   const startMs = new Date(dataHoraIso).getTime();
-  const endMs = startMs + duracaoMin * 60_000;
+  const endMs = startMs + (duracaoMin + intervaloEntreMin) * 60_000;
 
   if (startMs <= Date.now()) {
     return { ok: false, error: 'Horario ja passou. Escolha outro.' };
@@ -817,7 +824,7 @@ export async function criarAgendamentoPainel(
   const conflito = (existentes ?? []).some((row) => {
     const s = new Date(row.data_hora as string).getTime();
     const dur = (row.duracao_min as number) ?? 30;
-    return startMs < s + dur * 60_000 && endMs > s;
+    return startMs < s + (dur + intervaloEntreMin) * 60_000 && endMs > s;
   });
   if (conflito) {
     return { ok: false, error: 'Horario indisponivel. Escolha outro.' };
@@ -929,7 +936,7 @@ export async function reagendarConsulta(
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, logo_url, tolerancia_atraso_min',
+      'id, tenant_id, nome, especialidade, logo_url, tolerancia_atraso_min, intervalo_entre_consultas_min',
     )
     .eq('user_id', user.id)
     .maybeSingle();
@@ -938,6 +945,8 @@ export async function reagendarConsulta(
 
   const tenantId = prof.tenant_id as string;
   const profissionalId = prof.id as string;
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
 
   const { data: antigo, error: getErr } = await admin
     .from('agendamentos')
@@ -989,7 +998,7 @@ export async function reagendarConsulta(
 
   const novaDataHoraIso = buildIsoDateTime(input.novaDataIso, input.novaHora);
   const startMs = new Date(novaDataHoraIso).getTime();
-  const endMs = startMs + duracaoMin * 60_000;
+  const endMs = startMs + (duracaoMin + intervaloEntreMin) * 60_000;
 
   if (startMs <= Date.now()) {
     return { ok: false, error: 'Horario ja passou. Escolha outro.' };
@@ -1048,7 +1057,7 @@ export async function reagendarConsulta(
     .some((row) => {
       const s = new Date(row.data_hora as string).getTime();
       const dur = (row.duracao_min as number) ?? 30;
-      return startMs < s + dur * 60_000 && endMs > s;
+      return startMs < s + (dur + intervaloEntreMin) * 60_000 && endMs > s;
     });
   if (conflito) {
     return { ok: false, error: 'Horario indisponivel. Escolha outro.' };

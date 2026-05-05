@@ -85,13 +85,15 @@ export async function getDisponibilidade(
 
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('duracao_padrao_min, tenant_id')
+    .select('duracao_padrao_min, intervalo_entre_consultas_min, tenant_id')
     .eq('id', profissionalId)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
 
-  const intervaloMin = (prof.duracao_padrao_min as number) ?? 30;
+  const duracaoPadraoMin = (prof.duracao_padrao_min as number) ?? 30;
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
   const tenantId = prof.tenant_id as string;
 
   const { data: proc, error: procErr } = await admin
@@ -102,7 +104,7 @@ export async function getDisponibilidade(
   if (procErr) return { ok: false, error: procErr.message };
   if (!proc) return { ok: false, error: 'Procedimento não encontrado.' };
 
-  const duracaoMin = (proc.duracao_min as number) ?? intervaloMin;
+  const duracaoMin = (proc.duracao_min as number) ?? duracaoPadraoMin;
 
   // Bloqueia feriados e ausencias do profissional
   try {
@@ -159,14 +161,15 @@ export async function getDisponibilidade(
 
   const ocupados = (existentes ?? []).map((row) => {
     const start = new Date(row.data_hora as string).getTime();
-    const dur = (row.duracao_min as number) ?? intervaloMin;
-    return { start, end: start + dur * 60_000 };
+    const dur = (row.duracao_min as number) ?? duracaoPadraoMin;
+    return { start, end: start + (dur + intervaloEntreMin) * 60_000 };
   });
 
   const agora = Date.now();
 
   const slots: Slot[] = [];
   const seen = new Set<string>();
+  const passoMin = duracaoMin + intervaloEntreMin;
 
   for (const range of horarios) {
     const [hi, mi] = (range.hora_inicio as string).split(':').map(Number);
@@ -174,7 +177,7 @@ export async function getDisponibilidade(
     const startMin = hi * 60 + mi;
     const endMin = hf * 60 + mf;
 
-    for (let cur = startMin; cur + duracaoMin <= endMin; cur += intervaloMin) {
+    for (let cur = startMin; cur + duracaoMin <= endMin; cur += passoMin) {
       const h = Math.floor(cur / 60);
       const mm = cur % 60;
       const time = `${pad2(h)}:${pad2(mm)}`;
@@ -183,7 +186,7 @@ export async function getDisponibilidade(
 
       const slotIso = buildIsoDateTime(dataIso, time);
       const slotStart = new Date(slotIso).getTime();
-      const slotEnd = slotStart + duracaoMin * 60_000;
+      const slotEnd = slotStart + (duracaoMin + intervaloEntreMin) * 60_000;
 
       const isPast = slotStart <= agora;
       const isOccupied = ocupados.some(
@@ -248,12 +251,15 @@ export async function criarAgendamentoPublico(
   // Confere tenant + profissional
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
-    .select('id, tenant_id, tolerancia_atraso_min')
+    .select('id, tenant_id, tolerancia_atraso_min, intervalo_entre_consultas_min')
     .eq('id', input.profissionalId)
     .eq('tenant_id', input.tenantId)
     .maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
+
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
 
   // Confere procedimento
   const { data: proc, error: procErr } = await admin
@@ -269,7 +275,7 @@ export async function criarAgendamentoPublico(
   const duracaoMin = (proc.duracao_min as number) ?? 30;
   const dataHoraIso = buildIsoDateTime(input.dataIso, input.hora);
   const startMs = new Date(dataHoraIso).getTime();
-  const endMs = startMs + duracaoMin * 60_000;
+  const endMs = startMs + (duracaoMin + intervaloEntreMin) * 60_000;
 
   if (startMs <= Date.now()) {
     return { ok: false, error: 'Horário já passou. Escolha outro.' };
@@ -306,7 +312,7 @@ export async function criarAgendamentoPublico(
   const conflict = (existentes ?? []).some((row) => {
     const s = new Date(row.data_hora as string).getTime();
     const dur = (row.duracao_min as number) ?? 30;
-    return startMs < s + dur * 60_000 && endMs > s;
+    return startMs < s + (dur + intervaloEntreMin) * 60_000 && endMs > s;
   });
   if (conflict) {
     return { ok: false, error: 'Horário indisponível. Escolha outro.' };

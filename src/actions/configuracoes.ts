@@ -27,6 +27,7 @@ export type ProfissionalConfig = {
   enviar_followup: boolean;
   mostrar_acompanhamento: boolean;
   followup_mensagem: string | null;
+  intervalo_entre_consultas_min: number;
 };
 
 export type TenantConfig = {
@@ -98,7 +99,7 @@ export async function getConfiguracoes(): Promise<
   const { data: prof, error: profErr } = await admin
     .from('profissionais')
     .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao, enviar_followup, mostrar_acompanhamento, followup_mensagem',
+      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao, enviar_followup, mostrar_acompanhamento, followup_mensagem, intervalo_entre_consultas_min',
     )
     .eq('id', ctx.profissionalId)
     .maybeSingle();
@@ -171,6 +172,8 @@ export async function getConfiguracoes(): Promise<
             ? false
             : true,
         followup_mensagem: (prof.followup_mensagem as string | null) ?? null,
+        intervalo_entre_consultas_min:
+          (prof.intervalo_entre_consultas_min as number | null) ?? 0,
       },
       tenant: {
         id: tenant.id as string,
@@ -197,7 +200,10 @@ export type AtualizarProfissionalInput = {
   registro_profissional?: string;
   telefone: string;
   bio?: string;
+  intervalo_entre_consultas_min?: number;
 };
+
+const INTERVALOS_VALIDOS = [0, 5, 10, 15, 20, 30] as const;
 
 export async function atualizarProfissional(
   input: AtualizarProfissionalInput,
@@ -221,6 +227,18 @@ export async function atualizarProfissional(
   const bio = input.bio?.trim() ?? '';
   if (bio.length > 300) return { ok: false, error: 'Bio acima de 300 caracteres.' };
 
+  const intervalo =
+    typeof input.intervalo_entre_consultas_min === 'number'
+      ? Math.round(input.intervalo_entre_consultas_min)
+      : 0;
+  if (
+    !INTERVALOS_VALIDOS.includes(
+      intervalo as (typeof INTERVALOS_VALIDOS)[number],
+    )
+  ) {
+    return { ok: false, error: 'Intervalo entre consultas invalido.' };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from('profissionais')
@@ -230,6 +248,7 @@ export async function atualizarProfissional(
       registro_profissional: input.registro_profissional?.trim() || null,
       telefone,
       bio: bio || null,
+      intervalo_entre_consultas_min: intervalo,
     })
     .eq('id', ctx.profissionalId);
   if (error) return { ok: false, error: error.message };
