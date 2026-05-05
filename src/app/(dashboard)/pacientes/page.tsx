@@ -25,7 +25,7 @@ export default async function PacientesPage() {
   if (prof) {
     const { data: pacientes } = await admin
       .from("pacientes")
-      .select("id, nome, telefone, convenio, menor_idade")
+      .select("id, nome, telefone, email, convenio, menor_idade")
       .eq("tenant_id", prof.tenant_id)
       .eq("ativo", true)
       .order("nome", { ascending: true });
@@ -56,6 +56,7 @@ export default async function PacientesPage() {
       id: p.id as string,
       nome: p.nome as string,
       telefone: (p.telefone as string) ?? "",
+      email: (p.email as string | null) ?? null,
       convenio: (p.convenio as string | null) ?? null,
       menor_idade: Boolean(p.menor_idade),
       ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,

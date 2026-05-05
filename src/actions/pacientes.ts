@@ -14,6 +14,7 @@ export type PacienteListItem = {
   id: string;
   nome: string;
   telefone: string;
+  email: string | null;
   convenio: string | null;
   menor_idade: boolean;
   ultima_consulta: string | null;
@@ -40,7 +41,7 @@ async function buildList(
 ): Promise<PacienteListItem[]> {
   let pacientesQuery = admin
     .from('pacientes')
-    .select('id, nome, telefone, convenio, menor_idade')
+    .select('id, nome, telefone, email, convenio, menor_idade')
     .eq('tenant_id', tenantId)
     .eq('ativo', true);
 
@@ -96,6 +97,7 @@ async function buildList(
     id: p.id as string,
     nome: p.nome as string,
     telefone: (p.telefone as string) ?? '',
+    email: (p.email as string | null) ?? null,
     convenio: (p.convenio as string | null) ?? null,
     menor_idade: Boolean(p.menor_idade),
     ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
@@ -181,7 +183,7 @@ export type NovoPacienteInput = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email: string;
+  email?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;
@@ -243,9 +245,8 @@ export async function createPaciente(
     return { ok: false, error: 'Telefone invalido.' };
   }
 
-  const email = input.email?.trim() ?? '';
-  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = input.email?.trim() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: 'E-mail invalido.' };
   }
 
@@ -322,7 +323,7 @@ export async function createPaciente(
       data_nascimento: input.data_nascimento,
       genero: input.genero,
       telefone,
-      email,
+      email: email,
       endereco: input.endereco?.trim() || null,
       cidade: input.cidade?.trim() || null,
       estado: input.estado?.trim() || null,
@@ -386,7 +387,7 @@ export type AtualizarPacienteInput = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email: string;
+  email?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;
@@ -453,9 +454,8 @@ export async function atualizarPaciente(
     return { ok: false, error: 'Telefone invalido.' };
   }
 
-  const email = input.email?.trim() ?? '';
-  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = input.email?.trim() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: 'E-mail invalido.' };
   }
 
@@ -516,7 +516,7 @@ export async function atualizarPaciente(
       data_nascimento: input.data_nascimento,
       genero: input.genero,
       telefone,
-      email,
+      email: email,
       endereco: input.endereco?.trim() || null,
       cidade: input.cidade?.trim() || null,
       estado: input.estado?.trim() || null,
@@ -579,7 +579,7 @@ export type CadastroAvulsoInput = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email: string;
+  email?: string;
   convenio?: string;
   aceiteLgpd: boolean;
   responsavel?: {
@@ -680,9 +680,8 @@ export async function cadastrarPacienteAvulso(
     return { ok: false, error: 'Telefone invalido.' };
   }
 
-  const email = input.email?.trim() ?? '';
-  if (!email) return { ok: false, error: 'E-mail obrigatorio.' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = input.email?.trim() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: 'E-mail invalido.' };
   }
 
@@ -740,7 +739,7 @@ export async function cadastrarPacienteAvulso(
       data_nascimento: input.data_nascimento,
       genero: input.genero,
       telefone,
-      email,
+      email: email,
       convenio: input.convenio?.trim() || null,
       ativo: true,
     })

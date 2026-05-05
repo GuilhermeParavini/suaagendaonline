@@ -242,6 +242,14 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                   {paciente.convenio}
                 </span>
               ) : null}
+              {!paciente.email ? (
+                <span
+                  className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-[3px] text-[11px] font-medium leading-none text-slate-500"
+                  title="Paciente sem e-mail cadastrado"
+                >
+                  Sem e-mail
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -308,11 +316,29 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 </button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DadoLinha
-                  label="Telefone"
-                  value={formatPhone(paciente.telefone)}
-                />
-                <DadoLinha label="E-mail" value={paciente.email} />
+                <div className="space-y-0.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Telefone
+                    {!paciente.email ? (
+                      <span className="ml-1 text-primary-dark">
+                        (contato principal)
+                      </span>
+                    ) : null}
+                  </p>
+                  <p
+                    className={cn(
+                      "break-words",
+                      !paciente.email
+                        ? "text-base font-semibold text-slate-900"
+                        : "text-sm text-slate-900",
+                    )}
+                  >
+                    {formatPhone(paciente.telefone)}
+                  </p>
+                </div>
+                {paciente.email ? (
+                  <DadoLinha label="E-mail" value={paciente.email} />
+                ) : null}
                 <DadoLinha label="Convênio" value={paciente.convenio} />
               </div>
               {enderecoCompleto ? (

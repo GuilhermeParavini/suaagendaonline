@@ -72,10 +72,10 @@ const schema = z
     }, "Telefone inválido"),
     email: z
       .string()
-      .transform((s) => s.trim())
-      .refine((s) => s.length > 0, "E-mail obrigatório")
       .refine(
-        (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s),
+        (s) =>
+          s.trim().length === 0 ||
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim()),
         "E-mail inválido",
       ),
     endereco: z.string().optional(),
@@ -323,7 +323,7 @@ function FormPacientePublico({
       data_nascimento: iso,
       genero: data.genero,
       telefone: data.telefone,
-      email: data.email.trim(),
+      email: data.email?.trim() || undefined,
       endereco: data.endereco?.trim() || undefined,
       cidade: data.cidade?.trim() || undefined,
       estado: data.estado?.trim() || undefined,
@@ -417,7 +417,7 @@ function FormPacientePublico({
         </div>
 
         <div className="space-y-1">
-          <label className={labelClass}>E-mail *</label>
+          <label className={labelClass}>E-mail</label>
           <input
             {...register("email")}
             type="email"
@@ -425,6 +425,9 @@ function FormPacientePublico({
             placeholder="seu@email.com"
             className={inputClass}
           />
+          <p className="text-xs text-slate-500">
+            Sem e-mail, voce nao recebera confirmacao por e-mail.
+          </p>
           {errors.email ? <p className={errorClass}>{errors.email.message}</p> : null}
         </div>
       </div>

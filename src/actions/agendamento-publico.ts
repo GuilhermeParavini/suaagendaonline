@@ -28,7 +28,7 @@ export type NovoPacientePublico = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email: string;
+  email?: string;
   endereco?: string;
   cidade?: string;
   estado?: string;
@@ -353,9 +353,8 @@ export async function criarAgendamentoPublico(
     if (tel.length !== 10 && tel.length !== 11) {
       return { ok: false, error: 'Telefone inválido.' };
     }
-    const email = np.email?.trim() ?? '';
-    if (!email) return { ok: false, error: 'E-mail obrigatório.' };
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const email = np.email?.trim() || null;
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return { ok: false, error: 'E-mail inválido.' };
     }
     const cepDigits = np.cep ? cleanCEP(np.cep) : '';
@@ -409,7 +408,7 @@ export async function criarAgendamentoPublico(
         data_nascimento: np.data_nascimento,
         genero: np.genero,
         telefone: tel,
-        email,
+        email: email,
         endereco: np.endereco?.trim() || null,
         cidade: np.cidade?.trim() || null,
         estado: np.estado?.trim() || null,

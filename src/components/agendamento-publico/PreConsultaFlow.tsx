@@ -66,8 +66,12 @@ const cadastroSchema = z
     }, "Telefone inválido"),
     email: z
       .string()
-      .transform((s) => s.trim())
-      .refine((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s), "E-mail inválido"),
+      .refine(
+        (s) =>
+          s.trim().length === 0 ||
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim()),
+        "E-mail inválido",
+      ),
     convenio: z.string().optional(),
     aceite_lgpd: z
       .boolean()
@@ -287,7 +291,7 @@ function PreConsultaFlow({
         data_nascimento: iso,
         genero: data.genero,
         telefone: data.telefone,
-        email: data.email,
+        email: data.email?.trim() || undefined,
         convenio: data.convenio?.trim() || undefined,
         aceiteLgpd: data.aceite_lgpd,
         responsavel: showResponsavel
@@ -635,13 +639,16 @@ function PreConsultaFlow({
                 </div>
 
                 <div className="space-y-1">
-                  <label className={labelClass}>E-mail *</label>
+                  <label className={labelClass}>E-mail</label>
                   <input
                     {...cadastroForm.register("email")}
                     type="email"
                     placeholder="seu@email.com"
                     className={inputClass}
                   />
+                  <p className="text-xs text-slate-500">
+                    Sem e-mail, voce nao recebera confirmacao por e-mail.
+                  </p>
                   {cadastroForm.formState.errors.email ? (
                     <p className={errorClass}>
                       {cadastroForm.formState.errors.email.message}

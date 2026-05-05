@@ -112,7 +112,7 @@ export type CadastroPreConsultaInput = {
   data_nascimento: string;
   genero: Genero;
   telefone: string;
-  email: string;
+  email?: string;
   convenio?: string;
   aceiteLgpd: boolean;
   responsavel?: {
@@ -171,8 +171,8 @@ export async function cadastrarPacientePreConsulta(
   if (telefone.length !== 10 && telefone.length !== 11) {
     return { ok: false, error: 'Telefone invalido.' };
   }
-  const email = input.email?.trim() ?? '';
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  const email = input.email?.trim() || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { ok: false, error: 'E-mail invalido.' };
   }
 
@@ -193,7 +193,7 @@ export async function cadastrarPacientePreConsulta(
       data_nascimento: input.data_nascimento,
       genero: input.genero,
       telefone,
-      email,
+      email: email,
       convenio: input.convenio?.trim() || null,
       ativo: true,
     })

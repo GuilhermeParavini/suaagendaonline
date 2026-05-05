@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Avatar from "@/components/ui/Avatar";
 import { formatPhone } from "@/lib/masks";
+import { cn } from "@/lib/utils";
 import type { PacienteListItem } from "@/actions/pacientes";
 
 interface CardPacienteProps {
@@ -39,13 +40,33 @@ function CardPaciente({ paciente }: CardPacienteProps) {
                 {paciente.convenio}
               </span>
             ) : null}
-          </div>
-          <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
-            {telefoneFormatado ? (
-              <span className="truncate">{telefoneFormatado}</span>
+            {!paciente.email ? (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 px-2 py-[2px] text-[11px] font-medium leading-none text-slate-500">
+                Sem e-mail
+              </span>
             ) : null}
-            {telefoneFormatado ? <span aria-hidden="true">•</span> : null}
-            <span className="truncate">{ultimaConsultaLabel}</span>
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 text-xs">
+            {telefoneFormatado ? (
+              <span
+                className={cn(
+                  "truncate",
+                  paciente.email
+                    ? "text-slate-500"
+                    : "font-medium text-slate-700",
+                )}
+              >
+                {telefoneFormatado}
+              </span>
+            ) : null}
+            {telefoneFormatado ? (
+              <span aria-hidden="true" className="text-slate-400">
+                •
+              </span>
+            ) : null}
+            <span className="truncate text-slate-500">
+              {ultimaConsultaLabel}
+            </span>
           </div>
         </div>
 
