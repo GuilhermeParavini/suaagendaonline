@@ -7,6 +7,7 @@ interface CardAgendamentoProps {
   agendamento: AgendamentoDia;
   className?: string;
   onClick?: (agendamento: AgendamentoDia) => void;
+  mostrarProfissional?: boolean;
 }
 
 const isStatusVariant = (s: string): s is StatusVariant =>
@@ -16,7 +17,12 @@ const isStatusVariant = (s: string): s is StatusVariant =>
   s === "concluido" ||
   s === "faltou";
 
-function CardAgendamento({ agendamento, className, onClick }: CardAgendamentoProps) {
+function CardAgendamento({
+  agendamento,
+  className,
+  onClick,
+  mostrarProfissional,
+}: CardAgendamentoProps) {
   const dt = new Date(agendamento.data_hora);
   const horario = dt.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -50,6 +56,11 @@ function CardAgendamento({ agendamento, className, onClick }: CardAgendamentoPro
         </p>
         {nomeProcedimento ? (
           <p className="text-xs text-slate-500 truncate">{nomeProcedimento}</p>
+        ) : null}
+        {mostrarProfissional && agendamento.profissional?.nome ? (
+          <span className="mt-0.5 inline-flex items-center rounded-full bg-primary-surface px-2 py-0.5 text-[10px] font-medium text-primary-dark">
+            {agendamento.profissional.nome}
+          </span>
         ) : null}
       </div>
 

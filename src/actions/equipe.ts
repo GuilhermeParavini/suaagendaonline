@@ -21,6 +21,13 @@ export type ResumoEquipe = {
   plano: string;
 };
 
+export type ProfissionalOpcaoTenant = {
+  id: string;
+  nome: string;
+  especialidade: string;
+  is_self: boolean;
+};
+
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
 
 async function obterContextoAdmin(): Promise<
@@ -112,6 +119,28 @@ export async function getResumoEquipe(): Promise<Result<ResumoEquipe>> {
       plano,
     },
   };
+}
+
+export async function listarProfissionaisAtivosTenant(): Promise<
+  Result<ProfissionalOpcaoTenant[]>
+> {
+  const ctx = await obterContextoAdmin();
+  if (!ctx.ok) return ctx;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('profissionais')
+    .select('id, nome, especialidade')
+    .eq('tenant_id', ctx.tenantId)
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+  if (error) return { ok: false, error: error.message };
+  const lista: ProfissionalOpcaoTenant[] = (data ?? []).map((r) => ({
+    id: r.id as string,
+    nome: r.nome as string,
+    especialidade: r.especialidade as string,
+    is_self: (r.id as string) === ctx.profissionalId,
+  }));
+  return { ok: true, data: lista };
 }
 
 export async function alterarRole(

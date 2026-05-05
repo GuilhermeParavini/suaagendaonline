@@ -33,6 +33,7 @@ export type AgendamentoDia = {
   status: StatusAgendamento;
   paciente: { id: string; nome: string } | null;
   procedimento: { id: string; nome: string } | null;
+  profissional: { id: string; nome: string } | null;
   reagendado_de: string | null;
 };
 
@@ -94,7 +95,10 @@ function inicioSemanaIso(iso: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-export async function getAgendamentosDia(data: string): Promise<GetAgendamentosResult> {
+export async function getAgendamentosDia(
+  data: string,
+  profissionalIdFiltro?: string | null,
+): Promise<GetAgendamentosResult> {
   if (!isIsoDate(data)) {
     return { ok: false, error: 'Data invalida.' };
   }
@@ -118,21 +122,33 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
   const inicio = `${data}T00:00:00.000Z`;
   const fim = `${data}T23:59:59.999Z`;
 
-  const { data: rows, error } = await admin
+  let query = admin
     .from('agendamentos')
     .select(
-      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome)',
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome), profissionais(id, nome)',
     )
-    .eq('profissional_id', prof.id)
+    .eq('tenant_id', prof.tenant_id as string)
     .gte('data_hora', inicio)
     .lte('data_hora', fim)
     .order('data_hora', { ascending: true });
+
+  if (profissionalIdFiltro && profissionalIdFiltro !== 'todos') {
+    query = query.eq('profissional_id', profissionalIdFiltro);
+  } else if (profissionalIdFiltro === undefined) {
+    // Comportamento legado: filtra pelo profissional logado quando ninguem informou nada.
+    query = query.eq('profissional_id', prof.id as string);
+  }
+
+  const { data: rows, error } = await query;
 
   if (error) return { ok: false, error: error.message };
 
   const agendamentos: AgendamentoDia[] = (rows ?? []).map((r) => {
     const paciente = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
     const procedimento = Array.isArray(r.procedimentos) ? r.procedimentos[0] : r.procedimentos;
+    const profPrincipal = Array.isArray(r.profissionais)
+      ? r.profissionais[0]
+      : r.profissionais;
     return {
       id: r.id as string,
       data_hora: r.data_hora as string,
@@ -141,6 +157,9 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
       paciente: paciente ? { id: paciente.id as string, nome: paciente.nome as string } : null,
       procedimento: procedimento
         ? { id: procedimento.id as string, nome: procedimento.nome as string }
+        : null,
+      profissional: profPrincipal
+        ? { id: profPrincipal.id as string, nome: profPrincipal.nome as string }
         : null,
       reagendado_de: (r.reagendado_de as string | null) ?? null,
     };
@@ -1155,6 +1174,7 @@ export type AgendamentosDoDiaResult =
 
 export async function getAgendamentosDoDia(
   data: string,
+  profissionalIdFiltro?: string | null,
 ): Promise<AgendamentosDoDiaResult> {
   if (!isIsoDate(data)) {
     return { ok: false, error: 'Data invalida.' };
@@ -1178,15 +1198,21 @@ export async function getAgendamentosDoDia(
   const inicio = `${data}T00:00:00.000Z`;
   const fim = `${data}T23:59:59.999Z`;
 
-  const { data: rows, error } = await admin
+  let query = admin
     .from('agendamentos')
     .select(
-      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome)',
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome), profissionais(id, nome)',
     )
-    .eq('profissional_id', prof.id)
+    .eq('tenant_id', prof.tenant_id as string)
     .gte('data_hora', inicio)
     .lte('data_hora', fim)
     .order('data_hora', { ascending: true });
+  if (profissionalIdFiltro && profissionalIdFiltro !== 'todos') {
+    query = query.eq('profissional_id', profissionalIdFiltro);
+  } else if (profissionalIdFiltro === undefined) {
+    query = query.eq('profissional_id', prof.id as string);
+  }
+  const { data: rows, error } = await query;
   if (error) return { ok: false, error: error.message };
 
   const agendamentos: AgendamentoDia[] = (rows ?? []).map((r) => {
@@ -1194,6 +1220,9 @@ export async function getAgendamentosDoDia(
     const procedimento = Array.isArray(r.procedimentos)
       ? r.procedimentos[0]
       : r.procedimentos;
+    const profPrincipal = Array.isArray(r.profissionais)
+      ? r.profissionais[0]
+      : r.profissionais;
     return {
       id: r.id as string,
       data_hora: r.data_hora as string,
@@ -1207,6 +1236,9 @@ export async function getAgendamentosDoDia(
             id: procedimento.id as string,
             nome: procedimento.nome as string,
           }
+        : null,
+      profissional: profPrincipal
+        ? { id: profPrincipal.id as string, nome: profPrincipal.nome as string }
         : null,
       reagendado_de: (r.reagendado_de as string | null) ?? null,
     };
@@ -1281,6 +1313,7 @@ const STATUS_VAZIOS: Record<StatusAgendamento, number> = {
 export async function getAgendamentosDoMes(
   ano: number,
   mes: number,
+  profissionalIdFiltro?: string | null,
 ): Promise<AgendamentosDoMesResult> {
   if (!Number.isInteger(ano) || !Number.isInteger(mes) || mes < 1 || mes > 12) {
     return { ok: false, error: 'Periodo invalido.' };
@@ -1309,15 +1342,19 @@ export async function getAgendamentosDoMes(
   const inicioTs = `${dataInicio}T00:00:00.000Z`;
   const fimTs = `${dataFim}T23:59:59.999Z`;
 
-  const { data: rows, error } = await admin
+  let mesQuery = admin
     .from('agendamentos')
-    .select(
-      'id, data_hora, status, pacientes(nome)',
-    )
-    .eq('profissional_id', prof.id as string)
+    .select('id, data_hora, status, pacientes(nome)')
+    .eq('tenant_id', prof.tenant_id as string)
     .gte('data_hora', inicioTs)
     .lte('data_hora', fimTs)
     .order('data_hora', { ascending: true });
+  if (profissionalIdFiltro && profissionalIdFiltro !== 'todos') {
+    mesQuery = mesQuery.eq('profissional_id', profissionalIdFiltro);
+  } else if (profissionalIdFiltro === undefined) {
+    mesQuery = mesQuery.eq('profissional_id', prof.id as string);
+  }
+  const { data: rows, error } = await mesQuery;
   if (error) return { ok: false, error: error.message };
 
   const porData = new Map<string, DiaResumoMensal>();

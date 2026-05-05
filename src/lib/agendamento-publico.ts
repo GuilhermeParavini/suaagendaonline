@@ -25,8 +25,58 @@ export type ProfissionalPublico = {
   procedimentos: Procedimento[];
 };
 
+export type ProfissionalListItem = {
+  id: string;
+  nome: string;
+  especialidade: string;
+  logo_url: string | null;
+  bio: string | null;
+};
+
+export async function getProfissionaisAtivosBySlug(
+  slug: string,
+): Promise<
+  | { ok: true; tenantId: string; tenantNome: string; profissionais: ProfissionalListItem[] }
+  | { ok: false; error: string }
+> {
+  const cleanSlug = slug.trim().toLowerCase();
+  if (!cleanSlug || !/^[a-z0-9-]+$/.test(cleanSlug)) {
+    return { ok: false, error: 'Link inválido.' };
+  }
+  const admin = createAdminClient();
+  const { data: tenant, error: tenantErr } = await admin
+    .from('tenants')
+    .select('id, nome_empresa')
+    .eq('slug', cleanSlug)
+    .maybeSingle();
+  if (tenantErr) return { ok: false, error: tenantErr.message };
+  if (!tenant) return { ok: false, error: 'Profissional não encontrado.' };
+
+  const { data: profs, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, nome, especialidade, logo_url, bio')
+    .eq('tenant_id', tenant.id as string)
+    .eq('ativo', true)
+    .order('nome', { ascending: true });
+  if (profErr) return { ok: false, error: profErr.message };
+
+  return {
+    ok: true,
+    tenantId: tenant.id as string,
+    tenantNome: tenant.nome_empresa as string,
+    profissionais: (profs ?? []).map((r) => ({
+      id: r.id as string,
+      nome: r.nome as string,
+      especialidade: r.especialidade as string,
+      logo_url: (r.logo_url as string | null) ?? null,
+      bio: (r.bio as string | null) ?? null,
+    })),
+  };
+}
+
 export async function getProfissionalBySlug(
   slug: string,
+  profissionalId?: string,
 ): Promise<{ ok: true; data: ProfissionalPublico } | { ok: false; error: string }> {
   const cleanSlug = slug.trim().toLowerCase();
   if (!cleanSlug || !/^[a-z0-9-]+$/.test(cleanSlug)) {
@@ -43,16 +93,19 @@ export async function getProfissionalBySlug(
   if (tenantErr) return { ok: false, error: tenantErr.message };
   if (!tenant) return { ok: false, error: 'Profissional não encontrado.' };
 
-  const { data: prof, error: profErr } = await admin
+  let profQuery = admin
     .from('profissionais')
     .select(
       'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min, logo_url',
     )
     .eq('tenant_id', tenant.id)
-    .eq('ativo', true)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .eq('ativo', true);
+  if (profissionalId) {
+    profQuery = profQuery.eq('id', profissionalId);
+  } else {
+    profQuery = profQuery.order('created_at', { ascending: true });
+  }
+  const { data: prof, error: profErr } = await profQuery.limit(1).maybeSingle();
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
 

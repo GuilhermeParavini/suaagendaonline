@@ -37,6 +37,10 @@ import {
   type PacientesData,
   type PacientesFiltros,
 } from "@/actions/relatorios";
+import {
+  listarProfissionaisAtivosTenant,
+  type ProfissionalOpcaoTenant,
+} from "@/actions/equipe";
 import type { FormaPagamento } from "@/actions/financeiro";
 import { formatCurrency, brDateToIso, isoToBrDate, formatDate } from "@/lib/masks";
 import { cn } from "@/lib/utils";
@@ -76,15 +80,57 @@ function RelatoriosClient({
   initialFaturamento,
   initialPeriodo,
 }: RelatoriosClientProps) {
+  const [profissionais, setProfissionais] = useState<
+    ProfissionalOpcaoTenant[]
+  >([]);
+  const [profissionalId, setProfissionalId] = useState<string>("todos");
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await listarProfissionaisAtivosTenant();
+      if (!cancelado && r.ok) setProfissionais(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-5 pb-12">
-      <header className="space-y-1">
-        <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
-          Relatórios
-        </h1>
-        <p className="text-sm text-slate-500">
-          Acompanhe seu faturamento, pacientes e agendamentos.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
+            Relatórios
+          </h1>
+          <p className="text-sm text-slate-500">
+            Acompanhe seu faturamento, pacientes e agendamentos.
+          </p>
+        </div>
+        {profissionais.length > 1 ? (
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="rel-prof-filtro"
+              className="text-xs font-medium text-slate-500"
+            >
+              Profissional:
+            </label>
+            <select
+              id="rel-prof-filtro"
+              value={profissionalId}
+              onChange={(e) => setProfissionalId(e.target.value)}
+              className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10"
+            >
+              <option value="todos">Todos os profissionais</option>
+              {profissionais.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                  {p.is_self ? " (você)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </header>
 
       <Tabs.Root defaultValue="faturamento" className="space-y-5">
@@ -115,15 +161,22 @@ function RelatoriosClient({
           <FaturamentoTab
             initialData={initialFaturamento}
             initialPeriodo={initialPeriodo}
+            profissionalId={profissionalId}
           />
         </Tabs.Content>
 
         <Tabs.Content value="pacientes" className="focus:outline-none">
-          <PacientesTab initialPeriodo={initialPeriodo} />
+          <PacientesTab
+            initialPeriodo={initialPeriodo}
+            profissionalId={profissionalId}
+          />
         </Tabs.Content>
 
         <Tabs.Content value="agendamentos" className="focus:outline-none">
-          <AgendamentosTab initialPeriodo={initialPeriodo} />
+          <AgendamentosTab
+            initialPeriodo={initialPeriodo}
+            profissionalId={profissionalId}
+          />
         </Tabs.Content>
       </Tabs.Root>
     </div>
@@ -137,11 +190,16 @@ function RelatoriosClient({
 interface FaturamentoTabProps {
   initialData: FaturamentoData;
   initialPeriodo: { dataInicio: string; dataFim: string };
+  profissionalId: string;
 }
 
 const PAGE_SIZE = 20;
 
-function FaturamentoTab({ initialData, initialPeriodo }: FaturamentoTabProps) {
+function FaturamentoTab({
+  initialData,
+  initialPeriodo,
+  profissionalId,
+}: FaturamentoTabProps) {
   const [dataInicioBr, setDataInicioBr] = useState(
     isoToBrDate(initialPeriodo.dataInicio),
   );
@@ -160,6 +218,32 @@ function FaturamentoTab({ initialData, initialPeriodo }: FaturamentoTabProps) {
   const [pagina, setPagina] = useState(1);
   const [erro, setErro] = useState<string | null>(null);
   const [isLoading, startLoading] = useTransition();
+  const profIniciouRef = useRef(false);
+
+  useEffect(() => {
+    if (!profIniciouRef.current) {
+      profIniciouRef.current = true;
+      return;
+    }
+    setErro(null);
+    startLoading(async () => {
+      const r = await getRelatorioFaturamento({
+        dataInicio:
+          brDateToIso(dataInicioBr) ?? initialPeriodo.dataInicio,
+        dataFim: brDateToIso(dataFimBr) ?? initialPeriodo.dataFim,
+        formaPagamento,
+        pago: statusPago,
+        profissionalId,
+      });
+      if (!r.ok) {
+        setErro(r.error);
+        return;
+      }
+      setData(r.data);
+      setPagina(1);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profissionalId]);
 
   const aplicarFiltros = () => {
     setErro(null);
@@ -178,6 +262,7 @@ function FaturamentoTab({ initialData, initialPeriodo }: FaturamentoTabProps) {
       dataFim: fim,
       formaPagamento,
       pago: statusPago,
+      profissionalId,
     };
     startLoading(async () => {
       const r = await getRelatorioFaturamento(filtros);
@@ -622,9 +707,10 @@ const FAIXAS: { value: FaixaEtaria | "todos"; label: string }[] = [
 
 interface PacientesTabProps {
   initialPeriodo: { dataInicio: string; dataFim: string };
+  profissionalId: string;
 }
 
-function PacientesTab({ initialPeriodo }: PacientesTabProps) {
+function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
   const [dataInicioBr, setDataInicioBr] = useState(
     isoToBrDate(initialPeriodo.dataInicio),
   );
@@ -657,16 +743,19 @@ function PacientesTab({ initialPeriodo }: PacientesTabProps) {
   };
 
   useEffect(() => {
-    if (initialLoadRef.current) return;
     initialLoadRef.current = true;
+    const ini =
+      brDateToIso(dataInicioBr) ?? initialPeriodo.dataInicio;
+    const fim = brDateToIso(dataFimBr) ?? initialPeriodo.dataFim;
     carregar({
-      dataInicio: initialPeriodo.dataInicio,
-      dataFim: initialPeriodo.dataFim,
-      genero: "todos",
-      faixaEtaria: "todos",
+      dataInicio: ini,
+      dataFim: fim,
+      genero,
+      faixaEtaria,
+      profissionalId,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profissionalId]);
 
   const aplicarFiltros = () => {
     setErro(null);
@@ -685,6 +774,7 @@ function PacientesTab({ initialPeriodo }: PacientesTabProps) {
       dataFim: fim,
       genero,
       faixaEtaria,
+      profissionalId,
     });
   };
 
@@ -1001,9 +1091,13 @@ const STATUS_AGENDAMENTO_LABEL: Record<
 
 interface AgendamentosTabProps {
   initialPeriodo: { dataInicio: string; dataFim: string };
+  profissionalId: string;
 }
 
-function AgendamentosTab({ initialPeriodo }: AgendamentosTabProps) {
+function AgendamentosTab({
+  initialPeriodo,
+  profissionalId,
+}: AgendamentosTabProps) {
   const [dataInicioBr, setDataInicioBr] = useState(
     isoToBrDate(initialPeriodo.dataInicio),
   );
@@ -1037,19 +1131,25 @@ function AgendamentosTab({ initialPeriodo }: AgendamentosTabProps) {
   };
 
   useEffect(() => {
-    if (initialLoadRef.current) return;
-    initialLoadRef.current = true;
-    (async () => {
-      const procRes = await listarProcedimentosRelatorios();
-      if (procRes.ok) setProcedimentos(procRes.data);
-    })();
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      (async () => {
+        const procRes = await listarProcedimentosRelatorios();
+        if (procRes.ok) setProcedimentos(procRes.data);
+      })();
+    }
+    const ini =
+      brDateToIso(dataInicioBr) ?? initialPeriodo.dataInicio;
+    const fim = brDateToIso(dataFimBr) ?? initialPeriodo.dataFim;
     carregar({
-      dataInicio: initialPeriodo.dataInicio,
-      dataFim: initialPeriodo.dataFim,
-      status: "todos",
+      dataInicio: ini,
+      dataFim: fim,
+      status,
+      procedimentoId: procedimentoId || undefined,
+      profissionalId,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [profissionalId]);
 
   const aplicarFiltros = () => {
     setErro(null);
@@ -1068,6 +1168,7 @@ function AgendamentosTab({ initialPeriodo }: AgendamentosTabProps) {
       dataFim: fim,
       status,
       procedimentoId: procedimentoId || undefined,
+      profissionalId,
     });
   };
 

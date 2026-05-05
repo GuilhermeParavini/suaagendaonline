@@ -121,6 +121,7 @@ export type FaturamentoFiltros = {
   dataFim?: string;
   formaPagamento?: FormaPagamento | 'todos';
   pago?: 'todos' | 'pago' | 'pendente';
+  profissionalId?: string | 'todos';
 };
 
 export type FaturamentoData = {
@@ -193,6 +194,9 @@ export async function getRelatorioFaturamento(
   }
   if (filtros.pago === 'pago') q = q.eq('pago', true);
   else if (filtros.pago === 'pendente') q = q.eq('pago', false);
+  if (filtros.profissionalId && filtros.profissionalId !== 'todos') {
+    q = q.eq('profissional_id', filtros.profissionalId);
+  }
 
   const { data: rows, error } = await q;
   if (error) return { ok: false, error: error.message };
@@ -294,6 +298,7 @@ export type PacientesFiltros = {
   dataFim?: string;
   genero?: Genero | 'todos';
   faixaEtaria?: FaixaEtaria | 'todos';
+  profissionalId?: string | 'todos';
 };
 
 export type PacientesData = {
@@ -404,12 +409,16 @@ export async function getRelatorioPacientes(
   type AgRow = { paciente_id: string; data_hora: string; status: string };
   const agendamentosPorPac = new Map<string, AgRow[]>();
   if (ids.length > 0) {
-    const { data: agRows, error: errAg } = await admin
+    let agQ = admin
       .from('agendamentos')
       .select('paciente_id, data_hora, status')
       .eq('tenant_id', ctx.tenantId)
       .eq('status', 'concluido')
       .in('paciente_id', ids);
+    if (filtros.profissionalId && filtros.profissionalId !== 'todos') {
+      agQ = agQ.eq('profissional_id', filtros.profissionalId);
+    }
+    const { data: agRows, error: errAg } = await agQ;
     if (errAg) return { ok: false, error: errAg.message };
     for (const r of agRows ?? []) {
       const pid = r.paciente_id as string;
@@ -514,6 +523,7 @@ export type AgendamentosFiltros = {
   dataFim?: string;
   status?: StatusAgendamento | 'todos';
   procedimentoId?: string;
+  profissionalId?: string | 'todos';
 };
 
 export type AgendamentosData = {
@@ -576,6 +586,9 @@ export async function getRelatorioAgendamentos(
   }
   if (filtros.procedimentoId) {
     q = q.eq('procedimento_id', filtros.procedimentoId);
+  }
+  if (filtros.profissionalId && filtros.profissionalId !== 'todos') {
+    q = q.eq('profissional_id', filtros.profissionalId);
   }
 
   const { data: rows, error } = await q;
@@ -641,12 +654,16 @@ export async function getRelatorioAgendamentos(
   const lastDate = new Date(last.ano, last.mes, 0);
   const fim6 = `${lastDate.getFullYear()}-${pad2(lastDate.getMonth() + 1)}-${pad2(lastDate.getDate())}T23:59:59-03:00`;
 
-  const { data: porMesRows, error: errMes } = await admin
+  let porMesQ = admin
     .from('agendamentos')
     .select('data_hora')
     .eq('tenant_id', ctx.tenantId)
     .gte('data_hora', inicio6)
     .lte('data_hora', fim6);
+  if (filtros.profissionalId && filtros.profissionalId !== 'todos') {
+    porMesQ = porMesQ.eq('profissional_id', filtros.profissionalId);
+  }
+  const { data: porMesRows, error: errMes } = await porMesQ;
   if (errMes) return { ok: false, error: errMes.message };
 
   const porMesAcc = new Map<string, number>();

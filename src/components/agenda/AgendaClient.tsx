@@ -19,6 +19,10 @@ import {
   type JanelaDisponivel,
   type StatusAgendamento,
 } from "@/actions/agendamentos";
+import {
+  listarProfissionaisAtivosTenant,
+  type ProfissionalOpcaoTenant,
+} from "@/actions/equipe";
 import { getBloqueioTipoMeta } from "@/lib/bloqueio-tipos";
 import AgendaToggle, { type AgendaView } from "./AgendaToggle";
 import CalendarioSemanal from "./CalendarioSemanal";
@@ -81,6 +85,12 @@ function AgendaClient({
 
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [profissionais, setProfissionais] = useState<
+    ProfissionalOpcaoTenant[]
+  >([]);
+  const [profissionalFiltro, setProfissionalFiltro] = useState<string>(
+    "self",
+  );
   const [selecionado, setSelecionado] = useState<AgendamentoDia | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [novoModalOpen, setNovoModalOpen] = useState(false);
@@ -102,6 +112,19 @@ function AgendaClient({
     } catch {
       // ignore
     }
+  }, []);
+
+  // Lista profissionais ativos do tenant (para o filtro multi-profissional)
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await listarProfissionaisAtivosTenant();
+      if (cancelado || !r.ok) return;
+      setProfissionais(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   const persistirView = (v: AgendaView) => {
@@ -129,67 +152,84 @@ function AgendaClient({
     [],
   );
 
-  const carregarDia = useCallback((date: Date) => {
-    setError(null);
-    startTransition(async () => {
-      const r = await getAgendamentosDoDia(toIsoDate(date));
-      if (!r.ok) {
-        setError(r.error);
-        setAgendamentos([]);
-        setIndisponivel(null);
-        setJanelas([]);
-        return;
-      }
-      setAgendamentos(r.agendamentos);
-      setIndisponivel(r.indisponivel);
-      setJanelas(r.janelas);
-    });
-  }, []);
+  const filtroParaQuery = (): string | null | undefined => {
+    if (profissionalFiltro === "self") return undefined;
+    if (profissionalFiltro === "todos") return "todos";
+    return profissionalFiltro;
+  };
 
-  const carregarSemana = useCallback((date: Date) => {
-    setError(null);
-    startTransition(async () => {
-      const r = await getAgendamentosDia(toIsoDate(date));
-      if (!r.ok) {
-        setError(r.error);
-        setAgendamentos([]);
-        setIndisponivel(null);
-        setDatasIndisponiveisSemana([]);
-        return;
-      }
-      setAgendamentos(r.agendamentos);
-      setIndisponivel(r.indisponivel);
-      setDatasIndisponiveisSemana(r.datasIndisponiveisSemana);
-    });
-  }, []);
+  const carregarDia = useCallback(
+    (date: Date, filtro: string | null | undefined) => {
+      setError(null);
+      startTransition(async () => {
+        const r = await getAgendamentosDoDia(toIsoDate(date), filtro);
+        if (!r.ok) {
+          setError(r.error);
+          setAgendamentos([]);
+          setIndisponivel(null);
+          setJanelas([]);
+          return;
+        }
+        setAgendamentos(r.agendamentos);
+        setIndisponivel(r.indisponivel);
+        setJanelas(r.janelas);
+      });
+    },
+    [],
+  );
 
-  const carregarMes = useCallback((date: Date) => {
-    setError(null);
-    startTransition(async () => {
-      const r = await getAgendamentosDoMes(
-        date.getFullYear(),
-        date.getMonth() + 1,
-      );
-      if (!r.ok) {
-        setError(r.error);
-        setDiasMes([]);
-        return;
-      }
-      setDiasMes(r.dias);
-    });
-  }, []);
+  const carregarSemana = useCallback(
+    (date: Date, filtro: string | null | undefined) => {
+      setError(null);
+      startTransition(async () => {
+        const r = await getAgendamentosDia(toIsoDate(date), filtro);
+        if (!r.ok) {
+          setError(r.error);
+          setAgendamentos([]);
+          setIndisponivel(null);
+          setDatasIndisponiveisSemana([]);
+          return;
+        }
+        setAgendamentos(r.agendamentos);
+        setIndisponivel(r.indisponivel);
+        setDatasIndisponiveisSemana(r.datasIndisponiveisSemana);
+      });
+    },
+    [],
+  );
 
-  // Recarrega dados quando view ou data muda
+  const carregarMes = useCallback(
+    (date: Date, filtro: string | null | undefined) => {
+      setError(null);
+      startTransition(async () => {
+        const r = await getAgendamentosDoMes(
+          date.getFullYear(),
+          date.getMonth() + 1,
+          filtro,
+        );
+        if (!r.ok) {
+          setError(r.error);
+          setDiasMes([]);
+          return;
+        }
+        setDiasMes(r.dias);
+      });
+    },
+    [],
+  );
+
+  // Recarrega dados quando view, data ou filtro mudam
   useEffect(() => {
+    const filtro = filtroParaQuery();
     if (view === "dia") {
-      carregarDia(selectedDate);
+      carregarDia(selectedDate, filtro);
     } else if (view === "semana") {
-      carregarSemana(selectedDate);
+      carregarSemana(selectedDate, filtro);
     } else {
-      carregarMes(visibleMonth);
+      carregarMes(visibleMonth, filtro);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, selectedDate, visibleMonth]);
+  }, [view, selectedDate, visibleMonth, profissionalFiltro]);
 
   const handleSelectDate = useCallback((date: Date) => {
     setSelectedDate(date);
@@ -234,6 +274,32 @@ function AgendaClient({
         </div>
         <AgendaToggle value={view} onChange={handleChangeView} />
       </header>
+
+      {profissionais.length > 1 ? (
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="agenda-prof-filtro"
+            className="text-xs font-medium text-slate-500"
+          >
+            Profissional:
+          </label>
+          <select
+            id="agenda-prof-filtro"
+            value={profissionalFiltro}
+            onChange={(e) => setProfissionalFiltro(e.target.value)}
+            className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10"
+          >
+            <option value="self">Eu</option>
+            <option value="todos">Todos</option>
+            {profissionais.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+                {p.is_self ? " (você)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
 
       {view === "semana" ? (
         <CalendarioSemanal
@@ -304,6 +370,7 @@ function AgendaClient({
             <ListaHorarios
               agendamentos={agendamentos}
               onSelecionar={handleSelecionarAgendamento}
+              mostrarProfissional={profissionais.length > 1}
             />
           </>
         )}
@@ -335,9 +402,10 @@ function AgendaClient({
           setToast("Agendamento criado");
           window.setTimeout(() => setToast(null), 2500);
           router.refresh();
-          if (view === "dia") carregarDia(selectedDate);
-          else if (view === "semana") carregarSemana(selectedDate);
-          else carregarMes(visibleMonth);
+          const filtro = filtroParaQuery();
+          if (view === "dia") carregarDia(selectedDate, filtro);
+          else if (view === "semana") carregarSemana(selectedDate, filtro);
+          else carregarMes(visibleMonth, filtro);
         }}
       />
 
