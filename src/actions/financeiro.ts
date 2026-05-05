@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { calcularComissaoLancamento } from '@/actions/comissoes';
 
 export type FinanceiroTipo = 'receita' | 'despesa';
 export type FormaPagamento =
@@ -36,12 +37,20 @@ export type Lancamento = {
   observacoes: string | null;
   paciente: { id: string; nome: string } | null;
   agendamento_id: string | null;
+  categoria_despesa: string | null;
+  fornecedor: string | null;
+  percentual_comissao: number | null;
+  valor_comissao: number | null;
+  comissao_aplicavel: boolean;
 };
 
 export type ResumoFinanceiro = {
   receita: number;
   despesa: number;
   saldo: number;
+  totalComissao: number;
+  valorLiquido: number;
+  temComissao: boolean;
 };
 
 export type LancamentosFiltros = {
@@ -112,20 +121,47 @@ export async function getResumoFinanceiro(
   const admin = createAdminClient();
   const { data: rows, error } = await admin
     .from('financeiro')
-    .select('tipo, valor')
+    .select('tipo, valor, valor_comissao, comissao_aplicavel')
     .eq('tenant_id', ctx.tenantId)
+    .eq('profissional_id', ctx.profissionalId)
     .gte('data_lancamento', inicio)
     .lt('data_lancamento', fim);
   if (error) return { ok: false, error: error.message };
 
   let receita = 0;
   let despesa = 0;
+  let totalComissao = 0;
   for (const row of rows ?? []) {
     const valor = Number(row.valor) || 0;
-    if (row.tipo === 'receita') receita += valor;
-    else if (row.tipo === 'despesa') despesa += valor;
+    if (row.tipo === 'receita') {
+      receita += valor;
+      if (row.comissao_aplicavel) {
+        totalComissao += Number(row.valor_comissao) || 0;
+      }
+    } else if (row.tipo === 'despesa') {
+      despesa += valor;
+    }
   }
-  return { ok: true, data: { receita, despesa, saldo: receita - despesa } };
+
+  // Verifica se o profissional tem config de comissao
+  const { data: cfg } = await admin
+    .from('comissoes_profissional')
+    .select('id, ativo')
+    .eq('profissional_id', ctx.profissionalId)
+    .maybeSingle();
+  const temComissao = !!cfg && cfg.ativo !== false;
+
+  return {
+    ok: true,
+    data: {
+      receita,
+      despesa,
+      saldo: receita - despesa,
+      totalComissao: temComissao ? totalComissao : 0,
+      valorLiquido: temComissao ? receita - totalComissao : receita,
+      temComissao,
+    },
+  };
 }
 
 export async function getLancamentos(
@@ -146,7 +182,7 @@ export async function getLancamentos(
   let query = admin
     .from('financeiro')
     .select(
-      'id, tipo, descricao, valor, forma_pagamento, data_lancamento, data_pagamento, pago, categoria, observacoes, agendamento_id, pacientes(id, nome)',
+      'id, tipo, descricao, valor, forma_pagamento, data_lancamento, data_pagamento, pago, categoria, observacoes, agendamento_id, categoria_despesa, fornecedor, percentual_comissao, valor_comissao, comissao_aplicavel, pacientes(id, nome)',
     )
     .eq('tenant_id', ctx.tenantId)
     .gte('data_lancamento', inicio)
@@ -183,6 +219,17 @@ export async function getLancamentos(
       categoria: (r.categoria as string | null) ?? null,
       observacoes: (r.observacoes as string | null) ?? null,
       agendamento_id: (r.agendamento_id as string | null) ?? null,
+      categoria_despesa: (r.categoria_despesa as string | null) ?? null,
+      fornecedor: (r.fornecedor as string | null) ?? null,
+      percentual_comissao:
+        r.percentual_comissao === null || r.percentual_comissao === undefined
+          ? null
+          : Number(r.percentual_comissao),
+      valor_comissao:
+        r.valor_comissao === null || r.valor_comissao === undefined
+          ? null
+          : Number(r.valor_comissao),
+      comissao_aplicavel: Boolean(r.comissao_aplicavel),
       paciente: paciente
         ? { id: paciente.id as string, nome: paciente.nome as string }
         : null,
@@ -202,6 +249,9 @@ export type NovoLancamentoInput = {
   categoria?: string;
   observacoes?: string;
   paciente_id?: string | null;
+  agendamento_id?: string | null;
+  categoria_despesa?: string | null;
+  fornecedor?: string | null;
 };
 
 export async function criarLancamento(
@@ -242,6 +292,42 @@ export async function criarLancamento(
     pacienteId = pac.id as string;
   }
 
+  let agendamentoId: string | null = null;
+  if (input.agendamento_id) {
+    const admin = createAdminClient();
+    const { data: ag, error: agErr } = await admin
+      .from('agendamentos')
+      .select('id, tenant_id')
+      .eq('id', input.agendamento_id)
+      .maybeSingle();
+    if (agErr) return { ok: false, error: agErr.message };
+    if (!ag || ag.tenant_id !== ctx.tenantId) {
+      return { ok: false, error: 'Agendamento nao encontrado.' };
+    }
+    agendamentoId = ag.id as string;
+  }
+
+  // Comissao automatica para receitas
+  let percentualComissao = 0;
+  let valorComissao = 0;
+  let comissaoAplicavel = false;
+  let categoriaDespesa: string | null = null;
+  let fornecedor: string | null = null;
+
+  if (input.tipo === 'receita') {
+    const resumo = await calcularComissaoLancamento(
+      input.valor,
+      ctx.profissionalId,
+      agendamentoId,
+    );
+    percentualComissao = resumo.percentual;
+    valorComissao = resumo.valorComissao;
+    comissaoAplicavel = resumo.aplicavel;
+  } else {
+    categoriaDespesa = input.categoria_despesa?.trim() || null;
+    fornecedor = input.fornecedor?.trim() || null;
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('financeiro')
@@ -249,6 +335,7 @@ export async function criarLancamento(
       tenant_id: ctx.tenantId,
       profissional_id: ctx.profissionalId,
       paciente_id: pacienteId,
+      agendamento_id: agendamentoId,
       tipo: input.tipo,
       descricao,
       valor: input.valor,
@@ -258,6 +345,11 @@ export async function criarLancamento(
       pago: input.pago,
       categoria: input.categoria?.trim() || null,
       observacoes: input.observacoes?.trim() || null,
+      categoria_despesa: categoriaDespesa,
+      fornecedor,
+      percentual_comissao: comissaoAplicavel ? percentualComissao : 0,
+      valor_comissao: comissaoAplicavel ? valorComissao : 0,
+      comissao_aplicavel: comissaoAplicavel,
     })
     .select('id')
     .single();
@@ -443,6 +535,11 @@ async function montarReciboData(
     categoria: row.categoria,
     observacoes: row.observacoes,
     agendamento_id: row.agendamento_id,
+    categoria_despesa: null,
+    fornecedor: null,
+    percentual_comissao: null,
+    valor_comissao: null,
+    comissao_aplicavel: false,
     paciente: paciente
       ? { id: paciente.id as string, nome: paciente.nome as string }
       : null,

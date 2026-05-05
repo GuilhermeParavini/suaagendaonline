@@ -6,6 +6,11 @@ export type Acao =
   | 'plano:alterar'
   | 'financeiro:ver'
   | 'financeiro:editar'
+  | 'financeiro_ver_todos'
+  | 'comissao_configurar'
+  | 'comissao_ver_todos'
+  | 'comissao_marcar_pago'
+  | 'recalcular_fechamento'
   | 'relatorios:ver'
   | 'relatorios:financeiro'
   | 'agenda:ver-todos'
@@ -23,6 +28,11 @@ const PERMISSOES: Record<Role, Set<Acao>> = {
     'plano:alterar',
     'financeiro:ver',
     'financeiro:editar',
+    'financeiro_ver_todos',
+    'comissao_configurar',
+    'comissao_ver_todos',
+    'comissao_marcar_pago',
+    'recalcular_fechamento',
     'relatorios:ver',
     'relatorios:financeiro',
     'agenda:ver-todos',
