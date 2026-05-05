@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
 import AcompanhamentoLista from "@/components/dashboard/AcompanhamentoLista";
 import CardUsoTranscricao from "@/components/dashboard/CardUsoTranscricao";
+import CardUsoAssistente from "@/components/dashboard/CardUsoAssistente";
 import BannerUsoTranscricao from "@/components/dashboard/BannerUsoTranscricao";
 import CardListaEspera from "@/components/dashboard/CardListaEspera";
 import {
@@ -16,6 +17,7 @@ import {
   type PacienteAcompanhamento,
 } from "@/actions/followup";
 import { getUsoTranscricao } from "@/actions/transcricao";
+import { getUsoAssistente } from "@/actions/assistente-uso";
 import { getContagemListaEspera } from "@/actions/lista-espera";
 import { cn } from "@/lib/utils";
 
@@ -143,6 +145,13 @@ export default async function DashboardPage() {
     ? uso.limiteSegundos > 0 || uso.usadoSegundos > 0
     : false;
 
+  const usoAssistente = await getUsoAssistente(
+    prof.tenant_id as string,
+    prof.id as string,
+  );
+  const mostrarCardAssistente =
+    usoAssistente.limite > 0 || usoAssistente.perguntasUsadas > 0;
+
   const contagemEsperaRes = await getContagemListaEspera();
   const contagemListaEspera = contagemEsperaRes.ok ? contagemEsperaRes.data : 0;
 
@@ -183,7 +192,14 @@ export default async function DashboardPage() {
         <MetricCard label="Receita do mês" value={currencyBRL(receitaMes)} />
       </section>
 
-      {mostrarCardUso && uso ? <CardUsoTranscricao uso={uso} /> : null}
+      {mostrarCardUso || mostrarCardAssistente ? (
+        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {mostrarCardUso && uso ? <CardUsoTranscricao uso={uso} /> : null}
+          {mostrarCardAssistente ? (
+            <CardUsoAssistente uso={usoAssistente} />
+          ) : null}
+        </section>
+      ) : null}
 
       <CardListaEspera contagem={contagemListaEspera} />
 

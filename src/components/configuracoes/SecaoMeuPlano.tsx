@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, Mic, Sparkles } from "lucide-react";
+import { Lock, MessageCircle, Mic, Sparkles } from "lucide-react";
 import {
   getUsoTranscricao,
   type UsoTranscricao,
 } from "@/actions/transcricao";
-import { getInfoPlano } from "@/lib/planos";
+import {
+  getUsoAssistenteAtual,
+  type UsoAssistente,
+} from "@/actions/assistente-uso";
+import { getInfoPlano, getLimiteAssistente } from "@/lib/planos";
 import { cn } from "@/lib/utils";
 
 interface SecaoMeuPlanoProps {
@@ -34,12 +38,20 @@ function diasRestantes(iso: string | null): number | null {
 
 function SecaoMeuPlano({ plano, trialExpiraEm }: SecaoMeuPlanoProps) {
   const [uso, setUso] = useState<UsoTranscricao | null>(null);
+  const [usoAssistente, setUsoAssistente] = useState<UsoAssistente | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelado = false;
     (async () => {
-      const r = await getUsoTranscricao();
-      if (!cancelado && r.ok) setUso(r.data);
+      const [r1, r2] = await Promise.all([
+        getUsoTranscricao(),
+        getUsoAssistenteAtual(),
+      ]);
+      if (cancelado) return;
+      if (r1.ok) setUso(r1.data);
+      if (r2.ok) setUsoAssistente(r2.data);
     })();
     return () => {
       cancelado = true;
@@ -50,12 +62,21 @@ function SecaoMeuPlano({ plano, trialExpiraEm }: SecaoMeuPlanoProps) {
   const isTrial = plano === "trial";
   const isEssencial = plano === "essencial";
   const dias = isTrial ? diasRestantes(trialExpiraEm) : null;
+  const limiteAssistentePlano = getLimiteAssistente(plano);
 
   const cor = !uso
     ? "bg-slate-200"
     : uso.percentual >= 80
       ? "bg-red-500"
       : uso.percentual >= 50
+        ? "bg-amber-500"
+        : "bg-primary";
+
+  const corAssistente = !usoAssistente
+    ? "bg-slate-200"
+    : usoAssistente.percentual >= 80
+      ? "bg-red-500"
+      : usoAssistente.percentual >= 50
         ? "bg-amber-500"
         : "bg-primary";
 
@@ -166,6 +187,66 @@ function SecaoMeuPlano({ plano, trialExpiraEm }: SecaoMeuPlanoProps) {
               </p>
               <p className="text-slate-500">
                 {uso ? `${Math.round(uso.percentual)}%` : "—"}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="flex items-center gap-2">
+          {limiteAssistentePlano > 0 ? (
+            <MessageCircle
+              size={14}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-primary"
+            />
+          ) : (
+            <Lock
+              size={14}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-400"
+            />
+          )}
+          <p className="text-[13px] font-medium text-slate-700">
+            Assistente IA
+          </p>
+        </div>
+
+        {limiteAssistentePlano === 0 ? (
+          <p className="mt-2 text-xs text-slate-500">
+            Não disponível —{" "}
+            <span className="font-medium text-primary-dark">
+              Upgrade para Profissional
+            </span>
+            .
+          </p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  corAssistente,
+                )}
+                style={{
+                  width: `${usoAssistente ? Math.max(2, Math.round(usoAssistente.percentual)) : 0}%`,
+                }}
+              />
+            </div>
+            <div className="flex items-baseline justify-between gap-2 text-xs">
+              <p className="text-slate-700">
+                <span className="font-semibold text-slate-900">
+                  {usoAssistente?.perguntasUsadas ?? 0}
+                </span>{" "}
+                de {limiteAssistentePlano} perguntas este mês
+              </p>
+              <p className="text-slate-500">
+                {usoAssistente
+                  ? `${Math.round(usoAssistente.percentual)}%`
+                  : "—"}
               </p>
             </div>
           </div>
