@@ -15,6 +15,7 @@ export type Evolucao = {
   transcricao: string | null;
   receita: string | null;
   diagnostico: string | null;
+  plano_cuidados: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -60,6 +61,7 @@ function mapRow(row: Record<string, unknown>): Evolucao {
     transcricao: (row.transcricao as string | null) ?? null,
     receita: (row.receita as string | null) ?? null,
     diagnostico: (row.diagnostico as string | null) ?? null,
+    plano_cuidados: (row.plano_cuidados as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -74,6 +76,7 @@ export type CriarEvolucaoInput = {
   transcricao?: string;
   receita?: string;
   diagnostico?: string;
+  planoCuidados?: string;
 };
 
 export async function criarEvolucao(
@@ -110,6 +113,7 @@ export async function criarEvolucao(
       transcricao: input.transcricao?.trim() || null,
       receita: input.receita?.trim() || null,
       diagnostico: input.diagnostico?.trim() || null,
+      plano_cuidados: input.planoCuidados?.trim() || null,
     })
     .select('id')
     .single();
@@ -127,6 +131,7 @@ export type AtualizarEvolucaoInput = Partial<{
   transcricao: string | null;
   receita: string | null;
   diagnostico: string | null;
+  planoCuidados: string | null;
 }>;
 
 export async function atualizarEvolucao(
@@ -162,6 +167,9 @@ export async function atualizarEvolucao(
   }
   if (input.diagnostico !== undefined) {
     update.diagnostico = input.diagnostico?.trim() || null;
+  }
+  if (input.planoCuidados !== undefined) {
+    update.plano_cuidados = input.planoCuidados?.trim() || null;
   }
 
   if (Object.keys(update).length === 0) {

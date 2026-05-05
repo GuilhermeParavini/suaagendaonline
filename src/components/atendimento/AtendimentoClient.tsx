@@ -3,12 +3,14 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Award,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
   ClipboardList,
   Clock,
   FileText,
+  Home,
   Lock,
 } from "lucide-react";
 import Link from "next/link";
@@ -78,6 +80,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [receita, setReceita] = useState("");
   const [diagnostico, setDiagnostico] = useState("");
+  const [planoCuidados, setPlanoCuidados] = useState("");
 
   const [anamneseExpandida, setAnamneseExpandida] = useState(true);
   const [historicoExpandido, setHistoricoExpandido] = useState(false);
@@ -86,6 +89,8 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   const [okMsg, setOkMsg] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
   const [isConcluindo, startConcluir] = useTransition();
+  const [evolucaoSalvaId, setEvolucaoSalvaId] = useState<string | null>(null);
+  const [statusAg, setStatusAg] = useState(contexto.agendamento.status);
 
   const [openAnamneseForm, setOpenAnamneseForm] = useState(false);
   const [templatesAnamnese, setTemplatesAnamnese] = useState<Template[]>([]);
@@ -167,6 +172,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
     transcricao: transcricao || undefined,
     receita,
     diagnostico,
+    planoCuidados,
   });
 
   const handleSalvarRascunho = () => {
@@ -177,6 +183,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         setErro(r.error);
         return;
       }
+      setEvolucaoSalvaId(r.data.id);
       setOkMsg("Rascunho salvo.");
       window.setTimeout(() => setOkMsg(null), 2500);
     });
@@ -190,6 +197,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         setErro(ev.error);
         return;
       }
+      setEvolucaoSalvaId(ev.data.id);
       const st = await atualizarStatusAgendamento(
         contexto.agendamento.id,
         "concluido",
@@ -198,7 +206,11 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         setErro(st.error);
         return;
       }
-      router.push("/agenda");
+      setStatusAg("concluido");
+      setOkMsg(
+        "Atendimento concluido. Voce pode emitir relatorio, plano de cuidados ou atestado.",
+      );
+      router.refresh();
     });
   };
 
@@ -413,6 +425,25 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
             className={`${inputClass} resize-y`}
           />
         </div>
+
+        <div className="space-y-1">
+          <label className="flex items-center gap-1.5 text-[13px] font-medium text-slate-700">
+            <ClipboardList
+              size={14}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-slate-400"
+            />
+            Plano de cuidados em casa
+          </label>
+          <textarea
+            rows={4}
+            value={planoCuidados}
+            onChange={(e) => setPlanoCuidados(e.target.value)}
+            placeholder="Instrucoes para o paciente seguir em casa..."
+            className={`${inputClass} resize-y`}
+          />
+        </div>
       </section>
 
       {okMsg ? (
@@ -424,6 +455,47 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           {erro}
         </p>
+      ) : null}
+
+      {evolucaoSalvaId || statusAg === "concluido" ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <h2 className="text-sm font-medium text-slate-700">Documentos</h2>
+          <div className="flex flex-wrap gap-2">
+            {evolucaoSalvaId ? (
+              <Link
+                href={`/relatorio-clinico/${evolucaoSalvaId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+              >
+                <FileText size={14} strokeWidth={1.5} aria-hidden="true" />
+                Relatorio clinico
+              </Link>
+            ) : null}
+            {evolucaoSalvaId && planoCuidados.trim() ? (
+              <Link
+                href={`/plano-cuidados/${evolucaoSalvaId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+              >
+                <Home size={14} strokeWidth={1.5} aria-hidden="true" />
+                Plano de cuidados
+              </Link>
+            ) : null}
+            {statusAg === "concluido" ? (
+              <Link
+                href={`/atestado/${contexto.agendamento.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+              >
+                <Award size={14} strokeWidth={1.5} aria-hidden="true" />
+                Atestado
+              </Link>
+            ) : null}
+          </div>
+        </section>
       ) : null}
 
       <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom))] lg:bottom-4 z-20 -mx-4 sm:mx-0 border-t border-slate-200 bg-white px-4 py-3 sm:rounded-lg sm:border sm:px-4">

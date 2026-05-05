@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { FileText, Home } from "lucide-react";
 import type { Evolucao } from "@/actions/evolucoes";
 
 interface EvolucaoDetalheProps {
@@ -26,6 +28,7 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
     !evolucao.transcricao?.trim() &&
     !evolucao.receita?.trim() &&
     !evolucao.diagnostico?.trim() &&
+    !evolucao.plano_cuidados?.trim() &&
     !evolucao.audio_url;
 
   if (semConteudo) {
@@ -53,6 +56,30 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
       <Bloco label="Transcrição" valor={evolucao.transcricao} />
       <Bloco label="Receita / Prescrição" valor={evolucao.receita} />
       <Bloco label="Diagnóstico" valor={evolucao.diagnostico} />
+      <Bloco label="Plano de cuidados em casa" valor={evolucao.plano_cuidados} />
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        <Link
+          href={`/relatorio-clinico/${evolucao.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+        >
+          <FileText size={13} strokeWidth={1.5} aria-hidden="true" />
+          Relatorio clinico
+        </Link>
+        {evolucao.plano_cuidados?.trim() ? (
+          <Link
+            href={`/plano-cuidados/${evolucao.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+          >
+            <Home size={13} strokeWidth={1.5} aria-hidden="true" />
+            Plano de cuidados
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }
