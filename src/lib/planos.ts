@@ -6,6 +6,7 @@ export type InfoPlano = {
   preco: number;
   limiteTranscricaoSegundos: number;
   maxProfissionais: number;
+  limiteAssistente: number;
 };
 
 export const PLANOS: Record<Plano, InfoPlano> = {
@@ -15,6 +16,7 @@ export const PLANOS: Record<Plano, InfoPlano> = {
     preco: 0,
     limiteTranscricaoSegundos: 600,
     maxProfissionais: 1,
+    limiteAssistente: 50,
   },
   essencial: {
     id: 'essencial',
@@ -22,6 +24,7 @@ export const PLANOS: Record<Plano, InfoPlano> = {
     preco: 59.9,
     limiteTranscricaoSegundos: 0,
     maxProfissionais: 1,
+    limiteAssistente: 0,
   },
   profissional: {
     id: 'profissional',
@@ -29,6 +32,7 @@ export const PLANOS: Record<Plano, InfoPlano> = {
     preco: 79.9,
     limiteTranscricaoSegundos: 3600,
     maxProfissionais: 1,
+    limiteAssistente: 300,
   },
   clinica: {
     id: 'clinica',
@@ -36,6 +40,7 @@ export const PLANOS: Record<Plano, InfoPlano> = {
     preco: 119.9,
     limiteTranscricaoSegundos: 9000,
     maxProfissionais: 5,
+    limiteAssistente: 1000,
   },
 };
 
@@ -62,4 +67,8 @@ export function isPlanoComTranscricao(plano: string | null | undefined): boolean
 
 export function getMaxProfissionais(plano: string | null | undefined): number {
   return getInfoPlano(plano).maxProfissionais;
+}
+
+export function getLimiteAssistente(plano: string | null | undefined): number {
+  return getInfoPlano(plano).limiteAssistente;
 }
