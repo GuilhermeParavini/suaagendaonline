@@ -318,6 +318,71 @@ export function emailConfirmacaoCadastro(d: DadosCadastroConfirmacao): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosReagendamento = {
+  pacienteNome: string;
+  profissionalNome: string;
+  profissionalEspecialidade: string | null;
+  procedimentoNome: string | null;
+  dataAnteriorIso: string;
+  horarioAnterior: string;
+  dataNovaIso: string;
+  horarioNovo: string;
+  linkAgendamento: string | null;
+  logoUrl?: string | null;
+};
+
+export function emailReagendamento(d: DadosReagendamento): {
+  assunto: string;
+  html: string;
+} {
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
+  const especialidade = (d.profissionalEspecialidade ?? '').trim();
+  const procedimento = (d.procedimentoNome ?? '').trim();
+  const assunto = 'Sua consulta foi reagendada';
+
+  const blocoComparativo = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0 0;">
+      <tr>
+        <td style="padding:12px;border:1px solid #E2E8F0;border-radius:8px;background-color:#F8FAFC;">
+          <p style="margin:0;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">De</p>
+          <p style="margin:4px 0 0 0;color:#94A3B8;font-size:14px;text-decoration:line-through;">${escapeHtml(dataPorExtenso(d.dataAnteriorIso))} às ${escapeHtml(d.horarioAnterior)}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:6px 12px;color:#0D9488;font-size:18px;font-weight:600;text-align:center;">↓</td>
+      </tr>
+      <tr>
+        <td style="padding:14px;border:1px solid #0D9488;border-radius:8px;background-color:#F0FDFA;">
+          <p style="margin:0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Para</p>
+          <p style="margin:4px 0 0 0;color:#0F172A;font-size:15px;font-weight:600;">${escapeHtml(dataPorExtenso(d.dataNovaIso))} às ${escapeHtml(d.horarioNovo)}</p>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const botao = d.linkAgendamento
+    ? `<p style="margin:20px 0 0 0;">
+         <a href="${escapeHtml(d.linkAgendamento)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Ver detalhes</a>
+       </p>`
+    : '';
+
+  const profissionalLabel = especialidade
+    ? `${escapeHtml(profissional)} (${escapeHtml(especialidade)})`
+    : escapeHtml(profissional);
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 8px 0;">Sua consulta com ${profissionalLabel} foi reagendada.</p>
+    ${procedimento ? `<p style="margin:0 0 8px 0;color:#475569;">Procedimento: <strong>${escapeHtml(procedimento)}</strong></p>` : ''}
+    ${blocoComparativo}
+    ${botao}
+    <p style="margin:20px 0 0 0;color:#475569;font-size:13px;">Caso precise de algo, entre em contato.</p>
+    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

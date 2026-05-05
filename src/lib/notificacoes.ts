@@ -8,7 +8,8 @@ type TipoNotificacao =
   | "feedback"
   | "boas_vindas"
   | "followup"
-  | "followup_whatsapp";
+  | "followup_whatsapp"
+  | "reagendamento";
 
 type EnviarNotificacaoInput = {
   tenantId: string;

@@ -5,6 +5,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import {
   emailCancelamento,
   emailConfirmacaoAgendamento,
+  emailReagendamento,
   emailSolicitarAvaliacao,
   horarioFromIso,
   dataIsoFromTimestamp,
@@ -22,7 +23,8 @@ export type StatusAgendamento =
   | 'em_atendimento'
   | 'concluido'
   | 'faltou'
-  | 'cancelado';
+  | 'cancelado'
+  | 'reagendado';
 
 export type AgendamentoDia = {
   id: string;
@@ -31,6 +33,7 @@ export type AgendamentoDia = {
   status: StatusAgendamento;
   paciente: { id: string; nome: string } | null;
   procedimento: { id: string; nome: string } | null;
+  reagendado_de: string | null;
 };
 
 export type IndisponivelDia =
@@ -65,6 +68,7 @@ const TRANSICOES_VALIDAS: Record<StatusAgendamento, StatusAgendamento[]> = {
   concluido: [],
   faltou: [],
   cancelado: [],
+  reagendado: [],
 };
 
 function isIsoDate(value: string): boolean {
@@ -115,7 +119,7 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
   const { data: rows, error } = await admin
     .from('agendamentos')
     .select(
-      'id, data_hora, duracao_min, status, pacientes(id, nome), procedimentos(id, nome)',
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome)',
     )
     .eq('profissional_id', prof.id)
     .gte('data_hora', inicio)
@@ -136,6 +140,7 @@ export async function getAgendamentosDia(data: string): Promise<GetAgendamentosR
       procedimento: procedimento
         ? { id: procedimento.id as string, nome: procedimento.nome as string }
         : null,
+      reagendado_de: (r.reagendado_de as string | null) ?? null,
     };
   });
 
@@ -859,4 +864,276 @@ export async function criarAgendamentoPainel(
   revalidatePath('/agenda');
   revalidatePath('/');
   return { ok: true, agendamentoId };
+}
+
+// ============================================================
+// Reagendamento de consulta
+// ============================================================
+
+// TODO sprint futura: permitir reagendamento pelo paciente via link publico
+// (precisa de autenticacao/token do paciente).
+
+export type ReagendarConsultaInput = {
+  agendamentoId: string;
+  novaDataIso: string;
+  novaHora: string;
+  novoProcedimentoId?: string;
+  novaDuracaoMin?: number;
+};
+
+export type ReagendarConsultaResult =
+  | { ok: true; novoAgendamentoId: string }
+  | { ok: false; error: string };
+
+export async function reagendarConsulta(
+  input: ReagendarConsultaInput,
+): Promise<ReagendarConsultaResult> {
+  if (!input.agendamentoId) {
+    return { ok: false, error: 'Agendamento invalido.' };
+  }
+  if (!isIsoDate(input.novaDataIso)) {
+    return { ok: false, error: 'Data invalida.' };
+  }
+  if (!/^\d{2}:\d{2}$/.test(input.novaHora)) {
+    return { ok: false, error: 'Horario invalido.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select(
+      'id, tenant_id, nome, especialidade, logo_url, tolerancia_atraso_min',
+    )
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const tenantId = prof.tenant_id as string;
+  const profissionalId = prof.id as string;
+
+  const { data: antigo, error: getErr } = await admin
+    .from('agendamentos')
+    .select(
+      'id, tenant_id, profissional_id, paciente_id, procedimento_id, data_hora, duracao_min, status, tolerancia_min, observacoes',
+    )
+    .eq('id', input.agendamentoId)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: getErr.message };
+  if (!antigo) return { ok: false, error: 'Agendamento nao encontrado.' };
+  if (antigo.tenant_id !== tenantId) {
+    return { ok: false, error: 'Sem permissao para este agendamento.' };
+  }
+
+  const statusAtual = antigo.status as StatusAgendamento;
+  if (statusAtual !== 'agendado' && statusAtual !== 'confirmado') {
+    return {
+      ok: false,
+      error: 'Só é possível reagendar consultas agendadas ou confirmadas.',
+    };
+  }
+
+  // Procedimento (mantem o atual se nao informado)
+  const procedimentoId =
+    input.novoProcedimentoId?.trim() ||
+    (antigo.procedimento_id as string | null) ||
+    null;
+
+  let duracaoMin = input.novaDuracaoMin;
+  let procNome: string | null = null;
+  if (procedimentoId) {
+    const { data: proc, error: procErr } = await admin
+      .from('procedimentos')
+      .select('id, nome, duracao_min, tenant_id, ativo')
+      .eq('id', procedimentoId)
+      .maybeSingle();
+    if (procErr) return { ok: false, error: procErr.message };
+    if (!proc || proc.tenant_id !== tenantId) {
+      return { ok: false, error: 'Procedimento invalido.' };
+    }
+    procNome = (proc.nome as string | null) ?? null;
+    if (typeof duracaoMin !== 'number' || duracaoMin <= 0) {
+      duracaoMin = (proc.duracao_min as number) ?? 30;
+    }
+  }
+  if (typeof duracaoMin !== 'number' || duracaoMin <= 0) {
+    duracaoMin = (antigo.duracao_min as number) ?? 30;
+  }
+
+  const novaDataHoraIso = buildIsoDateTime(input.novaDataIso, input.novaHora);
+  const startMs = new Date(novaDataHoraIso).getTime();
+  const endMs = startMs + duracaoMin * 60_000;
+
+  if (startMs <= Date.now()) {
+    return { ok: false, error: 'Horario ja passou. Escolha outro.' };
+  }
+
+  // Feriados (estrito)
+  let feriadosCheck: Awaited<ReturnType<typeof getFeriadosForTenant>> = [];
+  try {
+    feriadosCheck = await getFeriadosForTenant(
+      tenantId,
+      input.novaDataIso,
+      input.novaDataIso,
+    );
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Falha ao verificar feriados: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  if (feriadosCheck.length > 0) {
+    return {
+      ok: false,
+      error: `Data indisponivel (feriado: ${feriadosCheck[0].nome}).`,
+    };
+  }
+
+  // Bloqueios (permissivo se a tabela nao existir)
+  try {
+    const bloqueios = await getBloqueiosForProfissional(
+      profissionalId,
+      input.novaDataIso,
+      input.novaDataIso,
+    );
+    if (bloqueios.length > 0) {
+      return { ok: false, error: 'Data indisponivel.' };
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao checar bloqueios:', e);
+  }
+
+  // Conflito (ignora o agendamento antigo)
+  const dayInicio = `${input.novaDataIso}T00:00:00.000Z`;
+  const dayFim = `${input.novaDataIso}T23:59:59.999Z`;
+  const { data: existentes, error: existErr } = await admin
+    .from('agendamentos')
+    .select('id, data_hora, duracao_min, status')
+    .eq('profissional_id', profissionalId)
+    .gte('data_hora', dayInicio)
+    .lte('data_hora', dayFim)
+    .neq('status', 'cancelado')
+    .neq('status', 'reagendado');
+  if (existErr) return { ok: false, error: existErr.message };
+
+  const conflito = (existentes ?? [])
+    .filter((row) => (row.id as string) !== (antigo.id as string))
+    .some((row) => {
+      const s = new Date(row.data_hora as string).getTime();
+      const dur = (row.duracao_min as number) ?? 30;
+      return startMs < s + dur * 60_000 && endMs > s;
+    });
+  if (conflito) {
+    return { ok: false, error: 'Horario indisponivel. Escolha outro.' };
+  }
+
+  // 1. Marca antigo como 'reagendado'
+  const { error: updErr } = await admin
+    .from('agendamentos')
+    .update({ status: 'reagendado' })
+    .eq('id', antigo.id as string);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // 2. Insere novo agendamento
+  const { data: novoRow, error: insErr } = await admin
+    .from('agendamentos')
+    .insert({
+      tenant_id: tenantId,
+      profissional_id: profissionalId,
+      paciente_id: antigo.paciente_id as string,
+      procedimento_id: procedimentoId,
+      data_hora: novaDataHoraIso,
+      duracao_min: duracaoMin,
+      status: 'agendado',
+      tolerancia_min:
+        (antigo.tolerancia_min as number | null) ??
+        (prof.tolerancia_atraso_min as number) ??
+        5,
+      observacoes: (antigo.observacoes as string | null) ?? null,
+      reagendado_de: antigo.id as string,
+    })
+    .select('id')
+    .single();
+  if (insErr || !novoRow) {
+    // Rollback do status do antigo se a insercao falhou
+    await admin
+      .from('agendamentos')
+      .update({ status: statusAtual })
+      .eq('id', antigo.id as string);
+    return {
+      ok: false,
+      error: insErr?.message ?? 'Falha ao criar novo agendamento.',
+    };
+  }
+  const novoId = novoRow.id as string;
+
+  // Email de reagendamento (best-effort)
+  try {
+    const [{ data: paciente }, { data: tenant }] = await Promise.all([
+      admin
+        .from('pacientes')
+        .select('nome, email')
+        .eq('id', antigo.paciente_id as string)
+        .maybeSingle(),
+      admin
+        .from('tenants')
+        .select('slug')
+        .eq('id', tenantId)
+        .maybeSingle(),
+    ]);
+    const destino = (paciente?.email as string | null) ?? null;
+    if (destino) {
+      const slug = (tenant?.slug as string | null) ?? null;
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ??
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+      const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
+
+      // Se procNome ainda eh null (procedimento nao foi recarregado), busca pelo id atual
+      let procedimentoNomeFinal = procNome;
+      if (!procedimentoNomeFinal && procedimentoId) {
+        const { data: procFinal } = await admin
+          .from('procedimentos')
+          .select('nome')
+          .eq('id', procedimentoId)
+          .maybeSingle();
+        procedimentoNomeFinal = (procFinal?.nome as string | null) ?? null;
+      }
+
+      const dataAnteriorIso = antigo.data_hora as string;
+      const tpl = emailReagendamento({
+        pacienteNome: (paciente?.nome as string) ?? 'Paciente',
+        profissionalNome: (prof.nome as string) ?? 'Profissional',
+        profissionalEspecialidade:
+          (prof.especialidade as string | null) ?? null,
+        procedimentoNome: procedimentoNomeFinal,
+        dataAnteriorIso: dataIsoFromTimestamp(dataAnteriorIso),
+        horarioAnterior: horarioFromIso(dataAnteriorIso),
+        dataNovaIso: input.novaDataIso,
+        horarioNovo: horarioFromIso(novaDataHoraIso),
+        linkAgendamento,
+        logoUrl: (prof.logo_url as string | null) ?? null,
+      });
+      await enviarNotificacaoEmail({
+        tenantId,
+        agendamentoId: novoId,
+        tipo: 'reagendamento',
+        destino,
+        assunto: tpl.assunto,
+        html: tpl.html,
+      });
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao enviar email de reagendamento:', e);
+  }
+
+  revalidatePath('/agenda');
+  revalidatePath('/');
+  return { ok: true, novoAgendamentoId: novoId };
 }

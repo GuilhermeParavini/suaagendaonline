@@ -7,7 +7,8 @@ export type StatusVariant =
   | "em_atendimento"
   | "concluido"
   | "faltou"
-  | "cancelado";
+  | "cancelado"
+  | "reagendado";
 
 interface StatusPillProps extends HTMLAttributes<HTMLSpanElement> {
   status: StatusVariant;
@@ -37,6 +38,10 @@ const statusStyles: Record<StatusVariant, { className: string; label: string }> 
   cancelado: {
     className: "bg-slate-200 text-slate-700",
     label: "Cancelado",
+  },
+  reagendado: {
+    className: "bg-[#E0E7FF] text-[#3730A3]",
+    label: "Reagendado",
   },
 };
 

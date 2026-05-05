@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X, Check } from "lucide-react";
+import { Calendar, Check, History, X } from "lucide-react";
 import {
   atualizarStatusAgendamento,
   type AgendamentoDia,
@@ -12,6 +12,7 @@ import {
 import StatusPill from "@/components/ui/StatusPill";
 import Button from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
+import ModalReagendamento from "./ModalReagendamento";
 
 interface AgendamentoModalProps {
   agendamento: AgendamentoDia | null;
@@ -67,6 +68,7 @@ const ACOES_POR_STATUS: Record<StatusAgendamento, AcaoStatus[]> = {
   concluido: [],
   faltou: [],
   cancelado: [],
+  reagendado: [],
 };
 
 const PODE_CANCELAR: StatusAgendamento[] = ["agendado", "confirmado"];
@@ -83,6 +85,7 @@ function AgendamentoModal({
   const [erro, setErro] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [reagendamentoOpen, setReagendamentoOpen] = useState(false);
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,9 +220,15 @@ function AgendamentoModal({
             </div>
           ) : null}
 
-          <div className="mt-4 flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="text-xs text-slate-500">Status atual:</span>
             <StatusPill status={agendamento.status} />
+            {agendamento.reagendado_de ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#E0E7FF] px-2 py-0.5 text-[10px] font-medium text-[#3730A3]">
+                <History size={10} strokeWidth={1.5} aria-hidden="true" />
+                Reagendado de outro horário
+              </span>
+            ) : null}
           </div>
 
           {erro ? (
@@ -295,6 +304,17 @@ function AgendamentoModal({
                 </button>
               ))}
               {podeCancelar ? (
+                <button
+                  type="button"
+                  onClick={() => setReagendamentoOpen(true)}
+                  disabled={isPending}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded border border-primary bg-transparent px-5 py-2.5 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <Calendar size={14} strokeWidth={1.5} aria-hidden="true" />
+                  Reagendar
+                </button>
+              ) : null}
+              {podeCancelar ? (
                 <Button
                   variant="destructive"
                   disabled={isPending}
@@ -308,6 +328,18 @@ function AgendamentoModal({
           )}
         </Dialog.Content>
       </Dialog.Portal>
+
+      <ModalReagendamento
+        agendamento={agendamento}
+        open={reagendamentoOpen}
+        onOpenChange={setReagendamentoOpen}
+        onReagendado={(novoId) => {
+          onUpdated(agendamento.id, "reagendado");
+          handleOpenChange(false);
+          router.push(`/agenda?ag=${novoId}`);
+          router.refresh();
+        }}
+      />
     </Dialog.Root>
   );
 }
