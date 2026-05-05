@@ -22,6 +22,11 @@ import {
   type GrauParentesco,
   type NovoPacientePublico,
 } from "@/actions/agendamento-publico";
+import {
+  ORIGEM_LABEL,
+  ORIGENS_VALIDAS,
+  type OrigemPaciente,
+} from "@/lib/paciente-origem";
 
 const brazilianStates = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -88,6 +93,8 @@ const schema = z
         (s) => !s || cleanCEP(s).length === 0 || cleanCEP(s).length === 8,
         "CEP inválido",
       ),
+    origem: z.string(),
+    origem_detalhe: z.string(),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
     resp_telefone: z.string().optional(),
@@ -190,6 +197,8 @@ function FormPacientePublico({
       cidade: "",
       estado: "",
       cep: "",
+      origem: "",
+      origem_detalhe: "",
       resp_nome: "",
       resp_cpf: "",
       resp_telefone: "",
@@ -317,6 +326,11 @@ function FormPacientePublico({
   const onSubmit = (data: FormData) => {
     const iso = brDateToIso(data.data_nascimento);
     if (!iso) return;
+    const origemFinal =
+      data.origem && (ORIGENS_VALIDAS as readonly string[]).includes(data.origem)
+        ? (data.origem as OrigemPaciente)
+        : null;
+
     const novoPaciente: NovoPacientePublico = {
       nome: data.nome,
       cpf: cleanCPF(cpfInput),
@@ -328,6 +342,9 @@ function FormPacientePublico({
       cidade: data.cidade?.trim() || undefined,
       estado: data.estado?.trim() || undefined,
       cep: data.cep?.trim() || undefined,
+      origem: origemFinal,
+      origem_detalhe:
+        origemFinal === "outros" ? data.origem_detalhe?.trim() || null : null,
       responsavel: showResponsavel
         ? {
             nome: data.resp_nome ?? "",
@@ -516,6 +533,31 @@ function FormPacientePublico({
               ) : null}
             </div>
           </div>
+        </div>
+      ) : null}
+
+      <div className="space-y-1">
+        <label className={labelClass}>Como nos conheceu?</label>
+        <select {...register("origem")} className={inputClass}>
+          <option value="">Selecione</option>
+          {ORIGENS_VALIDAS.map((o) => (
+            <option key={o} value={o}>
+              {ORIGEM_LABEL[o]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {watch("origem") === "outros" ? (
+        <div className="space-y-1">
+          <label className={labelClass}>Especifique</label>
+          <input
+            {...register("origem_detalhe")}
+            type="text"
+            maxLength={100}
+            placeholder="Ex: Convênio, panfleto, evento"
+            className={inputClass}
+          />
         </div>
       ) : null}
 

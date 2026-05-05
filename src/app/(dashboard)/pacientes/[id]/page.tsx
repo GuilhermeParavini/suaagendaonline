@@ -37,13 +37,16 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
   const { data: pacienteRow, error: pacienteErr } = await admin
     .from("pacientes")
     .select(
-      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade",
+      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade, altura, peso, origem, origem_detalhe",
     )
     .eq("id", id)
     .eq("tenant_id", prof.tenant_id)
     .eq("ativo", true)
     .maybeSingle();
   if (pacienteErr || !pacienteRow) notFound();
+
+  const alturaRaw = pacienteRow.altura as number | string | null | undefined;
+  const pesoRaw = pacienteRow.peso as number | string | null | undefined;
 
   const paciente: PacienteDetalhe = {
     id: pacienteRow.id as string,
@@ -60,6 +63,14 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
     convenio: (pacienteRow.convenio as string | null) ?? null,
     observacoes: (pacienteRow.observacoes as string | null) ?? null,
     menor_idade: Boolean(pacienteRow.menor_idade),
+    altura:
+      alturaRaw === null || alturaRaw === undefined
+        ? null
+        : Number(alturaRaw),
+    peso:
+      pesoRaw === null || pesoRaw === undefined ? null : Number(pesoRaw),
+    origem: (pacienteRow.origem as PacienteDetalhe["origem"]) ?? null,
+    origem_detalhe: (pacienteRow.origem_detalhe as string | null) ?? null,
   };
 
   let responsavel: ResponsavelDetalhe | null = null;

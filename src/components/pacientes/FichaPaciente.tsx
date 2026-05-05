@@ -27,6 +27,34 @@ import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import TabDocumentos from "./TabDocumentos";
 import AnamneseDetalhe from "./AnamneseDetalhe";
 import EvolucaoDetalhe from "./EvolucaoDetalhe";
+import { ORIGEM_LABEL } from "@/lib/paciente-origem";
+
+function formatarAlturaMetros(altura_cm: number): string {
+  const m = altura_cm / 100;
+  return `${m.toFixed(2).replace(".", ",")} m`;
+}
+
+function formatarPeso(peso_kg: number): string {
+  return `${peso_kg.toFixed(1).replace(".", ",")} kg`;
+}
+
+function calcularImc(altura_cm: number, peso_kg: number): number {
+  const m = altura_cm / 100;
+  if (m <= 0) return 0;
+  return peso_kg / (m * m);
+}
+
+function classificacaoImc(imc: number): {
+  label: string;
+  cor: "verde" | "amber" | "vermelho";
+} {
+  if (imc < 18.5) return { label: "Abaixo do peso", cor: "amber" };
+  if (imc < 25) return { label: "Normal", cor: "verde" };
+  if (imc < 30) return { label: "Sobrepeso", cor: "amber" };
+  if (imc < 35) return { label: "Obesidade I", cor: "vermelho" };
+  if (imc < 40) return { label: "Obesidade II", cor: "vermelho" };
+  return { label: "Obesidade III", cor: "vermelho" };
+}
 
 export type PacienteDetalhe = {
   id: string;
@@ -43,6 +71,10 @@ export type PacienteDetalhe = {
   convenio: string | null;
   observacoes: string | null;
   menor_idade: boolean;
+  altura: number | null;
+  peso: number | null;
+  origem: import("@/lib/paciente-origem").OrigemPaciente | null;
+  origem_detalhe: string | null;
 };
 
 export type ResponsavelDetalhe = {
@@ -354,6 +386,65 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 ) : null}
                 <DadoLinha label="Convênio" value={paciente.convenio} />
               </div>
+              {paciente.altura !== null || paciente.peso !== null ? (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {paciente.altura !== null ? (
+                    <DadoLinha
+                      label="Altura"
+                      value={formatarAlturaMetros(paciente.altura)}
+                    />
+                  ) : null}
+                  {paciente.peso !== null ? (
+                    <DadoLinha
+                      label="Peso"
+                      value={formatarPeso(paciente.peso)}
+                    />
+                  ) : null}
+                  {paciente.altura !== null && paciente.peso !== null ? (
+                    (() => {
+                      const imc = calcularImc(paciente.altura, paciente.peso);
+                      const cls = classificacaoImc(imc);
+                      const corClass =
+                        cls.cor === "verde"
+                          ? "bg-[#D1FAE5] text-[#065F46]"
+                          : cls.cor === "amber"
+                            ? "bg-warning-surface text-[#92400E]"
+                            : "bg-danger-surface text-danger";
+                      return (
+                        <div className="space-y-0.5">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                            IMC
+                          </p>
+                          <p className="text-sm text-slate-900">
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2 py-[2px] text-[12px] font-semibold leading-none",
+                                corClass,
+                              )}
+                            >
+                              {imc.toFixed(1).replace(".", ",")}
+                              <span className="font-medium">— {cls.label}</span>
+                            </span>
+                          </p>
+                        </div>
+                      );
+                    })()
+                  ) : null}
+                </div>
+              ) : null}
+              {paciente.origem ? (
+                <div className="space-y-1">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    Como nos conheceu
+                  </p>
+                  <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-[3px] text-[12px] font-medium leading-none text-teal-700">
+                    {ORIGEM_LABEL[paciente.origem]}
+                    {paciente.origem === "outros" && paciente.origem_detalhe
+                      ? `: ${paciente.origem_detalhe}`
+                      : ""}
+                  </span>
+                </div>
+              ) : null}
               {enderecoCompleto ? (
                 <DadoLinha label="Endereço" value={enderecoCompleto} />
               ) : null}

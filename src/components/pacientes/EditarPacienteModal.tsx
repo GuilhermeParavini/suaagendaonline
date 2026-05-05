@@ -25,6 +25,12 @@ import {
   type Genero,
   type GrauParentesco,
 } from "@/actions/pacientes";
+import {
+  ORIGEM_LABEL,
+  ORIGENS_VALIDAS,
+  type OrigemPaciente,
+} from "@/lib/paciente-origem";
+import { Ruler, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   PacienteDetalhe,
@@ -95,6 +101,22 @@ const formSchema = z
       ),
     convenio: z.string().optional(),
     observacoes: z.string().optional(),
+    altura: z
+      .string()
+      .refine((s) => {
+        if (!s || s.trim() === "") return true;
+        const n = Number(s.replace(",", "."));
+        return Number.isFinite(n) && n >= 30 && n <= 250;
+      }, "Altura entre 30 e 250 cm"),
+    peso: z
+      .string()
+      .refine((s) => {
+        if (!s || s.trim() === "") return true;
+        const n = Number(s.replace(",", "."));
+        return Number.isFinite(n) && n >= 1 && n <= 500;
+      }, "Peso entre 1 e 500 kg"),
+    origem: z.string(),
+    origem_detalhe: z.string(),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
     resp_telefone: z.string().optional(),
@@ -204,6 +226,16 @@ function EditarPacienteModal({
     cep: paciente.cep ? formatCEP(paciente.cep) : "",
     convenio: paciente.convenio ?? "",
     observacoes: paciente.observacoes ?? "",
+    altura:
+      paciente.altura !== null && paciente.altura !== undefined
+        ? String(paciente.altura).replace(".", ",")
+        : "",
+    peso:
+      paciente.peso !== null && paciente.peso !== undefined
+        ? String(paciente.peso).replace(".", ",")
+        : "",
+    origem: paciente.origem ?? "",
+    origem_detalhe: paciente.origem_detalhe ?? "",
     resp_nome: responsavel?.nome ?? "",
     resp_cpf: responsavel ? formatCPF(responsavel.cpf) : "",
     resp_telefone: responsavel ? formatPhone(responsavel.telefone) : "",
@@ -256,6 +288,17 @@ function EditarPacienteModal({
       return;
     }
 
+    const alturaNum = data.altura?.trim()
+      ? Number(data.altura.replace(",", "."))
+      : null;
+    const pesoNum = data.peso?.trim()
+      ? Number(data.peso.replace(",", "."))
+      : null;
+    const origemFinal =
+      data.origem && (ORIGENS_VALIDAS as readonly string[]).includes(data.origem)
+        ? (data.origem as OrigemPaciente)
+        : null;
+
     startTransition(async () => {
       const result = await atualizarPaciente(paciente.id, {
         nome: data.nome,
@@ -269,6 +312,13 @@ function EditarPacienteModal({
         cep: data.cep?.trim() || undefined,
         convenio: data.convenio?.trim() || undefined,
         observacoes: data.observacoes?.trim() || undefined,
+        altura: alturaNum,
+        peso: pesoNum,
+        origem: origemFinal,
+        origem_detalhe:
+          origemFinal === "outros"
+            ? data.origem_detalhe?.trim() || null
+            : null,
         responsavel: showResponsavel
           ? {
               nome: data.resp_nome ?? "",
@@ -451,6 +501,77 @@ function EditarPacienteModal({
                   ))}
                 </datalist>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className={labelClass}>Altura (cm)</label>
+                  <div className="relative">
+                    <Ruler
+                      size={16}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      {...register("altura")}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Ex: 170"
+                      className={`${inputClass} pl-9`}
+                    />
+                  </div>
+                  {errors.altura ? (
+                    <p className={errorClass}>{errors.altura.message}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelClass}>Peso (kg)</label>
+                  <div className="relative">
+                    <Scale
+                      size={16}
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      {...register("peso")}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Ex: 72.5"
+                      className={`${inputClass} pl-9`}
+                    />
+                  </div>
+                  {errors.peso ? (
+                    <p className={errorClass}>{errors.peso.message}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelClass}>Como nos conheceu?</label>
+                <select {...register("origem")} className={inputClass}>
+                  <option value="">Selecione</option>
+                  {ORIGENS_VALIDAS.map((o) => (
+                    <option key={o} value={o}>
+                      {ORIGEM_LABEL[o]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {watch("origem") === "outros" ? (
+                <div className="space-y-1">
+                  <label className={labelClass}>Especifique</label>
+                  <input
+                    {...register("origem_detalhe")}
+                    type="text"
+                    maxLength={100}
+                    placeholder="Ex: Convênio, panfleto, evento"
+                    className={inputClass}
+                  />
+                </div>
+              ) : null}
 
               <div className="space-y-1">
                 <label className={labelClass}>Observações</label>

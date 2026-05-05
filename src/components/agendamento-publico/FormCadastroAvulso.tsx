@@ -21,6 +21,11 @@ import {
   type CadastroAvulsoInput,
 } from "@/actions/pacientes";
 import type { Genero, GrauParentesco } from "@/actions/agendamento-publico";
+import {
+  ORIGEM_LABEL,
+  ORIGENS_VALIDAS,
+  type OrigemPaciente,
+} from "@/lib/paciente-origem";
 
 const generoOptions: { value: Genero; label: string }[] = [
   { value: "feminino", label: "Feminino" },
@@ -78,6 +83,8 @@ const schema = z
         "E-mail inválido",
       ),
     convenio: z.string().optional(),
+    origem: z.string(),
+    origem_detalhe: z.string(),
     aceite_lgpd: z.boolean().refine((v) => v === true, "É necessário aceitar o termo"),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
@@ -166,6 +173,8 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       telefone: "",
       email: "",
       convenio: "",
+      origem: "",
+      origem_detalhe: "",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -194,6 +203,11 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
     const iso = brDateToIso(data.data_nascimento);
     if (!iso) return;
 
+    const origemFinal =
+      data.origem && (ORIGENS_VALIDAS as readonly string[]).includes(data.origem)
+        ? (data.origem as OrigemPaciente)
+        : null;
+
     const payload: CadastroAvulsoInput = {
       slug,
       nome: data.nome,
@@ -203,6 +217,9 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       telefone: data.telefone,
       email: data.email?.trim() || undefined,
       convenio: data.convenio?.trim() || undefined,
+      origem: origemFinal,
+      origem_detalhe:
+        origemFinal === "outros" ? data.origem_detalhe?.trim() || null : null,
       aceiteLgpd: data.aceite_lgpd,
       responsavel: showResponsavel
         ? {
@@ -393,6 +410,31 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
           className={inputClass}
         />
       </div>
+
+      <div className="space-y-1">
+        <label className={labelClass}>Como nos conheceu?</label>
+        <select {...register("origem")} className={inputClass}>
+          <option value="">Selecione</option>
+          {ORIGENS_VALIDAS.map((o) => (
+            <option key={o} value={o}>
+              {ORIGEM_LABEL[o]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {watch("origem") === "outros" ? (
+        <div className="space-y-1">
+          <label className={labelClass}>Especifique</label>
+          <input
+            {...register("origem_detalhe")}
+            type="text"
+            maxLength={100}
+            placeholder="Ex: Convênio, panfleto, evento"
+            className={inputClass}
+          />
+        </div>
+      ) : null}
 
       {showResponsavel ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-4">

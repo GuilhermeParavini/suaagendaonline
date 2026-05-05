@@ -3,6 +3,10 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
+import {
+  normalizarOrigem,
+  type OrigemPaciente,
+} from '@/lib/paciente-origem';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import {
   capitalizeNome,
@@ -114,6 +118,8 @@ export type CadastroPreConsultaInput = {
   telefone: string;
   email?: string;
   convenio?: string;
+  origem?: OrigemPaciente | null;
+  origem_detalhe?: string | null;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -184,6 +190,11 @@ export async function cadastrarPacientePreConsulta(
     };
   }
 
+  const { origem, origem_detalhe } = normalizarOrigem(
+    input.origem,
+    input.origem_detalhe,
+  );
+
   const { data: pacRow, error: pacErr } = await admin
     .from('pacientes')
     .insert({
@@ -195,6 +206,8 @@ export async function cadastrarPacientePreConsulta(
       telefone,
       email: email,
       convenio: input.convenio?.trim() || null,
+      origem,
+      origem_detalhe,
       ativo: true,
     })
     .select('id')

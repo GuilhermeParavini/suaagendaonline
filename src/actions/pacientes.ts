@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanCEP, cleanPhone } from '@/lib/masks';
 import { validateCPF, isValidBirthDate, isMinor } from '@/lib/validators';
+import {
+  normalizarMedida,
+  normalizarOrigem,
+  type OrigemPaciente,
+} from '@/lib/paciente-origem';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import {
   emailConfirmacaoCadastro,
@@ -189,6 +194,10 @@ export type NovoPacienteInput = {
   estado?: string;
   cep?: string;
   convenio?: string;
+  altura?: number | null;
+  peso?: number | null;
+  origem?: OrigemPaciente | null;
+  origem_detalhe?: string | null;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -313,6 +322,13 @@ export async function createPaciente(
     return { ok: false, error: 'CPF ja cadastrado neste tenant.' };
   }
 
+  const altura = normalizarMedida(input.altura, 30, 250);
+  const peso = normalizarMedida(input.peso, 1, 500);
+  const { origem, origem_detalhe } = normalizarOrigem(
+    input.origem,
+    input.origem_detalhe,
+  );
+
   // Inserir paciente
   const { data: pacienteRow, error: insertError } = await admin
     .from('pacientes')
@@ -329,6 +345,10 @@ export async function createPaciente(
       estado: input.estado?.trim() || null,
       cep: cepDigits || null,
       convenio: input.convenio?.trim() || null,
+      altura,
+      peso,
+      origem,
+      origem_detalhe,
       ativo: true,
     })
     .select('id')
@@ -394,6 +414,10 @@ export type AtualizarPacienteInput = {
   cep?: string;
   convenio?: string;
   observacoes?: string;
+  altura?: number | null;
+  peso?: number | null;
+  origem?: OrigemPaciente | null;
+  origem_detalhe?: string | null;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -509,6 +533,13 @@ export async function atualizarPaciente(
     };
   }
 
+  const altura = normalizarMedida(input.altura, 30, 250);
+  const peso = normalizarMedida(input.peso, 1, 500);
+  const { origem, origem_detalhe } = normalizarOrigem(
+    input.origem,
+    input.origem_detalhe,
+  );
+
   const { error: updError } = await admin
     .from('pacientes')
     .update({
@@ -523,6 +554,10 @@ export async function atualizarPaciente(
       cep: cepDigits || null,
       convenio: input.convenio?.trim() || null,
       observacoes: input.observacoes?.trim() || null,
+      altura,
+      peso,
+      origem,
+      origem_detalhe,
     })
     .eq('id', id);
   if (updError) return { ok: false, error: updError.message };
@@ -581,6 +616,8 @@ export type CadastroAvulsoInput = {
   telefone: string;
   email?: string;
   convenio?: string;
+  origem?: OrigemPaciente | null;
+  origem_detalhe?: string | null;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -730,6 +767,9 @@ export async function cadastrarPacienteAvulso(
     };
   }
 
+  const { origem: origemAvulso, origem_detalhe: origemDetalheAvulso } =
+    normalizarOrigem(input.origem, input.origem_detalhe);
+
   const { data: pacRow, error: insErr } = await admin
     .from('pacientes')
     .insert({
@@ -741,6 +781,8 @@ export async function cadastrarPacienteAvulso(
       telefone,
       email: email,
       convenio: input.convenio?.trim() || null,
+      origem: origemAvulso,
+      origem_detalhe: origemDetalheAvulso,
       ativo: true,
     })
     .select('id')

@@ -24,6 +24,11 @@ import {
   type TemplatePublico,
 } from "@/actions/pre-consulta";
 import type { CampoTemplate } from "@/actions/anamnese";
+import {
+  ORIGEM_LABEL,
+  ORIGENS_VALIDAS,
+  type OrigemPaciente,
+} from "@/lib/paciente-origem";
 import { cn } from "@/lib/utils";
 
 type Step = "identificacao" | "template" | "anamnese" | "sucesso";
@@ -73,6 +78,8 @@ const cadastroSchema = z
         "E-mail inválido",
       ),
     convenio: z.string().optional(),
+    origem: z.string(),
+    origem_detalhe: z.string(),
     aceite_lgpd: z
       .boolean()
       .refine((v) => v === true, "É necessário aceitar o termo"),
@@ -188,6 +195,8 @@ function PreConsultaFlow({
       telefone: "",
       email: "",
       convenio: "",
+      origem: "",
+      origem_detalhe: "",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -284,6 +293,12 @@ function PreConsultaFlow({
     const iso = brDateToIso(data.data_nascimento);
     if (!iso) return;
     startCadastrar(async () => {
+      const origemFinal =
+        data.origem &&
+        (ORIGENS_VALIDAS as readonly string[]).includes(data.origem)
+          ? (data.origem as OrigemPaciente)
+          : null;
+
       const r = await cadastrarPacientePreConsulta({
         slug,
         nome: data.nome,
@@ -293,6 +308,11 @@ function PreConsultaFlow({
         telefone: data.telefone,
         email: data.email?.trim() || undefined,
         convenio: data.convenio?.trim() || undefined,
+        origem: origemFinal,
+        origem_detalhe:
+          origemFinal === "outros"
+            ? data.origem_detalhe?.trim() || null
+            : null,
         aceiteLgpd: data.aceite_lgpd,
         responsavel: showResponsavel
           ? {
@@ -667,6 +687,34 @@ function PreConsultaFlow({
                   className={inputClass}
                 />
               </div>
+
+              <div className="space-y-1">
+                <label className={labelClass}>Como nos conheceu?</label>
+                <select
+                  {...cadastroForm.register("origem")}
+                  className={inputClass}
+                >
+                  <option value="">Selecione</option>
+                  {ORIGENS_VALIDAS.map((o) => (
+                    <option key={o} value={o}>
+                      {ORIGEM_LABEL[o]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {cadastroForm.watch("origem") === "outros" ? (
+                <div className="space-y-1">
+                  <label className={labelClass}>Especifique</label>
+                  <input
+                    {...cadastroForm.register("origem_detalhe")}
+                    type="text"
+                    maxLength={100}
+                    placeholder="Ex: Convênio, panfleto, evento"
+                    className={inputClass}
+                  />
+                </div>
+              ) : null}
 
               {showResponsavel ? (
                 <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-3">

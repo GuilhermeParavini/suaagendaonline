@@ -9,6 +9,10 @@ import {
 import { cleanCEP, cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
 import {
+  normalizarOrigem,
+  type OrigemPaciente,
+} from '@/lib/paciente-origem';
+import {
   emailConfirmacaoAgendamento,
   emailReagendamento,
   horarioFromIso,
@@ -37,6 +41,8 @@ export type NovoPacientePublico = {
   cidade?: string;
   estado?: string;
   cep?: string;
+  origem?: OrigemPaciente | null;
+  origem_detalhe?: string | null;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -403,6 +409,9 @@ export async function criarAgendamentoPublico(
       };
     }
 
+    const { origem: origemPub, origem_detalhe: origemDetalhePub } =
+      normalizarOrigem(np.origem, np.origem_detalhe);
+
     const { data: pacRow, error: pacErr } = await admin
       .from('pacientes')
       .insert({
@@ -417,6 +426,8 @@ export async function criarAgendamentoPublico(
         cidade: np.cidade?.trim() || null,
         estado: np.estado?.trim() || null,
         cep: cepDigits || null,
+        origem: origemPub,
+        origem_detalhe: origemDetalhePub,
         ativo: true,
       })
       .select('id')
