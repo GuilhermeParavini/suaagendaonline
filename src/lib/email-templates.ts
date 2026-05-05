@@ -383,6 +383,50 @@ export function emailReagendamento(d: DadosReagendamento): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+export type DadosConvite = {
+  conviteNome: string;
+  convidadoPorNome: string;
+  convidadoPorEspecialidade: string | null;
+  clinicaNome: string;
+  role: string;
+  linkConvite: string;
+  expiraEmDias: number;
+  logoUrl?: string | null;
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: 'Administrador(a)',
+  profissional: 'Profissional',
+  secretaria: 'Secretaria',
+};
+
+export function emailConviteProfissional(d: DadosConvite): {
+  assunto: string;
+  html: string;
+} {
+  const nome = capitalizeNome(d.conviteNome);
+  const convidadoPor = capitalizeNome(d.convidadoPorNome);
+  const clinica = d.clinicaNome.trim();
+  const especialidade = (d.convidadoPorEspecialidade ?? '').trim();
+  const roleLabel = ROLE_LABEL[d.role] ?? d.role;
+  const assunto = `Você foi convidado(a) para ${clinica}`;
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 8px 0;">
+      <strong>${escapeHtml(convidadoPor)}</strong>${especialidade ? ` (${escapeHtml(especialidade)})` : ''}
+      convidou você para fazer parte de <strong>${escapeHtml(clinica)}</strong>
+      como <strong>${escapeHtml(roleLabel)}</strong>.
+    </p>
+    <p style="margin:20px 0 0 0;">
+      <a href="${escapeHtml(d.linkConvite)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Aceitar convite</a>
+    </p>
+    <p style="margin:12px 0 0 0;font-size:12px;color:#64748B;">Ou copie o link: ${escapeHtml(d.linkConvite)}</p>
+    <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;">O convite expira em ${d.expiraEmDias} ${d.expiraEmDias === 1 ? 'dia' : 'dias'}.</p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

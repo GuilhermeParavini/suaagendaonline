@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -84,6 +84,15 @@ export default function OnboardingPage() {
   const [apiError, setApiError] = useState('');
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('convite');
+    if (token) {
+      router.replace(`/convite/${token}`);
+    }
+  }, [router]);
 
   const {
     register,

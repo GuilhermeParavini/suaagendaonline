@@ -121,6 +121,8 @@ export async function completeOnboarding(data: {
         slug,
         plano: 'trial',
         status_assinatura: 'trial',
+        // max_profissionais reflete o plano contratado; controle real do limite
+        // fica em src/lib/planos.ts via getMaxProfissionais.
         max_profissionais: 1,
         trial_expira_em: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
         telefone: data.companyPhone,

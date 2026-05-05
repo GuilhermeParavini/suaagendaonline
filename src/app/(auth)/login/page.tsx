@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,6 +22,13 @@ export default function LoginPage() {
   const [apiError, setApiError] = useState('');
   const router = useRouter();
   const supabase = createClient();
+  const [conviteToken, setConviteToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    setConviteToken(params.get('convite'));
+  }, []);
 
   const {
     register,
@@ -46,7 +53,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/');
+      router.push(conviteToken ? `/convite/${conviteToken}` : '/');
       router.refresh();
     } catch (error) {
       setApiError('Erro ao fazer login. Tente novamente.');

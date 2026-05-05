@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,6 +37,13 @@ export default function SignupPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const [conviteToken, setConviteToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    setConviteToken(params.get('convite'));
+  }, []);
 
   const {
     register,
@@ -69,7 +76,7 @@ export default function SignupPage() {
 
       setShowSuccess(true);
       setTimeout(() => {
-        router.push('/login');
+        router.push(conviteToken ? `/login?convite=${conviteToken}` : '/login');
       }, 3000);
     } catch (error) {
       setApiError('Erro ao criar conta. Tente novamente.');
