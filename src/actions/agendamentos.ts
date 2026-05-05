@@ -1250,3 +1250,137 @@ export async function getAgendamentosDoDia(
 
   return { ok: true, agendamentos, indisponivel, janelas };
 }
+
+// ============================================================
+// Visualizacao MENSAL: agendamentos agrupados por dia
+// ============================================================
+
+export type DiaResumoMensal = {
+  data: string; // YYYY-MM-DD
+  total: number;
+  porStatus: Record<StatusAgendamento, number>;
+  amostras: { id: string; data_hora: string; nome: string | null }[]; // até 3
+  feriado: { nome: string } | null;
+  bloqueado: boolean;
+};
+
+export type AgendamentosDoMesResult =
+  | { ok: true; dias: DiaResumoMensal[] }
+  | { ok: false; error: string };
+
+const STATUS_VAZIOS: Record<StatusAgendamento, number> = {
+  agendado: 0,
+  confirmado: 0,
+  em_atendimento: 0,
+  concluido: 0,
+  faltou: 0,
+  cancelado: 0,
+  reagendado: 0,
+};
+
+export async function getAgendamentosDoMes(
+  ano: number,
+  mes: number,
+): Promise<AgendamentosDoMesResult> {
+  if (!Number.isInteger(ano) || !Number.isInteger(mes) || mes < 1 || mes > 12) {
+    return { ok: false, error: 'Periodo invalido.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const dataInicio = `${ano}-${pad2(mes)}-01`;
+  const ultimoDiaDate = new Date(Date.UTC(ano, mes, 0));
+  const ultimoDia = ultimoDiaDate.getUTCDate();
+  const dataFim = `${ano}-${pad2(mes)}-${pad2(ultimoDia)}`;
+
+  const inicioTs = `${dataInicio}T00:00:00.000Z`;
+  const fimTs = `${dataFim}T23:59:59.999Z`;
+
+  const { data: rows, error } = await admin
+    .from('agendamentos')
+    .select(
+      'id, data_hora, status, pacientes(nome)',
+    )
+    .eq('profissional_id', prof.id as string)
+    .gte('data_hora', inicioTs)
+    .lte('data_hora', fimTs)
+    .order('data_hora', { ascending: true });
+  if (error) return { ok: false, error: error.message };
+
+  const porData = new Map<string, DiaResumoMensal>();
+  for (let d = 1; d <= ultimoDia; d++) {
+    const key = `${ano}-${pad2(mes)}-${pad2(d)}`;
+    porData.set(key, {
+      data: key,
+      total: 0,
+      porStatus: { ...STATUS_VAZIOS },
+      amostras: [],
+      feriado: null,
+      bloqueado: false,
+    });
+  }
+
+  for (const r of rows ?? []) {
+    const dataHora = r.data_hora as string;
+    const dataKey = dataHora.slice(0, 10);
+    const resumo = porData.get(dataKey);
+    if (!resumo) continue;
+    const status = r.status as StatusAgendamento;
+    if (status === 'cancelado' || status === 'reagendado') {
+      resumo.porStatus[status]++;
+      continue;
+    }
+    resumo.total++;
+    resumo.porStatus[status] = (resumo.porStatus[status] ?? 0) + 1;
+    if (resumo.amostras.length < 3) {
+      const pacRaw = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
+      resumo.amostras.push({
+        id: r.id as string,
+        data_hora: dataHora,
+        nome: (pacRaw?.nome as string | null) ?? null,
+      });
+    }
+  }
+
+  // Feriados e bloqueios
+  try {
+    const [feriados, bloqueios] = await Promise.all([
+      getFeriadosForTenant(prof.tenant_id as string, dataInicio, dataFim),
+      getBloqueiosForProfissional(prof.id as string, dataInicio, dataFim),
+    ]);
+    for (const f of feriados) {
+      const r = porData.get(f.data);
+      if (r) r.feriado = { nome: f.nome };
+    }
+    for (const b of bloqueios) {
+      const ini = b.data_inicio < dataInicio ? dataInicio : b.data_inicio;
+      const fim = b.data_fim > dataFim ? dataFim : b.data_fim;
+      let cur = ini;
+      while (cur <= fim) {
+        const r = porData.get(cur);
+        if (r) r.bloqueado = true;
+        cur = somarDiasIso(cur, 1);
+      }
+    }
+  } catch (e) {
+    console.error('[agendamentos] erro ao verificar mes:', e);
+  }
+
+  const dias = Array.from(porData.values()).sort((a, b) =>
+    a.data < b.data ? -1 : 1,
+  );
+  return { ok: true, dias };
+}
