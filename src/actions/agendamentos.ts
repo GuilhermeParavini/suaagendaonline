@@ -418,6 +418,7 @@ export type ProcedimentoOpcao = {
   id: string;
   nome: string;
   duracao_min: number;
+  valor: number | null;
 };
 
 export type SlotPainel = { time: string; available: boolean };
@@ -542,7 +543,7 @@ export async function listarProcedimentosPainel(): Promise<
 
   const { data, error } = await admin
     .from('procedimentos')
-    .select('id, nome, duracao_min')
+    .select('id, nome, duracao_min, valor')
     .eq('tenant_id', prof.tenant_id as string)
     .eq('ativo', true)
     .order('nome', { ascending: true });
@@ -554,6 +555,8 @@ export async function listarProcedimentosPainel(): Promise<
       id: r.id as string,
       nome: r.nome as string,
       duracao_min: r.duracao_min as number,
+      valor:
+        r.valor === null || r.valor === undefined ? null : Number(r.valor),
     })),
   };
 }

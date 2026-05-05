@@ -25,6 +25,7 @@ import EditarPacienteModal from "./EditarPacienteModal";
 import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
 import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import TabDocumentos from "./TabDocumentos";
+import TabPlanos from "./TabPlanos";
 import AnamneseDetalhe from "./AnamneseDetalhe";
 import EvolucaoDetalhe from "./EvolucaoDetalhe";
 import AltaPacienteSection from "./AltaPacienteSection";
@@ -344,6 +345,18 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
             Documentos
           </Tabs.Trigger>
           <Tabs.Trigger
+            value="planos"
+            className={cn(
+              "relative px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors",
+              "data-[state=active]:text-primary-dark",
+              "after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-transparent",
+              "data-[state=active]:after:bg-primary",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-t",
+            )}
+          >
+            Planos
+          </Tabs.Trigger>
+          <Tabs.Trigger
             value="historico"
             className={cn(
               "relative px-4 py-2.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors",
@@ -518,6 +531,10 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
 
         <Tabs.Content value="documentos" className="pt-4 focus-visible:outline-none">
           <TabDocumentos pacienteId={paciente.id} />
+        </Tabs.Content>
+
+        <Tabs.Content value="planos" className="pt-4 focus-visible:outline-none">
+          <TabPlanos pacienteId={paciente.id} />
         </Tabs.Content>
 
         <Tabs.Content value="historico" className="pt-4 focus-visible:outline-none">

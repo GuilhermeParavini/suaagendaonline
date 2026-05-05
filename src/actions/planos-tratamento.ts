@@ -824,6 +824,197 @@ export async function marcarSessaoRealizada(
   };
 }
 
+// ============================================================
+// i) getSessaoPlanoByAgendamento
+// ============================================================
+export type SessaoPlanoResumo = {
+  sessaoId: string;
+  planoId: string;
+  planoNome: string;
+  sessaoNumero: number;
+  totalSessoes: number;
+};
+
+export async function getSessaoPlanoByAgendamento(
+  agendamentoId: string,
+): Promise<Result<SessaoPlanoResumo | null>> {
+  if (!agendamentoId) return { ok: false, error: 'Agendamento invalido.' };
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('sessoes_plano')
+    .select(
+      'id, plano_id, numero_sessao, planos_tratamento(id, nome, qtd_sessoes, tenant_id)',
+    )
+    .eq('agendamento_id', agendamentoId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: true, data: null };
+
+  const planoRaw = data.planos_tratamento as
+    | {
+        id: string;
+        nome: string;
+        qtd_sessoes: number;
+        tenant_id: string;
+      }
+    | {
+        id: string;
+        nome: string;
+        qtd_sessoes: number;
+        tenant_id: string;
+      }[]
+    | null;
+  const planoPick = Array.isArray(planoRaw) ? planoRaw[0] : planoRaw;
+  if (!planoPick || planoPick.tenant_id !== ctx.tenantId) {
+    return { ok: true, data: null };
+  }
+  return {
+    ok: true,
+    data: {
+      sessaoId: data.id as string,
+      planoId: planoPick.id,
+      planoNome: planoPick.nome,
+      sessaoNumero: Number(data.numero_sessao) || 0,
+      totalSessoes: Number(planoPick.qtd_sessoes) || 0,
+    },
+  };
+}
+
+// ============================================================
+// j) agendarSessaoManual
+// Cria um novo agendamento a partir de data/hora informados e vincula a sessao
+// ============================================================
+export type AgendarSessaoManualInput = {
+  sessaoId: string;
+  dataIso: string;
+  hora: string;
+};
+
+export async function agendarSessaoManual(
+  input: AgendarSessaoManualInput,
+): Promise<Result<{ agendamentoId: string }>> {
+  if (
+    !input.sessaoId ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(input.dataIso) ||
+    !/^\d{2}:\d{2}$/.test(input.hora)
+  ) {
+    return { ok: false, error: 'Dados invalidos.' };
+  }
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data: sessao, error: sErr } = await admin
+    .from('sessoes_plano')
+    .select(
+      'id, plano_id, status, agendamento_id, planos_tratamento(tenant_id, profissional_id, paciente_id, procedimento_id)',
+    )
+    .eq('id', input.sessaoId)
+    .maybeSingle();
+  if (sErr) return { ok: false, error: sErr.message };
+  if (!sessao) return { ok: false, error: 'Sessao nao encontrada.' };
+  if (sessao.agendamento_id) {
+    return { ok: false, error: 'Sessao ja possui agendamento vinculado.' };
+  }
+  const planoRaw = sessao.planos_tratamento as
+    | {
+        tenant_id: string;
+        profissional_id: string;
+        paciente_id: string;
+        procedimento_id: string | null;
+      }
+    | {
+        tenant_id: string;
+        profissional_id: string;
+        paciente_id: string;
+        procedimento_id: string | null;
+      }[]
+    | null;
+  const plano = Array.isArray(planoRaw) ? planoRaw[0] : planoRaw;
+  if (!plano || plano.tenant_id !== ctx.tenantId) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+  if (!plano.procedimento_id) {
+    return {
+      ok: false,
+      error: 'Plano sem procedimento vinculado. Edite o plano ou agende manualmente.',
+    };
+  }
+
+  const { data: proc } = await admin
+    .from('procedimentos')
+    .select('duracao_min, ativo')
+    .eq('id', plano.procedimento_id)
+    .maybeSingle();
+  if (!proc || !proc.ativo) {
+    return { ok: false, error: 'Procedimento indisponivel.' };
+  }
+  const duracaoMin = (proc.duracao_min as number) ?? 30;
+
+  const dataHoraIso = buildIsoDateTime(input.dataIso, input.hora);
+  if (new Date(dataHoraIso).getTime() <= Date.now()) {
+    return { ok: false, error: 'Horario ja passou.' };
+  }
+
+  // Conflito basico
+  const dayInicio = `${input.dataIso}T00:00:00.000Z`;
+  const dayFim = `${input.dataIso}T23:59:59.999Z`;
+  const { data: existentes } = await admin
+    .from('agendamentos')
+    .select('data_hora, duracao_min, status')
+    .eq('profissional_id', plano.profissional_id)
+    .gte('data_hora', dayInicio)
+    .lte('data_hora', dayFim)
+    .neq('status', 'cancelado');
+  const startMs = new Date(dataHoraIso).getTime();
+  const endMs = startMs + duracaoMin * 60_000;
+  const conflito = (existentes ?? []).some((row) => {
+    const s = new Date(row.data_hora as string).getTime();
+    const dur = (row.duracao_min as number) ?? 30;
+    return startMs < s + dur * 60_000 && endMs > s;
+  });
+  if (conflito) {
+    return { ok: false, error: 'Horario indisponivel.' };
+  }
+
+  const { data: agRow, error: agErr } = await admin
+    .from('agendamentos')
+    .insert({
+      tenant_id: ctx.tenantId,
+      profissional_id: plano.profissional_id,
+      paciente_id: plano.paciente_id,
+      procedimento_id: plano.procedimento_id,
+      data_hora: dataHoraIso,
+      duracao_min: duracaoMin,
+      status: 'agendado',
+      tolerancia_min: 5,
+    })
+    .select('id')
+    .single();
+  if (agErr || !agRow) {
+    return {
+      ok: false,
+      error: agErr?.message ?? 'Falha ao criar agendamento.',
+    };
+  }
+
+  const agendamentoId = agRow.id as string;
+  const { error: updErr } = await admin
+    .from('sessoes_plano')
+    .update({ agendamento_id: agendamentoId, status: 'agendada' })
+    .eq('id', input.sessaoId);
+  if (updErr) {
+    await admin.from('agendamentos').delete().eq('id', agendamentoId);
+    return { ok: false, error: updErr.message };
+  }
+
+  revalidatePath('/agenda');
+  return { ok: true, data: { agendamentoId } };
+}
+
 export async function marcarSessaoFalta(
   agendamentoId: string,
 ): Promise<Result<{ sessaoAtualizada: boolean }>> {

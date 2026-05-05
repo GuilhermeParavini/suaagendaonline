@@ -25,6 +25,12 @@ import {
   agendarRetorno,
   atualizarStatusAgendamento,
 } from "@/actions/agendamentos";
+import {
+  getSessaoPlanoByAgendamento,
+  type SessaoPlanoResumo,
+} from "@/actions/planos-tratamento";
+import * as Dialog from "@radix-ui/react-dialog";
+import { CheckCircle2 } from "lucide-react";
 import { getTemplates, type Template } from "@/actions/anamnese";
 import { verificarLimiteTranscricao } from "@/actions/transcricao";
 import AnamneseDetalhe from "@/components/pacientes/AnamneseDetalhe";
@@ -100,6 +106,26 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   type RetornoOpcao = "sem" | "7" | "15" | "30" | "custom";
   const [retornoOpcao, setRetornoOpcao] = useState<RetornoOpcao>("sem");
   const [retornoCustom, setRetornoCustom] = useState<string>("");
+
+  const [sessaoPlano, setSessaoPlano] = useState<SessaoPlanoResumo | null>(
+    null,
+  );
+  const [planoConcluido, setPlanoConcluido] = useState<{
+    nome: string;
+    total: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await getSessaoPlanoByAgendamento(contexto.agendamento.id);
+      if (cancelado) return;
+      if (r.ok && r.data) setSessaoPlano(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [contexto.agendamento.id]);
 
   const retornoDias: number | null = (() => {
     if (retornoOpcao === "sem") return null;
@@ -246,6 +272,30 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         return;
       }
       setStatusAg("concluido");
+
+      // Verifica se o plano foi concluido apos esta sessao
+      if (sessaoPlano) {
+        try {
+          const r = await getSessaoPlanoByAgendamento(
+            contexto.agendamento.id,
+          );
+          if (r.ok && r.data && r.data.totalSessoes > 0) {
+            // Recarrega sessao_plano: status do plano nao retorna aqui;
+            // checa se a sessao atual era a ultima
+            if (
+              sessaoPlano.sessaoNumero >= sessaoPlano.totalSessoes
+            ) {
+              setPlanoConcluido({
+                nome: sessaoPlano.planoNome,
+                total: sessaoPlano.totalSessoes,
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[atendimento] erro ao verificar plano:", e);
+        }
+      }
+
       const base =
         "Atendimento concluido. Voce pode emitir relatorio, plano de cuidados ou atestado.";
       setOkMsg(mensagemRetorno ? `${mensagemRetorno} ${base}` : base);
@@ -289,6 +339,15 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
           </div>
         </div>
       </header>
+
+      {sessaoPlano ? (
+        <section className="rounded-lg border border-primary/30 bg-primary-surface px-4 py-3">
+          <p className="text-sm font-medium text-primary-dark">
+            Sessao {sessaoPlano.sessaoNumero} de {sessaoPlano.totalSessoes} —{" "}
+            {sessaoPlano.planoNome}
+          </p>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -630,6 +689,52 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         templates={templatesAnamnese}
         onSaved={handleAnamneseCriada}
       />
+
+      <Dialog.Root
+        open={planoConcluido !== null}
+        onOpenChange={(next) => (!next ? setPlanoConcluido(null) : undefined)}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Dialog.Content
+            className={cn(
+              "fixed z-50 bg-white shadow-lg focus:outline-none text-center",
+              "inset-x-0 bottom-0 rounded-t-2xl px-4 pt-6 pb-[max(env(safe-area-inset-bottom),16px)]",
+              "md:inset-auto md:left-1/2 md:top-1/2 md:bottom-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[420px] md:max-w-[calc(100vw-32px)] md:rounded-2xl md:p-6",
+            )}
+          >
+            <div className="md:hidden mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300" />
+            <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
+              <CheckCircle2
+                size={36}
+                strokeWidth={2}
+                aria-hidden="true"
+                className="text-[#16A34A]"
+              />
+            </div>
+            <Dialog.Title className="mt-4 text-lg font-semibold text-slate-900">
+              Plano concluido!
+            </Dialog.Title>
+            <Dialog.Description className="mt-2 text-sm text-slate-600">
+              Todas as {planoConcluido?.total} sessoes de{" "}
+              <span className="font-medium text-slate-900">
+                {planoConcluido?.nome}
+              </span>{" "}
+              foram realizadas. Parabens!
+            </Dialog.Description>
+            <button
+              type="button"
+              onClick={() => {
+                setPlanoConcluido(null);
+                router.push("/agenda");
+              }}
+              className="mt-5 inline-flex w-full items-center justify-center rounded bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+            >
+              Fechar
+            </button>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }
