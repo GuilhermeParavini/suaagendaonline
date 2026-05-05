@@ -1,10 +1,37 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { emailFollowupConsulta } from "@/lib/email-templates";
+import {
+  capitalizeNome,
+  dataPorExtenso,
+  emailFollowupConsulta,
+} from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 120;
+
+function escapeHtmlSimple(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function diffDiasIso(aIso: string, bIso: string): number {
+  const [ay, am, ad] = aIso.split("-").map(Number);
+  const [by, bm, bd] = bIso.split("-").map(Number);
+  const a = Date.UTC(ay, am - 1, ad);
+  const b = Date.UTC(by, bm - 1, bd);
+  return Math.round((a - b) / (1000 * 60 * 60 * 24));
+}
+
+function hojeIsoUTC(): string {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
 
 function checaAuth(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -143,9 +170,143 @@ export async function GET(req: Request) {
     if (result.ok) enviados += 1;
   }
 
+  // ============================================================
+  // Mensagens automaticas de planos de tratamento
+  // ============================================================
+  let planosProcessados = 0;
+  let planosEnviados = 0;
+
+  try {
+    const { data: planos } = await admin
+      .from("planos_tratamento")
+      .select(
+        "id, tenant_id, profissional_id, paciente_id, nome, periodicidade_dias, mensagem_automatica, mensagem_texto",
+      )
+      .eq("status", "ativo")
+      .eq("mensagem_automatica", true);
+
+    const planosLista = planos ?? [];
+    const hojeIso = hojeIsoUTC();
+    const tresDiasAdiante = new Date();
+    tresDiasAdiante.setUTCDate(tresDiasAdiante.getUTCDate() + 3);
+    const limiteAdianteIso = `${tresDiasAdiante.getUTCFullYear()}-${String(tresDiasAdiante.getUTCMonth() + 1).padStart(2, "0")}-${String(tresDiasAdiante.getUTCDate()).padStart(2, "0")}`;
+
+    // Cache de pacientes/profissionais/tenant nao reaproveitavel facilmente; busca individual
+    for (const plano of planosLista) {
+      planosProcessados += 1;
+
+      // Proxima sessao pendente (status pendente, data >= hoje)
+      const { data: proxPendente } = await admin
+        .from("sessoes_plano")
+        .select("id, data_prevista, status")
+        .eq("plano_id", plano.id as string)
+        .eq("status", "pendente")
+        .gte("data_prevista", hojeIso)
+        .lte("data_prevista", limiteAdianteIso)
+        .order("data_prevista", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      // Ultima sessao realizada (para mensagem personalizada)
+      const { data: ultimaRealizada } = await admin
+        .from("sessoes_plano")
+        .select("data_prevista, status")
+        .eq("plano_id", plano.id as string)
+        .eq("status", "realizada")
+        .order("data_prevista", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const periodicidade = Number(plano.periodicidade_dias) || 0;
+      const mensagemTexto = (plano.mensagem_texto as string | null) ?? null;
+      const haMensagemPersonalizada =
+        Boolean(mensagemTexto) &&
+        ultimaRealizada &&
+        periodicidade > 0 &&
+        diffDiasIso(
+          hojeIso,
+          ultimaRealizada.data_prevista as string,
+        ) >= Math.floor(periodicidade / 2);
+
+      if (!proxPendente && !haMensagemPersonalizada) continue;
+
+      // Carrega paciente + profissional + tenant
+      const [{ data: pac }, { data: prof }, { data: tenant }] =
+        await Promise.all([
+          admin
+            .from("pacientes")
+            .select("nome, email")
+            .eq("id", plano.paciente_id as string)
+            .maybeSingle(),
+          admin
+            .from("profissionais")
+            .select("nome, logo_url, telefone")
+            .eq("id", plano.profissional_id as string)
+            .maybeSingle(),
+          admin
+            .from("tenants")
+            .select("nome_empresa")
+            .eq("id", plano.tenant_id as string)
+            .maybeSingle(),
+        ]);
+      const destino = (pac?.email as string | null) ?? null;
+      if (!destino) continue;
+
+      const nome = capitalizeNome((pac?.nome as string | null) ?? "Paciente");
+      const profNome = capitalizeNome(
+        (prof?.nome as string | null) ?? "Profissional",
+      );
+      const empresaNome =
+        (tenant?.nome_empresa as string | null) ?? "Sua clinica";
+
+      const partes: string[] = [
+        `<p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Ola, ${escapeHtmlSimple(nome)}!</p>`,
+      ];
+
+      if (proxPendente) {
+        const dataExt = dataPorExtenso(
+          proxPendente.data_prevista as string,
+        );
+        partes.push(
+          `<p style="margin:0 0 12px 0;color:#0F172A;">Sua proxima sessao do plano <strong>${escapeHtmlSimple((plano.nome as string) ?? "tratamento")}</strong> esta prevista para <strong>${escapeHtmlSimple(dataExt)}</strong>. Entre em contato para agendar!</p>`,
+        );
+      }
+
+      if (haMensagemPersonalizada && mensagemTexto) {
+        partes.push(
+          `<p style="margin:16px 0 0 0;padding:12px;background-color:#F0FDFA;border-left:3px solid #0D9488;color:#0F172A;">${escapeHtmlSimple(mensagemTexto)}</p>`,
+        );
+      }
+
+      partes.push(
+        `<p style="margin:20px 0 0 0;color:#475569;font-size:13px;">Atenciosamente,<br>${escapeHtmlSimple(profNome)} — ${escapeHtmlSimple(empresaNome)}</p>`,
+      );
+
+      const html = `<!DOCTYPE html><html lang="pt-BR"><body style="margin:0;padding:0;background:#F8FAFC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0F172A;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#F8FAFC;padding:24px 0;"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;"><tr><td style="background:#0D9488;padding:18px 24px;"><p style="margin:0;color:#FFFFFF;font-size:14px;font-weight:600;">Sua Agenda Online</p></td></tr><tr><td style="padding:24px;font-size:14px;line-height:1.6;">${partes.join("")}</td></tr><tr><td style="padding:16px 24px;background:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;"><p style="margin:0;color:#64748B;font-size:12px;">Sua Agenda Online</p></td></tr></table></td></tr></table></body></html>`;
+
+      const assunto = proxPendente
+        ? `Proxima sessao: ${(plano.nome as string) ?? "Plano"}`
+        : `Continue seu tratamento — ${(plano.nome as string) ?? "Plano"}`;
+
+      const env = await enviarNotificacaoEmail({
+        tenantId: plano.tenant_id as string,
+        agendamentoId: null,
+        tipo: "followup",
+        destino,
+        assunto,
+        html,
+      });
+      if (env.ok) planosEnviados += 1;
+    }
+  } catch (e) {
+    console.error("[cron/followup] erro planos:", e);
+  }
+
   return NextResponse.json({
     ok: true,
     processados: pendentes.length,
     enviados,
+    planos_processados: planosProcessados,
+    planos_enviados: planosEnviados,
   });
 }

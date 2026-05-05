@@ -17,6 +17,10 @@ import {
   getBloqueiosForProfissional,
   getFeriadosForTenant,
 } from '@/lib/feriados-bloqueios';
+import {
+  marcarSessaoFalta,
+  marcarSessaoRealizada,
+} from '@/actions/planos-tratamento';
 
 export type StatusAgendamento =
   | 'agendado'
@@ -261,6 +265,21 @@ export async function atualizarStatusAgendamento(
     .update(update)
     .eq('id', id);
   if (updateError) return { ok: false, error: updateError.message };
+
+  // Integracao com plano de tratamento (best-effort)
+  if (novoStatus === 'concluido') {
+    try {
+      await marcarSessaoRealizada(id);
+    } catch (e) {
+      console.error('[agendamentos] erro marcarSessaoRealizada:', e);
+    }
+  } else if (novoStatus === 'faltou') {
+    try {
+      await marcarSessaoFalta(id);
+    } catch (e) {
+      console.error('[agendamentos] erro marcarSessaoFalta:', e);
+    }
+  }
 
   // Email automatico de solicitacao de avaliacao quando concluir
   if (novoStatus === 'concluido') {
