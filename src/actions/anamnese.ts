@@ -671,6 +671,58 @@ function podologiaRetorno(): CampoSeed[] {
   ];
 }
 
+function podologiaNncCompleto(): CampoSeed[] {
+  const PATOLOGIAS_OPCOES = [
+    'Unha encravada',
+    'Onicomicose (micose)',
+    'Calosidade',
+    'Fissuras',
+    'Verruga plantar',
+    'Unha traumatica',
+    'Descolamento da unha',
+    'Infeccoes',
+    'Alteracoes biomecanicas',
+    'Outros',
+  ];
+  return [
+    // Bloco 1 — Queixa e objetivo
+    { label: 'Queixa principal', tipo: 'texto_livre', obrigatorio: true, ordem: 1 },
+    { label: 'Objetivo do paciente', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Alivio da dor', 'Estetico', 'Tratamento', 'Manutencao', 'Outros'], ordem: 2 },
+    // Bloco 2 — Dados complementares
+    { label: 'Alimentacao', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Saudavel', 'Moderada', 'Ruim'], ordem: 3 },
+    { label: 'Nivel de atividade fisica', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Sedentario', 'Pratica exercicio', 'Esportista'], ordem: 4 },
+    { label: 'Tipo de exercicio', tipo: 'texto_livre', obrigatorio: false, ordem: 5 },
+    { label: 'Rotina de trabalho', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Trabalha em pe', 'Trabalha sentado', 'Misto'], ordem: 6 },
+    // Bloco 3 — Habitos relacionados aos pes
+    { label: 'Tipo de calcado mais utilizado', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Tenis', 'Sapato fechado', 'Salto alto', 'Sandalia', 'Outros'], ordem: 7 },
+    { label: 'Horas de uso diario do calcado', tipo: 'escala_numerica', obrigatorio: false, min: 1, max: 16, ordem: 8 },
+    { label: 'Caminha muito com esse calcado', tipo: 'sim_nao', obrigatorio: false, ordem: 9 },
+    // Bloco 4 — Habitos de cuidado
+    { label: 'Usa esmalte', tipo: 'sim_nao', obrigatorio: false, ordem: 10 },
+    { label: 'Frequenta manicure/pedicure', tipo: 'sim_nao', obrigatorio: false, ordem: 11 },
+    { label: 'Frequencia de manicure/pedicure', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Semanal', 'Quinzenal', 'Mensal'], ordem: 12 },
+    { label: 'O local segue higiene adequada', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Sim', 'Nao', 'Nao sabe'], ordem: 13 },
+    { label: 'Cuida dos pes em casa', tipo: 'sim_nao', obrigatorio: false, ordem: 14 },
+    // Bloco 5 — Condicoes de saude
+    { label: 'Problemas circulatorios', tipo: 'sim_nao', obrigatorio: false, ordem: 15 },
+    { label: 'Diabetes', tipo: 'sim_nao', obrigatorio: false, ordem: 16 },
+    { label: 'Baixa imunidade', tipo: 'sim_nao', obrigatorio: false, ordem: 17 },
+    { label: 'Uso continuo de medicamentos', tipo: 'sim_nao', obrigatorio: false, ordem: 18 },
+    { label: 'Quais medicamentos', tipo: 'texto_livre', obrigatorio: false, ordem: 19 },
+    { label: 'Ultima vez que realizou exames de sangue', tipo: 'data', obrigatorio: false, ordem: 20 },
+    // Bloco 6 — Historico fisico
+    { label: 'Ja fez cirurgia', tipo: 'sim_nao', obrigatorio: false, ordem: 21 },
+    { label: 'Tipo de cirurgia', tipo: 'selecao_multipla', obrigatorio: false, opcoes: ['Joelho', 'Tornozelo', 'Quadril', 'Coluna', 'Outros'], ordem: 22 },
+    { label: 'Problemas de coluna', tipo: 'sim_nao', obrigatorio: false, ordem: 23 },
+    { label: 'Alteracao na postura', tipo: 'sim_nao', obrigatorio: false, ordem: 24 },
+    { label: 'Alteracao na pisada/caminhada', tipo: 'sim_nao', obrigatorio: false, ordem: 25 },
+    // Bloco 7 — Patologias identificadas
+    { label: 'Patologias identificadas', tipo: 'selecao_multipla', obrigatorio: true, opcoes: PATOLOGIAS_OPCOES, ordem: 26 },
+    // Bloco 8 — Observacoes
+    { label: 'Observacoes gerais', tipo: 'texto_livre', obrigatorio: false, ordem: 27 },
+  ];
+}
+
 function podologiaPeDiabetico(): CampoSeed[] {
   return [
     { label: 'Tipo de diabetes', tipo: 'selecao_multipla', obrigatorio: true, opcoes: ['Tipo 1', 'Tipo 2', 'Gestacional'], ordem: 1 },
@@ -876,6 +928,7 @@ function modelosParaEspecialidade(especialidade: string): ModeloSeed[] {
       { nome: 'Anamnese Podologia - Primeira consulta', campos: comIds(podologiaPrimeiraConsulta()) },
       { nome: 'Anamnese Podologia - Retorno', campos: comIds(podologiaRetorno()) },
       { nome: 'Anamnese Podologia - Pe diabetico', campos: comIds(podologiaPeDiabetico()) },
+      { nome: 'Podologia NNC Completo', campos: comIds(podologiaNncCompleto()) },
     ];
   }
   if (esp.includes('fisio')) {
@@ -908,6 +961,104 @@ export type SeedTemplatesResultado = {
   nomes: string[];
 };
 
+type CampoEnriquecimento = Omit<CampoSeed, 'ordem'>;
+
+type EnriquecimentoModelo = {
+  nome: string;
+  novosCampos: CampoEnriquecimento[];
+};
+
+function enriquecimentosParaEspecialidade(
+  especialidade: string,
+): EnriquecimentoModelo[] {
+  const esp = (especialidade ?? '').toLowerCase();
+  if (esp.includes('podolog')) {
+    return [
+      {
+        nome: 'Anamnese Podologia - Primeira consulta',
+        novosCampos: [
+          { label: 'Baixa imunidade', tipo: 'sim_nao', obrigatorio: false },
+          { label: 'Alteracao na postura', tipo: 'sim_nao', obrigatorio: false },
+          { label: 'Alteracao na pisada/caminhada', tipo: 'sim_nao', obrigatorio: false },
+          {
+            label: 'Patologias identificadas',
+            tipo: 'selecao_multipla',
+            obrigatorio: false,
+            opcoes: [
+              'Unha encravada',
+              'Onicomicose (micose)',
+              'Calosidade',
+              'Fissuras',
+              'Verruga plantar',
+              'Unha traumatica',
+              'Descolamento da unha',
+              'Infeccoes',
+              'Alteracoes biomecanicas',
+              'Outros',
+            ],
+          },
+        ],
+      },
+    ];
+  }
+  return [];
+}
+
+async function aplicarEnriquecimentos(
+  admin: ReturnType<typeof createAdminClient>,
+  profissionalId: string,
+  tenantId: string,
+  enriquecimentos: EnriquecimentoModelo[],
+): Promise<void> {
+  if (enriquecimentos.length === 0) return;
+
+  const nomes = enriquecimentos.map((e) => e.nome);
+  const { data: rows, error } = await admin
+    .from('templates_anamnese')
+    .select('id, nome, campos')
+    .eq('profissional_id', profissionalId)
+    .eq('tenant_id', tenantId)
+    .in('nome', nomes);
+  if (error) {
+    throw new Error(`enriquecimento busca: ${error.message}`);
+  }
+
+  for (const row of rows ?? []) {
+    const enr = enriquecimentos.find((e) => e.nome === row.nome);
+    if (!enr) continue;
+
+    const camposAtuais = Array.isArray(row.campos)
+      ? (row.campos as CampoTemplate[])
+      : [];
+    const labelsExistentes = new Set(
+      camposAtuais.map((c) => (c.label ?? '').trim().toLowerCase()),
+    );
+    const faltantes = enr.novosCampos.filter(
+      (c) => !labelsExistentes.has(c.label.trim().toLowerCase()),
+    );
+    if (faltantes.length === 0) continue;
+
+    const maiorOrdem = camposAtuais.reduce(
+      (acc, c) => (typeof c.ordem === 'number' && c.ordem > acc ? c.ordem : acc),
+      0,
+    );
+    const novos: CampoTemplate[] = faltantes.map((c, i) => ({
+      ...c,
+      id: crypto.randomUUID(),
+      ordem: maiorOrdem + i + 1,
+    }));
+
+    const camposFinais = [...camposAtuais, ...novos];
+    const { error: updErr } = await admin
+      .from('templates_anamnese')
+      .update({ campos: camposFinais })
+      .eq('id', row.id as string);
+    if (updErr) {
+      throw new Error(`enriquecimento update ${row.nome}: ${updErr.message}`);
+    }
+  }
+}
+
 export async function seedTemplatesAnamnese(
   profissionalId: string,
   tenantId: string,
@@ -932,6 +1083,14 @@ export async function seedTemplatesAnamnese(
     (existentes ?? []).map((r) => r.nome as string),
   );
   const aInserir = modelos.filter((m) => !jaExistentes.has(m.nome));
+
+  // Enriquecer templates existentes com novos campos (idempotente por label)
+  await aplicarEnriquecimentos(
+    admin,
+    profissionalId,
+    tenantId,
+    enriquecimentosParaEspecialidade(especialidade),
+  );
 
   if (aInserir.length === 0) {
     return {
