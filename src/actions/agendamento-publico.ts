@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   getBloqueiosForProfissional,
@@ -9,8 +10,11 @@ import { cleanCEP, cleanCPF, cleanPhone } from '@/lib/masks';
 import { isValidBirthDate, isMinor, validateCPF } from '@/lib/validators';
 import {
   emailConfirmacaoAgendamento,
+  emailReagendamento,
   horarioFromIso,
+  dataIsoFromTimestamp,
   montarLinkAgendamento,
+  montarLinkReagendar,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 
@@ -476,7 +480,7 @@ export async function criarAgendamentoPublico(
       status: 'agendado',
       tolerancia_min: (prof.tolerancia_atraso_min as number) ?? 5,
     })
-    .select('id')
+    .select('id, token_reagendamento')
     .single();
   if (agErr || !agRow) {
     if (createdPacienteId) {
@@ -486,6 +490,8 @@ export async function criarAgendamentoPublico(
   }
 
   const agendamentoId = agRow.id as string;
+  const tokenReagendamento =
+    (agRow.token_reagendamento as string | null) ?? null;
 
   try {
     const [{ data: pacienteEmail }, { data: profissional }, { data: tenant }] =
@@ -517,6 +523,7 @@ export async function criarAgendamentoPublico(
       process.env.NEXT_PUBLIC_APP_URL ??
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
     const linkAgendamento = montarLinkAgendamento(appUrl, slug);
+    const linkReagendar = montarLinkReagendar(appUrl, tokenReagendamento);
 
     if (destino) {
       const tpl = emailConfirmacaoAgendamento({
@@ -525,6 +532,7 @@ export async function criarAgendamentoPublico(
         dataIso: input.dataIso,
         horario: horarioFromIso(dataHoraIso),
         linkAgendamento,
+        linkReagendar,
         logoUrl,
       });
       await enviarNotificacaoEmail({
@@ -541,4 +549,361 @@ export async function criarAgendamentoPublico(
   }
 
   return { ok: true, agendamentoId };
+}
+
+// ============================================================
+// Reagendamento pelo paciente via link publico (token)
+// ============================================================
+
+export type AgendamentoReagendar = {
+  id: string;
+  tenantId: string;
+  tenantSlug: string | null;
+  dataHoraIso: string;
+  duracaoMin: number;
+  status: string;
+  jaReagendado: boolean;
+  expirado: boolean;
+  paciente: { id: string; nome: string; email: string | null };
+  profissional: {
+    id: string;
+    nome: string;
+    especialidade: string | null;
+    logoUrl: string | null;
+    duracaoPadraoMin: number;
+    intervaloEntreMin: number;
+  };
+  procedimento: {
+    id: string;
+    nome: string;
+    duracaoMin: number;
+    valor: number | null;
+  } | null;
+};
+
+export async function getAgendamentoPorToken(
+  token: string,
+): Promise<
+  | { ok: true; agendamento: AgendamentoReagendar }
+  | { ok: false; error: string }
+> {
+  const cleanToken = (token ?? '').trim();
+  if (!cleanToken || !/^[a-f0-9]{8,128}$/i.test(cleanToken)) {
+    return { ok: false, error: 'Link invalido.' };
+  }
+
+  const admin = createAdminClient();
+  const { data: ag, error } = await admin
+    .from('agendamentos')
+    .select(
+      'id, tenant_id, profissional_id, paciente_id, procedimento_id, data_hora, duracao_min, status',
+    )
+    .eq('token_reagendamento', cleanToken)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  if (!ag) return { ok: false, error: 'Agendamento nao encontrado.' };
+
+  const tenantId = ag.tenant_id as string;
+  const profissionalId = ag.profissional_id as string;
+  const pacienteId = ag.paciente_id as string;
+  const procedimentoId = (ag.procedimento_id as string | null) ?? null;
+  const dataHoraIso = ag.data_hora as string;
+  const status = ag.status as string;
+
+  const [
+    { data: tenant },
+    { data: prof },
+    { data: pac },
+    { data: proc },
+    { data: filhos },
+  ] = await Promise.all([
+    admin.from('tenants').select('slug').eq('id', tenantId).maybeSingle(),
+    admin
+      .from('profissionais')
+      .select(
+        'id, nome, especialidade, logo_url, duracao_padrao_min, intervalo_entre_consultas_min',
+      )
+      .eq('id', profissionalId)
+      .maybeSingle(),
+    admin
+      .from('pacientes')
+      .select('id, nome, email')
+      .eq('id', pacienteId)
+      .maybeSingle(),
+    procedimentoId
+      ? admin
+          .from('procedimentos')
+          .select('id, nome, duracao_min, valor')
+          .eq('id', procedimentoId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    admin
+      .from('agendamentos')
+      .select('id')
+      .eq('reagendado_de', ag.id as string)
+      .limit(1),
+  ]);
+
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+  if (!pac) return { ok: false, error: 'Paciente nao encontrado.' };
+
+  const jaReagendado =
+    status === 'reagendado' || ((filhos ?? []).length > 0);
+  const startMs = new Date(dataHoraIso).getTime();
+  const expirado = !Number.isFinite(startMs) || startMs <= Date.now();
+
+  return {
+    ok: true,
+    agendamento: {
+      id: ag.id as string,
+      tenantId,
+      tenantSlug: (tenant?.slug as string | null) ?? null,
+      dataHoraIso,
+      duracaoMin: (ag.duracao_min as number) ?? 30,
+      status,
+      jaReagendado,
+      expirado,
+      paciente: {
+        id: pac.id as string,
+        nome: pac.nome as string,
+        email: (pac.email as string | null) ?? null,
+      },
+      profissional: {
+        id: prof.id as string,
+        nome: prof.nome as string,
+        especialidade: (prof.especialidade as string | null) ?? null,
+        logoUrl: (prof.logo_url as string | null) ?? null,
+        duracaoPadraoMin: (prof.duracao_padrao_min as number) ?? 30,
+        intervaloEntreMin:
+          (prof.intervalo_entre_consultas_min as number | null) ?? 0,
+      },
+      procedimento: proc
+        ? {
+            id: proc.id as string,
+            nome: proc.nome as string,
+            duracaoMin: (proc.duracao_min as number) ?? 30,
+            valor: proc.valor !== null ? Number(proc.valor) : null,
+          }
+        : null,
+    },
+  };
+}
+
+export type ReagendarPorPacienteResult =
+  | {
+      ok: true;
+      novoAgendamentoId: string;
+      novaDataIso: string;
+      novaHora: string;
+      profissionalNome: string;
+    }
+  | { ok: false; error: string };
+
+function buildIsoDateTimeLocal(dataIso: string, hora: string): string {
+  const [y, m, d] = dataIso.split('-').map(Number);
+  const [hh, mm] = hora.split(':').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, hh, mm, 0, 0)).toISOString();
+}
+
+export async function reagendarPorPaciente(
+  token: string,
+  novaDataIso: string,
+  novaHora: string,
+): Promise<ReagendarPorPacienteResult> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(novaDataIso)) {
+    return { ok: false, error: 'Data invalida.' };
+  }
+  if (!/^\d{2}:\d{2}$/.test(novaHora)) {
+    return { ok: false, error: 'Horario invalido.' };
+  }
+
+  const result = await getAgendamentoPorToken(token);
+  if (!result.ok) return result;
+  const ag = result.agendamento;
+
+  if (ag.status !== 'agendado' && ag.status !== 'confirmado') {
+    return {
+      ok: false,
+      error: 'Este agendamento nao pode mais ser reagendado.',
+    };
+  }
+  if (ag.expirado) {
+    return { ok: false, error: 'Este agendamento ja passou.' };
+  }
+  if (ag.jaReagendado) {
+    return { ok: false, error: 'Este agendamento ja foi reagendado.' };
+  }
+
+  const admin = createAdminClient();
+
+  const procedimentoId = ag.procedimento?.id ?? null;
+  const duracaoMin = ag.procedimento?.duracaoMin ?? ag.duracaoMin;
+  const intervaloEntreMin = ag.profissional.intervaloEntreMin;
+
+  const novaDataHoraIso = buildIsoDateTimeLocal(novaDataIso, novaHora);
+  const startMs = new Date(novaDataHoraIso).getTime();
+  const endMs = startMs + (duracaoMin + intervaloEntreMin) * 60_000;
+
+  if (startMs <= Date.now()) {
+    return { ok: false, error: 'Horario ja passou. Escolha outro.' };
+  }
+
+  // Feriados
+  try {
+    const feriados = await getFeriadosForTenant(
+      ag.tenantId,
+      novaDataIso,
+      novaDataIso,
+    );
+    if (feriados.length > 0) {
+      return {
+        ok: false,
+        error: `Data indisponivel (feriado: ${feriados[0].nome}).`,
+      };
+    }
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Falha ao verificar feriados: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+
+  // Bloqueios (permissivo)
+  try {
+    const bloqueios = await getBloqueiosForProfissional(
+      ag.profissional.id,
+      novaDataIso,
+      novaDataIso,
+    );
+    if (bloqueios.length > 0) {
+      return { ok: false, error: 'Data indisponivel.' };
+    }
+  } catch (e) {
+    console.error('[reagendarPorPaciente] erro ao checar bloqueios:', e);
+  }
+
+  // Conflitos (ignora o agendamento atual)
+  const dayInicio = `${novaDataIso}T00:00:00.000Z`;
+  const dayFim = `${novaDataIso}T23:59:59.999Z`;
+  const { data: existentes, error: existErr } = await admin
+    .from('agendamentos')
+    .select('id, data_hora, duracao_min, status')
+    .eq('profissional_id', ag.profissional.id)
+    .gte('data_hora', dayInicio)
+    .lte('data_hora', dayFim)
+    .neq('status', 'cancelado')
+    .neq('status', 'reagendado');
+  if (existErr) return { ok: false, error: existErr.message };
+
+  const conflito = (existentes ?? [])
+    .filter((row) => (row.id as string) !== ag.id)
+    .some((row) => {
+      const s = new Date(row.data_hora as string).getTime();
+      const dur = (row.duracao_min as number) ?? 30;
+      return startMs < s + (dur + intervaloEntreMin) * 60_000 && endMs > s;
+    });
+  if (conflito) {
+    return { ok: false, error: 'Horario indisponivel. Escolha outro.' };
+  }
+
+  // 1. Marca antigo como reagendado
+  const { error: updErr } = await admin
+    .from('agendamentos')
+    .update({ status: 'reagendado' })
+    .eq('id', ag.id);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // 2. Cria novo agendamento
+  const { data: novoRow, error: insErr } = await admin
+    .from('agendamentos')
+    .insert({
+      tenant_id: ag.tenantId,
+      profissional_id: ag.profissional.id,
+      paciente_id: ag.paciente.id,
+      procedimento_id: procedimentoId,
+      data_hora: novaDataHoraIso,
+      duracao_min: duracaoMin,
+      status: 'agendado',
+      reagendado_de: ag.id,
+    })
+    .select('id')
+    .single();
+  if (insErr || !novoRow) {
+    // rollback
+    await admin
+      .from('agendamentos')
+      .update({ status: ag.status })
+      .eq('id', ag.id);
+    return {
+      ok: false,
+      error: insErr?.message ?? 'Falha ao criar novo agendamento.',
+    };
+  }
+  const novoId = novoRow.id as string;
+
+  // Emails (best-effort) — sem linkReagendar para impedir cadeia
+  try {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+    const linkAgendamento = montarLinkAgendamento(baseUrl, ag.tenantSlug);
+
+    const tplPaciente = emailReagendamento({
+      pacienteNome: ag.paciente.nome,
+      profissionalNome: ag.profissional.nome,
+      profissionalEspecialidade: ag.profissional.especialidade,
+      procedimentoNome: ag.procedimento?.nome ?? null,
+      dataAnteriorIso: dataIsoFromTimestamp(ag.dataHoraIso),
+      horarioAnterior: horarioFromIso(ag.dataHoraIso),
+      dataNovaIso: novaDataIso,
+      horarioNovo: horarioFromIso(novaDataHoraIso),
+      linkAgendamento,
+      logoUrl: ag.profissional.logoUrl,
+    });
+
+    if (ag.paciente.email) {
+      await enviarNotificacaoEmail({
+        tenantId: ag.tenantId,
+        agendamentoId: novoId,
+        tipo: 'reagendamento',
+        destino: ag.paciente.email,
+        assunto: tplPaciente.assunto,
+        html: tplPaciente.html,
+      });
+    }
+
+    // Email para o profissional
+    const { data: profEmailRow } = await admin
+      .from('profissionais')
+      .select('email')
+      .eq('id', ag.profissional.id)
+      .maybeSingle();
+    const profEmail = (profEmailRow?.email as string | null) ?? null;
+    if (profEmail) {
+      const html = `
+        <p>O paciente <strong>${ag.paciente.nome}</strong> reagendou a consulta pelo link publico.</p>
+        <p>De: ${dataIsoFromTimestamp(ag.dataHoraIso)} as ${horarioFromIso(ag.dataHoraIso)}</p>
+        <p>Para: ${novaDataIso} as ${horarioFromIso(novaDataHoraIso)}</p>
+      `;
+      await enviarNotificacaoEmail({
+        tenantId: ag.tenantId,
+        agendamentoId: novoId,
+        tipo: 'reagendamento',
+        destino: profEmail,
+        assunto: `Reagendamento: ${ag.paciente.nome}`,
+        html,
+      });
+    }
+  } catch (e) {
+    console.error('[reagendarPorPaciente] erro ao enviar email:', e);
+  }
+
+  revalidatePath('/agenda');
+  return {
+    ok: true,
+    novoAgendamentoId: novoId,
+    novaDataIso,
+    novaHora,
+    profissionalNome: ag.profissional.nome,
+  };
 }

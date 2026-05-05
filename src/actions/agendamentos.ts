@@ -10,6 +10,7 @@ import {
   horarioFromIso,
   dataIsoFromTimestamp,
   montarLinkAgendamento,
+  montarLinkReagendar,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import {
@@ -845,13 +846,15 @@ export async function criarAgendamentoPainel(
       tolerancia_min: (prof.tolerancia_atraso_min as number) ?? 5,
       observacoes,
     })
-    .select('id')
+    .select('id, token_reagendamento')
     .single();
   if (agErr || !agRow) {
     return { ok: false, error: agErr?.message ?? 'Falha ao criar agendamento.' };
   }
 
   const agendamentoId = agRow.id as string;
+  const tokenReagendamento =
+    (agRow.token_reagendamento as string | null) ?? null;
 
   // Email de confirmacao (best-effort)
   try {
@@ -867,6 +870,7 @@ export async function criarAgendamentoPainel(
         process.env.NEXT_PUBLIC_APP_URL ??
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
       const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
+      const linkReagendar = montarLinkReagendar(baseUrl, tokenReagendamento);
 
       const tpl = emailConfirmacaoAgendamento({
         pacienteNome: (pac.nome as string) ?? 'Paciente',
@@ -874,6 +878,7 @@ export async function criarAgendamentoPainel(
         dataIso: input.dataIso,
         horario: horarioFromIso(dataHoraIso),
         linkAgendamento,
+        linkReagendar,
         logoUrl: (prof.logo_url as string | null) ?? null,
       });
       await enviarNotificacaoEmail({

@@ -59,6 +59,15 @@ export function montarLinkAgendamento(
   return `${base}/agendar/${slug}`;
 }
 
+export function montarLinkReagendar(
+  appUrl: string | null | undefined,
+  token: string | null | undefined,
+): string | null {
+  if (!appUrl || !token) return null;
+  const base = appUrl.replace(/\/+$/, "");
+  return `${base}/reagendar/${token}`;
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -125,12 +134,18 @@ function linkBlock(linkAgendamento: string | null): string {
   return `<p style="margin:20px 0 0 0;color:#0F172A;font-size:14px;">Se precisar reagendar, acesse: <a href="${escapeHtml(linkAgendamento)}" style="color:#0D9488;text-decoration:underline;">${escapeHtml(linkAgendamento)}</a></p>`;
 }
 
+function linkReagendarBlock(linkReagendar: string | null | undefined): string {
+  if (!linkReagendar) return "";
+  return `<p style="margin:16px 0 0 0;color:#0F172A;font-size:14px;">Precisa reagendar? <a href="${escapeHtml(linkReagendar)}" style="color:#0D9488;text-decoration:underline;font-weight:500;">Clique aqui para mudar o horario</a>.</p>`;
+}
+
 export type DadosConfirmacao = {
   pacienteNome: string;
   profissionalNome: string;
   dataIso: string;
   horario: string;
   linkAgendamento: string | null;
+  linkReagendar?: string | null;
   logoUrl?: string | null;
 };
 
@@ -147,7 +162,8 @@ export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
     ${row("Profissional", profissional)}
     ${row("Data", dataPorExtenso(d.dataIso))}
     ${row("Horário", d.horario)}
-    ${linkBlock(d.linkAgendamento)}
+    ${linkReagendarBlock(d.linkReagendar)}
+    ${d.linkReagendar ? "" : linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
   return { assunto, html: layout(conteudo, d.logoUrl) };
@@ -328,6 +344,7 @@ export type DadosReagendamento = {
   dataNovaIso: string;
   horarioNovo: string;
   linkAgendamento: string | null;
+  linkReagendar?: string | null;
   logoUrl?: string | null;
 };
 
@@ -377,6 +394,7 @@ export function emailReagendamento(d: DadosReagendamento): {
     ${procedimento ? `<p style="margin:0 0 8px 0;color:#475569;">Procedimento: <strong>${escapeHtml(procedimento)}</strong></p>` : ''}
     ${blocoComparativo}
     ${botao}
+    ${linkReagendarBlock(d.linkReagendar)}
     <p style="margin:20px 0 0 0;color:#475569;font-size:13px;">Caso precise de algo, entre em contato.</p>
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
