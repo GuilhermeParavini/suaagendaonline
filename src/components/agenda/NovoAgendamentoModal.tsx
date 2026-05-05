@@ -29,6 +29,8 @@ interface NovoAgendamentoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCriado?: () => void;
+  initialDateIso?: string;
+  initialHora?: string;
 }
 
 const inputClass =
@@ -39,10 +41,18 @@ function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
 }
 
+function parseIsoLocal(iso: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
 function NovoAgendamentoModal({
   open,
   onOpenChange,
   onCriado,
+  initialDateIso,
+  initialHora,
 }: NovoAgendamentoModalProps) {
   const [termoBusca, setTermoBusca] = useState("");
   const [resultados, setResultados] = useState<PacienteOpcao[]>([]);
@@ -102,6 +112,16 @@ function NovoAgendamentoModal({
         buscaTimerRef.current = null;
       }
       return;
+    }
+    if (initialDateIso) {
+      const d = parseIsoLocal(initialDateIso);
+      if (d) {
+        setSelectedDate(d);
+        setVisibleMonth(startOfMonth(d));
+      }
+    }
+    if (initialHora) {
+      setHoraSelecionada(initialHora);
     }
     let cancelado = false;
     // eslint-disable-next-line react-hooks/set-state-in-effect

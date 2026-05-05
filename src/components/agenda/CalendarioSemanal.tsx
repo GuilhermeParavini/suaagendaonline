@@ -21,6 +21,7 @@ interface CalendarioSemanalProps {
   onChangeViewMode: (mode: ViewMode) => void;
   diasComAgendamento?: Set<string>;
   datasIndisponiveis?: Set<string>;
+  hideViewToggle?: boolean;
 }
 
 const viewLabels: Record<ViewMode, string> = {
@@ -40,6 +41,7 @@ function CalendarioSemanal({
   onChangeViewMode,
   diasComAgendamento,
   datasIndisponiveis,
+  hideViewToggle,
 }: CalendarioSemanalProps) {
   const inicioSemana = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const dias = Array.from({ length: 7 }, (_, i) => addDays(inicioSemana, i));
@@ -133,36 +135,38 @@ function CalendarioSemanal({
         })}
       </ul>
 
-      <div
-        role="tablist"
-        aria-label="Modo de visualizacao"
-        className="inline-flex rounded-lg border border-slate-200 bg-white p-1"
-      >
-        {(Object.keys(viewLabels) as ViewMode[]).map((mode) => {
-          const active = mode === viewMode;
-          const enabled = mode === "semana";
-          return (
-            <button
-              key={mode}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              disabled={!enabled}
-              onClick={() => enabled && onChangeViewMode(mode)}
-              className={cn(
-                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                active
-                  ? "bg-primary text-white"
-                  : enabled
-                  ? "text-slate-500 hover:text-slate-900"
-                  : "text-slate-300 cursor-not-allowed",
-              )}
-            >
-              {viewLabels[mode]}
-            </button>
-          );
-        })}
-      </div>
+      {!hideViewToggle ? (
+        <div
+          role="tablist"
+          aria-label="Modo de visualizacao"
+          className="inline-flex rounded-lg border border-slate-200 bg-white p-1"
+        >
+          {(Object.keys(viewLabels) as ViewMode[]).map((mode) => {
+            const active = mode === viewMode;
+            const enabled = mode === "semana";
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                disabled={!enabled}
+                onClick={() => enabled && onChangeViewMode(mode)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                  active
+                    ? "bg-primary text-white"
+                    : enabled
+                    ? "text-slate-500 hover:text-slate-900"
+                    : "text-slate-300 cursor-not-allowed",
+                )}
+              >
+                {viewLabels[mode]}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }
