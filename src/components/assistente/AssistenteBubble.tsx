@@ -49,7 +49,7 @@ function AssistenteBubble({
           type="button"
           aria-label="Fechar"
           onClick={fechar}
-          className="fixed inset-0 z-40 bg-black/20 md:hidden"
+          className="fixed inset-0 z-[60] bg-black/20 md:hidden"
         />
       ) : null}
 
@@ -57,7 +57,7 @@ function AssistenteBubble({
       {aberto ? (
         <div
           className={cn(
-            "fixed z-50 bg-white shadow-2xl border border-gray-200 transition-transform duration-300",
+            "fixed z-[60] bg-white shadow-2xl border border-gray-200 transition-transform duration-300",
             // Mobile: bottom sheet
             "inset-x-0 bottom-0 h-[85vh] rounded-t-2xl",
             // Desktop: floating panel
@@ -79,7 +79,7 @@ function AssistenteBubble({
         onClick={toggle}
         aria-label={aberto ? "Fechar assistente" : "Abrir assistente"}
         className={cn(
-          "fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg transition-colors",
+          "fixed bottom-6 right-6 z-[60] inline-flex h-14 w-14 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg transition-colors",
           "hover:bg-teal-700",
           pulsar && !aberto && "animate-pulse",
         )}

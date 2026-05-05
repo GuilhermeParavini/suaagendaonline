@@ -283,10 +283,12 @@ export async function POST(request: Request) {
     // 9. Tempo
     const tempoMs = Date.now() - inicio;
 
-    // 10. Registrar histórico + uso (best-effort, não bloqueia resposta)
-    void Promise.all([
-      Promise.resolve(
-        admin.from('historico_assistente').insert({
+    // 10a. Insere histórico (aguardamos para devolver historico_id)
+    let historicoId: string | null = null;
+    try {
+      const { data: histRow, error: histErr } = await admin
+        .from('historico_assistente')
+        .insert({
           tenant_id: tenantId,
           profissional_id: profissionalId,
           tipo: 'profissional',
@@ -299,34 +301,37 @@ export async function POST(request: Request) {
           tempo_resposta_ms: tempoMs,
           origem,
           card_id: cardId,
-        }),
-      )
-        .then((r) => {
-          if (r.error) {
-            console.error(
-              '[assistente] erro ao gravar historico:',
-              r.error.message,
-            );
-          }
         })
-        .catch((e) => {
-          console.error('[assistente] erro ao gravar historico:', e);
-        }),
-      registrarUso({
-        admin,
-        tenantId,
-        profissionalId,
-        tokensInput: totalInputTokens,
-        tokensOutput: totalOutputTokens,
-      }).catch((e) => {
-        console.error('[assistente] erro ao gravar uso:', e);
-      }),
-    ]);
+        .select('id')
+        .single();
+      if (histErr) {
+        console.error(
+          '[assistente] erro ao gravar historico:',
+          histErr.message,
+        );
+      } else {
+        historicoId = (histRow?.id as string | null) ?? null;
+      }
+    } catch (e) {
+      console.error('[assistente] erro ao gravar historico:', e);
+    }
+
+    // 10b. Registra uso em background (não bloqueia retorno)
+    void registrarUso({
+      admin,
+      tenantId,
+      profissionalId,
+      tokensInput: totalInputTokens,
+      tokensOutput: totalOutputTokens,
+    }).catch((e) => {
+      console.error('[assistente] erro ao gravar uso:', e);
+    });
 
     return NextResponse.json({
       resposta: textoFinal,
       intencao,
       funcoes: funcoesChamadas,
+      historico_id: historicoId,
     });
   } catch (e) {
     console.error('[assistente] erro:', e);
