@@ -37,7 +37,7 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
   const { data: pacienteRow, error: pacienteErr } = await admin
     .from("pacientes")
     .select(
-      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade, altura, peso, origem, origem_detalhe",
+      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade, altura, peso, origem, origem_detalhe, status_tratamento, data_alta, motivo_alta",
     )
     .eq("id", id)
     .eq("tenant_id", prof.tenant_id)
@@ -71,6 +71,11 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
       pesoRaw === null || pesoRaw === undefined ? null : Number(pesoRaw),
     origem: (pacienteRow.origem as PacienteDetalhe["origem"]) ?? null,
     origem_detalhe: (pacienteRow.origem_detalhe as string | null) ?? null,
+    status_tratamento:
+      (pacienteRow.status_tratamento as PacienteDetalhe["status_tratamento"]) ??
+      "ativo",
+    data_alta: (pacienteRow.data_alta as string | null) ?? null,
+    motivo_alta: (pacienteRow.motivo_alta as string | null) ?? null,
   };
 
   let responsavel: ResponsavelDetalhe | null = null;

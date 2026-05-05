@@ -1435,3 +1435,272 @@ export async function getAgendamentosDoMes(
   );
   return { ok: true, dias };
 }
+
+// ============================================================
+// Agendamento automatico de retorno
+// ============================================================
+
+export type AgendarRetornoInput = {
+  pacienteId: string;
+  procedimentoId: string;
+  retornoDias: number;
+};
+
+export type AgendarRetornoResult =
+  | {
+      sucesso: true;
+      agendamentoId: string;
+      dataIso: string;
+      hora: string;
+    }
+  | { sucesso: false; motivo: string };
+
+function somarDias(dataIso: string, dias: number): string {
+  const [y, m, d] = dataIso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + dias);
+  return date.toISOString().slice(0, 10);
+}
+
+function hojeIsoSP(): string {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const obj: Record<string, string> = {};
+  for (const p of fmt.formatToParts(new Date())) obj[p.type] = p.value;
+  return `${obj.year}-${obj.month}-${obj.day}`;
+}
+
+export async function agendarRetorno(
+  input: AgendarRetornoInput,
+): Promise<AgendarRetornoResult> {
+  if (!input.pacienteId) {
+    return { sucesso: false, motivo: 'Paciente invalido.' };
+  }
+  if (!input.procedimentoId) {
+    return { sucesso: false, motivo: 'Procedimento invalido.' };
+  }
+  if (
+    !Number.isFinite(input.retornoDias) ||
+    input.retornoDias <= 0 ||
+    input.retornoDias > 365
+  ) {
+    return { sucesso: false, motivo: 'Quantidade de dias invalida.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { sucesso: false, motivo: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select(
+      'id, tenant_id, nome, especialidade, logo_url, tolerancia_atraso_min, duracao_padrao_min, intervalo_entre_consultas_min',
+    )
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { sucesso: false, motivo: profErr.message };
+  if (!prof) return { sucesso: false, motivo: 'Profissional nao encontrado.' };
+
+  const tenantId = prof.tenant_id as string;
+  const profissionalId = prof.id as string;
+  const duracaoPadraoMin = (prof.duracao_padrao_min as number) ?? 30;
+  const intervaloEntreMin =
+    (prof.intervalo_entre_consultas_min as number | null) ?? 0;
+
+  // Paciente
+  const { data: pac, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, nome, email, tenant_id')
+    .eq('id', input.pacienteId)
+    .maybeSingle();
+  if (pacErr) return { sucesso: false, motivo: pacErr.message };
+  if (!pac || pac.tenant_id !== tenantId) {
+    return { sucesso: false, motivo: 'Paciente nao encontrado.' };
+  }
+
+  // Procedimento
+  const { data: proc, error: procErr } = await admin
+    .from('procedimentos')
+    .select('id, nome, duracao_min, tenant_id, ativo')
+    .eq('id', input.procedimentoId)
+    .maybeSingle();
+  if (procErr) return { sucesso: false, motivo: procErr.message };
+  if (!proc || proc.tenant_id !== tenantId || !proc.ativo) {
+    return { sucesso: false, motivo: 'Procedimento indisponivel.' };
+  }
+  const duracaoMin = (proc.duracao_min as number) ?? duracaoPadraoMin;
+
+  const dataAlvo = somarDias(hojeIsoSP(), Math.round(input.retornoDias));
+
+  // Tenta data alvo + 1 + 2 dias
+  for (let offset = 0; offset < 3; offset++) {
+    const dataIso = somarDias(dataAlvo, offset);
+
+    // Verifica feriado / bloqueio
+    try {
+      const feriados = await getFeriadosForTenant(tenantId, dataIso, dataIso);
+      if (feriados.length > 0) continue;
+    } catch (e) {
+      console.error('[agendarRetorno] feriado:', e);
+    }
+    try {
+      const bloqueios = await getBloqueiosForProfissional(
+        profissionalId,
+        dataIso,
+        dataIso,
+      );
+      if (bloqueios.length > 0) continue;
+    } catch (e) {
+      console.error('[agendarRetorno] bloqueio:', e);
+    }
+
+    // Janela de horarios do dia da semana
+    const [y, m, d] = dataIso.split('-').map(Number);
+    const diaSemana = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+    const { data: horarios } = await admin
+      .from('horarios_disponiveis')
+      .select('hora_inicio, hora_fim')
+      .eq('profissional_id', profissionalId)
+      .eq('ativo', true)
+      .eq('dia_semana', diaSemana);
+    if (!horarios || horarios.length === 0) continue;
+
+    // Agendamentos existentes do dia
+    const inicioDia = `${dataIso}T00:00:00.000Z`;
+    const fimDia = `${dataIso}T23:59:59.999Z`;
+    const { data: existentes } = await admin
+      .from('agendamentos')
+      .select('data_hora, duracao_min, status')
+      .eq('profissional_id', profissionalId)
+      .gte('data_hora', inicioDia)
+      .lte('data_hora', fimDia)
+      .neq('status', 'cancelado');
+
+    const ocupados = (existentes ?? []).map((row) => {
+      const start = new Date(row.data_hora as string).getTime();
+      const dur = (row.duracao_min as number) ?? duracaoPadraoMin;
+      return {
+        start,
+        end: start + (dur + intervaloEntreMin) * 60_000,
+      };
+    });
+
+    const passoMin = duracaoMin + intervaloEntreMin;
+    const agora = Date.now();
+
+    type Candidato = { time: string; iso: string; start: number };
+    const candidatos: Candidato[] = [];
+    const seen = new Set<string>();
+
+    for (const range of horarios) {
+      const [hi, mi] = (range.hora_inicio as string).split(':').map(Number);
+      const [hf, mf] = (range.hora_fim as string).split(':').map(Number);
+      const startMin = hi * 60 + mi;
+      const endMin = hf * 60 + mf;
+      for (let cur = startMin; cur + duracaoMin <= endMin; cur += passoMin) {
+        const h = Math.floor(cur / 60);
+        const mm = cur % 60;
+        const time = `${pad2(h)}:${pad2(mm)}`;
+        if (seen.has(time)) continue;
+        seen.add(time);
+        const iso = buildIsoDateTime(dataIso, time);
+        const start = new Date(iso).getTime();
+        if (start <= agora) continue;
+        const conflito = ocupados.some(
+          (o) =>
+            start < o.end && start + (duracaoMin + intervaloEntreMin) * 60_000 > o.start,
+        );
+        if (conflito) continue;
+        candidatos.push({ time, iso, start });
+      }
+    }
+
+    candidatos.sort((a, b) => a.start - b.start);
+    if (candidatos.length === 0) continue;
+
+    const escolhido = candidatos[0];
+
+    const { data: agRow, error: agInsErr } = await admin
+      .from('agendamentos')
+      .insert({
+        tenant_id: tenantId,
+        profissional_id: profissionalId,
+        paciente_id: input.pacienteId,
+        procedimento_id: input.procedimentoId,
+        data_hora: escolhido.iso,
+        duracao_min: duracaoMin,
+        status: 'agendado',
+        tolerancia_min: (prof.tolerancia_atraso_min as number) ?? 5,
+      })
+      .select('id, token_reagendamento')
+      .single();
+    if (agInsErr || !agRow) {
+      return {
+        sucesso: false,
+        motivo: agInsErr?.message ?? 'Falha ao criar agendamento de retorno.',
+      };
+    }
+
+    const novoId = agRow.id as string;
+    const tokenReagendamento =
+      (agRow.token_reagendamento as string | null) ?? null;
+
+    // Email de confirmacao (best-effort)
+    try {
+      const destino = (pac.email as string | null) ?? null;
+      if (destino) {
+        const { data: tenant } = await admin
+          .from('tenants')
+          .select('slug')
+          .eq('id', tenantId)
+          .maybeSingle();
+        const slug = (tenant?.slug as string | null) ?? null;
+        const baseUrl =
+          process.env.NEXT_PUBLIC_APP_URL ??
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+        const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
+        const linkReagendar = montarLinkReagendar(baseUrl, tokenReagendamento);
+        const tpl = emailConfirmacaoAgendamento({
+          pacienteNome: (pac.nome as string) ?? 'Paciente',
+          profissionalNome: (prof.nome as string) ?? 'Profissional',
+          dataIso,
+          horario: horarioFromIso(escolhido.iso),
+          linkAgendamento,
+          linkReagendar,
+          logoUrl: (prof.logo_url as string | null) ?? null,
+        });
+        await enviarNotificacaoEmail({
+          tenantId,
+          agendamentoId: novoId,
+          tipo: 'confirmacao',
+          destino,
+          assunto: tpl.assunto,
+          html: tpl.html,
+        });
+      }
+    } catch (e) {
+      console.error('[agendarRetorno] erro email:', e);
+    }
+
+    revalidatePath('/agenda');
+    return {
+      sucesso: true,
+      agendamentoId: novoId,
+      dataIso,
+      hora: escolhido.time,
+    };
+  }
+
+  return {
+    sucesso: false,
+    motivo:
+      'Nenhum horario disponivel nos proximos 3 dias a partir da data sugerida.',
+  };
+}

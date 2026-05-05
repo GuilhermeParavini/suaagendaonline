@@ -15,6 +15,8 @@ import {
   montarLinkAgendamento,
 } from '@/lib/email-templates';
 
+export type StatusTratamento = 'ativo' | 'alta' | 'inativo';
+
 export type PacienteListItem = {
   id: string;
   nome: string;
@@ -23,6 +25,7 @@ export type PacienteListItem = {
   convenio: string | null;
   menor_idade: boolean;
   ultima_consulta: string | null;
+  status_tratamento: StatusTratamento;
 };
 
 type GetPacientesResult =
@@ -43,12 +46,23 @@ async function buildList(
   profissionalId: string,
   query: string | null,
   convenioFiltro: string | null,
+  statusFiltro: StatusTratamento | 'todos' | null,
 ): Promise<PacienteListItem[]> {
   let pacientesQuery = admin
     .from('pacientes')
-    .select('id, nome, telefone, email, convenio, menor_idade')
+    .select(
+      'id, nome, telefone, email, convenio, menor_idade, status_tratamento',
+    )
     .eq('tenant_id', tenantId)
     .eq('ativo', true);
+
+  if (
+    statusFiltro &&
+    statusFiltro !== 'todos' &&
+    ['ativo', 'alta', 'inativo'].includes(statusFiltro)
+  ) {
+    pacientesQuery = pacientesQuery.eq('status_tratamento', statusFiltro);
+  }
 
   const q = query?.trim() ?? '';
   if (q.length > 0) {
@@ -106,12 +120,15 @@ async function buildList(
     convenio: (p.convenio as string | null) ?? null,
     menor_idade: Boolean(p.menor_idade),
     ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
+    status_tratamento:
+      ((p.status_tratamento as StatusTratamento | null) ?? 'ativo'),
   }));
 }
 
 export async function getPacientes(
   query?: string,
   convenio?: string,
+  status?: StatusTratamento | 'todos',
 ): Promise<GetPacientesResult> {
   const supabase = await createClient();
   const {
@@ -136,6 +153,7 @@ export async function getPacientes(
       prof.id as string,
       query ?? null,
       convenio ?? null,
+      status ?? null,
     );
     return { ok: true, pacientes };
   } catch (e) {
@@ -919,6 +937,131 @@ export async function excluirPaciente(
     .eq('id', id);
   if (updErr) return { ok: false, error: updErr.message };
 
+  revalidatePath('/pacientes');
+  return { ok: true };
+}
+
+// ============================================================
+// Alta / reativacao
+// ============================================================
+
+export type DarAltaResult =
+  | { ok: true; agendamentosFuturos: number }
+  | { ok: false; error: string };
+
+export async function darAlta(
+  pacienteId: string,
+  motivo: string,
+): Promise<DarAltaResult> {
+  if (!pacienteId) return { ok: false, error: 'Paciente invalido.' };
+  const motivoLimpo = (motivo ?? '').trim();
+  if (motivoLimpo.length < 3) {
+    return { ok: false, error: 'Motivo da alta obrigatorio.' };
+  }
+  if (motivoLimpo.length > 1000) {
+    return { ok: false, error: 'Motivo acima de 1000 caracteres.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+  const role = (prof.role as string) ?? 'profissional';
+  if (role !== 'admin' && role !== 'profissional') {
+    return { ok: false, error: 'Sem permissao para dar alta.' };
+  }
+
+  const { data: pac, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, tenant_id')
+    .eq('id', pacienteId)
+    .maybeSingle();
+  if (pacErr) return { ok: false, error: pacErr.message };
+  if (!pac) return { ok: false, error: 'Paciente nao encontrado.' };
+  if (pac.tenant_id !== prof.tenant_id) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const agora = new Date().toISOString();
+  const { count } = await admin
+    .from('agendamentos')
+    .select('id', { count: 'exact', head: true })
+    .eq('paciente_id', pacienteId)
+    .gte('data_hora', agora)
+    .in('status', ['agendado', 'confirmado', 'em_atendimento']);
+  const agendamentosFuturos = count ?? 0;
+
+  const { error: updErr } = await admin
+    .from('pacientes')
+    .update({
+      status_tratamento: 'alta',
+      data_alta: agora,
+      motivo_alta: motivoLimpo,
+    })
+    .eq('id', pacienteId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath(`/pacientes/${pacienteId}`);
+  revalidatePath('/pacientes');
+  return { ok: true, agendamentosFuturos };
+}
+
+export async function reativarPaciente(
+  pacienteId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!pacienteId) return { ok: false, error: 'Paciente invalido.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profError } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, role')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profError) return { ok: false, error: profError.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+  const role = (prof.role as string) ?? 'profissional';
+  if (role !== 'admin' && role !== 'profissional') {
+    return { ok: false, error: 'Sem permissao para reativar.' };
+  }
+
+  const { data: pac, error: pacErr } = await admin
+    .from('pacientes')
+    .select('id, tenant_id')
+    .eq('id', pacienteId)
+    .maybeSingle();
+  if (pacErr) return { ok: false, error: pacErr.message };
+  if (!pac) return { ok: false, error: 'Paciente nao encontrado.' };
+  if (pac.tenant_id !== prof.tenant_id) {
+    return { ok: false, error: 'Sem permissao.' };
+  }
+
+  const { error: updErr } = await admin
+    .from('pacientes')
+    .update({
+      status_tratamento: 'ativo',
+      data_alta: null,
+      motivo_alta: null,
+    })
+    .eq('id', pacienteId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath(`/pacientes/${pacienteId}`);
   revalidatePath('/pacientes');
   return { ok: true };
 }

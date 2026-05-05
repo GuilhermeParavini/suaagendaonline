@@ -119,6 +119,9 @@ export default async function AtendimentoPage({ params }: PageProps) {
       data_hora: ag.data_hora as string,
       duracao_min: ag.duracao_min as number,
       status: ag.status as AtendimentoContexto["agendamento"]["status"],
+      procedimento_id: procedimento?.id
+        ? (procedimento.id as string)
+        : null,
       procedimento_nome: procedimento?.nome
         ? (procedimento.nome as string)
         : null,

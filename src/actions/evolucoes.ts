@@ -16,6 +16,8 @@ export type Evolucao = {
   receita: string | null;
   diagnostico: string | null;
   plano_cuidados: string | null;
+  retorno_sugerido_dias: number | null;
+  retorno_agendado: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +64,12 @@ function mapRow(row: Record<string, unknown>): Evolucao {
     receita: (row.receita as string | null) ?? null,
     diagnostico: (row.diagnostico as string | null) ?? null,
     plano_cuidados: (row.plano_cuidados as string | null) ?? null,
+    retorno_sugerido_dias:
+      row.retorno_sugerido_dias === null ||
+      row.retorno_sugerido_dias === undefined
+        ? null
+        : Number(row.retorno_sugerido_dias) || 0,
+    retorno_agendado: Boolean(row.retorno_agendado),
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -77,6 +85,8 @@ export type CriarEvolucaoInput = {
   receita?: string;
   diagnostico?: string;
   planoCuidados?: string;
+  retornoSugeridoDias?: number | null;
+  retornoAgendado?: boolean;
 };
 
 export async function criarEvolucao(
@@ -114,6 +124,12 @@ export async function criarEvolucao(
       receita: input.receita?.trim() || null,
       diagnostico: input.diagnostico?.trim() || null,
       plano_cuidados: input.planoCuidados?.trim() || null,
+      retorno_sugerido_dias:
+        typeof input.retornoSugeridoDias === 'number' &&
+        input.retornoSugeridoDias > 0
+          ? Math.round(input.retornoSugeridoDias)
+          : null,
+      retorno_agendado: Boolean(input.retornoAgendado),
     })
     .select('id')
     .single();
@@ -132,6 +148,8 @@ export type AtualizarEvolucaoInput = Partial<{
   receita: string | null;
   diagnostico: string | null;
   planoCuidados: string | null;
+  retornoSugeridoDias: number | null;
+  retornoAgendado: boolean;
 }>;
 
 export async function atualizarEvolucao(
@@ -170,6 +188,16 @@ export async function atualizarEvolucao(
   }
   if (input.planoCuidados !== undefined) {
     update.plano_cuidados = input.planoCuidados?.trim() || null;
+  }
+  if (input.retornoSugeridoDias !== undefined) {
+    update.retorno_sugerido_dias =
+      typeof input.retornoSugeridoDias === 'number' &&
+      input.retornoSugeridoDias > 0
+        ? Math.round(input.retornoSugeridoDias)
+        : null;
+  }
+  if (input.retornoAgendado !== undefined) {
+    update.retorno_agendado = Boolean(input.retornoAgendado);
   }
 
   if (Object.keys(update).length === 0) {

@@ -30,6 +30,16 @@ function CardPaciente({ paciente }: CardPacienteProps) {
             <p className="text-sm font-medium text-slate-900 truncate">
               {paciente.nome}
             </p>
+            {paciente.status_tratamento === "alta" ? (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-[#D1FAE5] px-2 py-[2px] text-[11px] font-medium leading-none text-[#065F46]">
+                Alta
+              </span>
+            ) : null}
+            {paciente.status_tratamento === "inativo" ? (
+              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200 px-2 py-[2px] text-[11px] font-medium leading-none text-slate-600">
+                Inativo
+              </span>
+            ) : null}
             {paciente.menor_idade ? (
               <span className="shrink-0 inline-flex items-center rounded-full bg-warning-surface px-2 py-[2px] text-[11px] font-medium leading-none text-[#92400E]">
                 Menor

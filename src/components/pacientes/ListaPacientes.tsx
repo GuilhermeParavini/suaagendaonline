@@ -7,6 +7,7 @@ import {
   getConveniosExistentes,
   getPacientes,
   type PacienteListItem,
+  type StatusTratamento,
 } from "@/actions/pacientes";
 import CardPaciente from "./CardPaciente";
 
@@ -14,9 +15,12 @@ interface ListaPacientesProps {
   initialPacientes: PacienteListItem[];
 }
 
+type StatusFiltro = StatusTratamento | "todos";
+
 function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
   const [query, setQuery] = useState("");
   const [convenioFiltro, setConvenioFiltro] = useState("");
+  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");
   const [convenios, setConvenios] = useState<string[]>([]);
   const [pacientes, setPacientes] = useState<PacienteListItem[]>(initialPacientes);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +49,11 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
 
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
-        const result = await getPacientes(query, convenioFiltro || undefined);
+        const result = await getPacientes(
+          query,
+          convenioFiltro || undefined,
+          statusFiltro,
+        );
         if (!result.ok) {
           setError(result.error);
           setPacientes([]);
@@ -59,7 +67,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, convenioFiltro]);
+  }, [query, convenioFiltro, statusFiltro]);
 
   const hasQuery = query.trim().length > 0;
   const isEmpty = pacientes.length === 0;
@@ -109,26 +117,47 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
           ) : null}
         </div>
 
-        {convenios.length > 0 ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <div>
-            <label htmlFor="filtro-convenio" className="sr-only">
-              Filtrar por convênio
+            <label htmlFor="filtro-status" className="sr-only">
+              Filtrar por status
             </label>
             <select
-              id="filtro-convenio"
-              value={convenioFiltro}
-              onChange={(e) => setConvenioFiltro(e.target.value)}
+              id="filtro-status"
+              value={statusFiltro}
+              onChange={(e) =>
+                setStatusFiltro(e.target.value as StatusFiltro)
+              }
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition"
             >
-              <option value="">Todos os convênios</option>
-              {convenios.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
+              <option value="todos">Todos os status</option>
+              <option value="ativo">Ativos</option>
+              <option value="alta">Com alta</option>
+              <option value="inativo">Inativos</option>
             </select>
           </div>
-        ) : null}
+
+          {convenios.length > 0 ? (
+            <div>
+              <label htmlFor="filtro-convenio" className="sr-only">
+                Filtrar por convênio
+              </label>
+              <select
+                id="filtro-convenio"
+                value={convenioFiltro}
+                onChange={(e) => setConvenioFiltro(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition"
+              >
+                <option value="">Todos os convênios</option>
+                {convenios.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <section

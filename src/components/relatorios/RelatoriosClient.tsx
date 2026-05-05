@@ -23,6 +23,7 @@ import {
   Clock,
   Download,
   Filter,
+  UserCheck,
 } from "lucide-react";
 import {
   getRelatorioAgendamentos,
@@ -36,6 +37,7 @@ import {
   type FaturamentoFiltros,
   type PacientesData,
   type PacientesFiltros,
+  type StatusTratamentoFiltro,
 } from "@/actions/relatorios";
 import {
   listarProfissionaisAtivosTenant,
@@ -56,6 +58,16 @@ const COLOR_PIE = [
   "#EC4899",
   "#EF4444",
 ];
+
+const COLOR_ORIGEM: Record<string, string> = {
+  Instagram: "#E4405F",
+  Google: "#4285F4",
+  Indicacao: "#22C55E",
+  Facebook: "#1877F2",
+  Site: "#0D9488",
+  Outros: "#94A3B8",
+  "Nao informado": "#CBD5E1",
+};
 
 const FORMA_LABEL: Record<FormaPagamento, string> = {
   dinheiro: "Dinheiro",
@@ -723,6 +735,8 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
   const [faixaEtaria, setFaixaEtaria] = useState<FaixaEtaria | "todos">(
     "todos",
   );
+  const [statusTratamento, setStatusTratamento] =
+    useState<StatusTratamentoFiltro>("todos");
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
 
   const [data, setData] = useState<PacientesData | null>(null);
@@ -753,6 +767,7 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
       genero,
       faixaEtaria,
       profissionalId,
+      statusTratamento,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profissionalId]);
@@ -775,6 +790,7 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
       genero,
       faixaEtaria,
       profissionalId,
+      statusTratamento,
     });
   };
 
@@ -869,6 +885,23 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
                 ))}
               </select>
             </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Status de tratamento</label>
+              <select
+                value={statusTratamento}
+                onChange={(e) =>
+                  setStatusTratamento(
+                    e.target.value as StatusTratamentoFiltro,
+                  )
+                }
+                className={inputClass}
+              >
+                <option value="todos">Todos os status</option>
+                <option value="ativo">Ativos</option>
+                <option value="alta">Com alta</option>
+                <option value="inativo">Inativos</option>
+              </select>
+            </div>
           </div>
 
           {erro ? (
@@ -915,6 +948,20 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
               value={`${data.taxaRetorno.toFixed(1).replace(".", ",")}%`}
               accent="teal"
             />
+            {data.pacientesAlta > 0 ? (
+              <CardResumo
+                label="Pacientes com alta"
+                value={String(data.pacientesAlta)}
+                accent="verde"
+                icon={
+                  <UserCheck
+                    size={14}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
+                }
+              />
+            ) : null}
           </section>
 
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -1005,6 +1052,65 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
                 </div>
               )}
             </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-medium text-slate-700">
+              Origem dos pacientes
+            </h3>
+            {data.porOrigem.length === 0 ? (
+              <EstadoVazio />
+            ) : (
+              <div className="mt-3 h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={data.porOrigem.map((o) => ({
+                        nome: o.origem,
+                        quantidade: o.quantidade,
+                        percentual: o.percentual,
+                      }))}
+                      dataKey="quantidade"
+                      nameKey="nome"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={95}
+                    >
+                      {data.porOrigem.map((o, idx) => (
+                        <Cell
+                          key={`origem-${idx}`}
+                          fill={
+                            COLOR_ORIGEM[o.origem] ??
+                            COLOR_PIE[idx % COLOR_PIE.length]
+                          }
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(v, _name, props) => {
+                        const pct = (props?.payload as
+                          | { percentual?: number }
+                          | undefined)?.percentual;
+                        return [
+                          `${Number(v) || 0}${
+                            typeof pct === "number"
+                              ? ` (${pct.toFixed(1).replace(".", ",")}%)`
+                              : ""
+                          }`,
+                          "Pacientes",
+                        ];
+                      }}
+                      contentStyle={{
+                        fontSize: 12,
+                        borderRadius: 6,
+                        border: "1px solid #E2E8F0",
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white">
@@ -1484,10 +1590,12 @@ function CardResumo({
   label,
   value,
   accent,
+  icon,
 }: {
   label: string;
   value: string;
   accent: "verde" | "vermelho" | "teal" | "azul" | "neutro";
+  icon?: React.ReactNode;
 }) {
   const accentClass =
     accent === "verde"
@@ -1501,7 +1609,12 @@ function CardResumo({
             : "text-slate-900";
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        {icon ? (
+          <span className={cn("inline-flex items-center", accentClass)}>
+            {icon}
+          </span>
+        ) : null}
         {label}
       </p>
       <p className={cn("mt-1 text-lg font-semibold leading-tight", accentClass)}>

@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Award,
+  CalendarCheck,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
@@ -20,7 +21,10 @@ import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import type { CampoTemplate } from "@/actions/anamnese";
 import { criarEvolucao } from "@/actions/evolucoes";
-import { atualizarStatusAgendamento } from "@/actions/agendamentos";
+import {
+  agendarRetorno,
+  atualizarStatusAgendamento,
+} from "@/actions/agendamentos";
 import { getTemplates, type Template } from "@/actions/anamnese";
 import { verificarLimiteTranscricao } from "@/actions/transcricao";
 import AnamneseDetalhe from "@/components/pacientes/AnamneseDetalhe";
@@ -39,6 +43,7 @@ export type AtendimentoContexto = {
       | "concluido"
       | "faltou"
       | "cancelado";
+    procedimento_id: string | null;
     procedimento_nome: string | null;
   };
   paciente: {
@@ -91,6 +96,19 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   const [isConcluindo, startConcluir] = useTransition();
   const [evolucaoSalvaId, setEvolucaoSalvaId] = useState<string | null>(null);
   const [statusAg, setStatusAg] = useState(contexto.agendamento.status);
+
+  type RetornoOpcao = "sem" | "7" | "15" | "30" | "custom";
+  const [retornoOpcao, setRetornoOpcao] = useState<RetornoOpcao>("sem");
+  const [retornoCustom, setRetornoCustom] = useState<string>("");
+
+  const retornoDias: number | null = (() => {
+    if (retornoOpcao === "sem") return null;
+    if (retornoOpcao === "custom") {
+      const n = Number(retornoCustom);
+      return Number.isFinite(n) && n > 0 && n <= 365 ? Math.round(n) : null;
+    }
+    return Number(retornoOpcao);
+  })();
 
   const [openAnamneseForm, setOpenAnamneseForm] = useState(false);
   const [templatesAnamnese, setTemplatesAnamnese] = useState<Template[]>([]);
@@ -162,7 +180,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
     setTranscricao(info.transcricao);
   };
 
-  const buildPayload = () => ({
+  const buildPayload = (retornoAgendado?: boolean) => ({
     pacienteId: contexto.paciente.id,
     agendamentoId: contexto.agendamento.id,
     anamneseId:
@@ -173,6 +191,8 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
     receita,
     diagnostico,
     planoCuidados,
+    retornoSugeridoDias: retornoDias,
+    retornoAgendado: Boolean(retornoAgendado),
   });
 
   const handleSalvarRascunho = () => {
@@ -192,7 +212,26 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
   const handleConcluir = () => {
     setErro(null);
     startConcluir(async () => {
-      const ev = await criarEvolucao(buildPayload());
+      let retornoAgendado = false;
+      let mensagemRetorno: string | null = null;
+
+      // Tenta agendar retorno antes da evolucao para gravar o flag corretamente
+      if (retornoDias && contexto.agendamento.procedimento_id) {
+        const ar = await agendarRetorno({
+          pacienteId: contexto.paciente.id,
+          procedimentoId: contexto.agendamento.procedimento_id,
+          retornoDias,
+        });
+        if (ar.sucesso) {
+          retornoAgendado = true;
+          const [y, m, d] = ar.dataIso.split("-");
+          mensagemRetorno = `Retorno agendado para ${d}/${m}/${y} as ${ar.hora}.`;
+        } else {
+          mensagemRetorno = `Retorno nao agendado: ${ar.motivo}`;
+        }
+      }
+
+      const ev = await criarEvolucao(buildPayload(retornoAgendado));
       if (!ev.ok) {
         setErro(ev.error);
         return;
@@ -207,9 +246,9 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         return;
       }
       setStatusAg("concluido");
-      setOkMsg(
-        "Atendimento concluido. Voce pode emitir relatorio, plano de cuidados ou atestado.",
-      );
+      const base =
+        "Atendimento concluido. Voce pode emitir relatorio, plano de cuidados ou atestado.";
+      setOkMsg(mensagemRetorno ? `${mensagemRetorno} ${base}` : base);
       router.refresh();
     });
   };
@@ -445,6 +484,70 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
           />
         </div>
       </section>
+
+      {statusAg !== "concluido" ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <CalendarCheck
+              size={16}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="text-primary"
+            />
+            <h2 className="text-sm font-medium text-slate-700">
+              Sugestao de retorno
+            </h2>
+          </div>
+          <p className="text-xs text-slate-500">
+            Ao concluir, agendar automaticamente o proximo retorno do paciente.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { v: "sem", lbl: "Sem retorno" },
+                { v: "7", lbl: "7 dias" },
+                { v: "15", lbl: "15 dias" },
+                { v: "30", lbl: "30 dias" },
+                { v: "custom", lbl: "Personalizar" },
+              ] as { v: typeof retornoOpcao; lbl: string }[]
+            ).map((opt) => (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => setRetornoOpcao(opt.v)}
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                  retornoOpcao === opt.v
+                    ? "border-primary bg-primary text-white"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                )}
+              >
+                {opt.lbl}
+              </button>
+            ))}
+          </div>
+          {retornoOpcao === "custom" ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={retornoCustom}
+                onChange={(e) => setRetornoCustom(e.target.value)}
+                placeholder="Dias"
+                className="w-24 rounded border border-slate-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10"
+              />
+              <span className="text-xs text-slate-500">dias</span>
+            </div>
+          ) : null}
+          {!contexto.agendamento.procedimento_id && retornoOpcao !== "sem" ? (
+            <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Procedimento nao associado a este agendamento. O retorno
+              automatico sera ignorado.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {okMsg ? (
         <p className="rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]">

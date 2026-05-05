@@ -293,12 +293,21 @@ export async function getRelatorioFaturamento(
 
 export type FaixaEtaria = '0-17' | '18-30' | '31-50' | '51-65' | '65+';
 
+export type StatusTratamentoFiltro = 'ativo' | 'alta' | 'inativo' | 'todos';
+
 export type PacientesFiltros = {
   dataInicio?: string;
   dataFim?: string;
   genero?: Genero | 'todos';
   faixaEtaria?: FaixaEtaria | 'todos';
   profissionalId?: string | 'todos';
+  statusTratamento?: StatusTratamentoFiltro;
+};
+
+export type OrigemPacienteRelatorio = {
+  origem: string;
+  quantidade: number;
+  percentual: number;
 };
 
 export type PacientesData = {
@@ -307,8 +316,10 @@ export type PacientesData = {
   novosNoPeriodo: number;
   retornosNoPeriodo: number;
   taxaRetorno: number;
+  pacientesAlta: number;
   porMes: { mes: string; novos: number }[];
   porGenero: { genero: string; total: number }[];
+  porOrigem: OrigemPacienteRelatorio[];
   topPacientes: {
     id: string;
     nome: string;
@@ -358,7 +369,9 @@ export async function getRelatorioPacientes(
 
   const { data: pacientesRows, error: errPac } = await admin
     .from('pacientes')
-    .select('id, nome, genero, data_nascimento, created_at')
+    .select(
+      'id, nome, genero, data_nascimento, created_at, origem, origem_detalhe, status_tratamento',
+    )
     .eq('tenant_id', ctx.tenantId)
     .eq('ativo', true);
   if (errPac) return { ok: false, error: errPac.message };
@@ -369,6 +382,9 @@ export async function getRelatorioPacientes(
     genero: Genero;
     data_nascimento: string;
     created_at: string;
+    origem: string | null;
+    origem_detalhe: string | null;
+    status_tratamento: 'ativo' | 'alta' | 'inativo';
   };
   const todosPacientes: PacRow[] = (pacientesRows ?? []).map((p) => ({
     id: p.id as string,
@@ -376,9 +392,14 @@ export async function getRelatorioPacientes(
     genero: p.genero as Genero,
     data_nascimento: p.data_nascimento as string,
     created_at: p.created_at as string,
+    origem: (p.origem as string | null) ?? null,
+    origem_detalhe: (p.origem_detalhe as string | null) ?? null,
+    status_tratamento:
+      ((p.status_tratamento as 'ativo' | 'alta' | 'inativo' | null) ??
+        'ativo'),
   }));
 
-  // Aplica filtros de genero e faixa etaria
+  // Aplica filtros
   const filtrados = todosPacientes.filter((p) => {
     if (
       filtros.genero &&
@@ -391,6 +412,12 @@ export async function getRelatorioPacientes(
       if (idade === null) return false;
       if (bucketFaixa(idade) !== filtros.faixaEtaria) return false;
     }
+    if (
+      filtros.statusTratamento &&
+      filtros.statusTratamento !== 'todos' &&
+      p.status_tratamento !== filtros.statusTratamento
+    )
+      return false;
     return true;
   });
 
@@ -499,6 +526,39 @@ export async function getRelatorioPacientes(
     ultimaConsulta: t.ultima,
   }));
 
+  // Origem dos pacientes
+  const ORIGEM_LABEL_MAP: Record<string, string> = {
+    instagram: 'Instagram',
+    google: 'Google',
+    indicacao: 'Indicacao',
+    facebook: 'Facebook',
+    site: 'Site',
+    outros: 'Outros',
+  };
+  const origemMap = new Map<string, number>();
+  for (const p of filtrados) {
+    const key = p.origem ?? '__nao_informado__';
+    origemMap.set(key, (origemMap.get(key) ?? 0) + 1);
+  }
+  const totalOrigem = filtrados.length;
+  const porOrigem: OrigemPacienteRelatorio[] = Array.from(origemMap.entries())
+    .map(([key, qtd]) => ({
+      origem:
+        key === '__nao_informado__'
+          ? 'Nao informado'
+          : (ORIGEM_LABEL_MAP[key] ?? key),
+      quantidade: qtd,
+      percentual:
+        totalOrigem > 0
+          ? Math.round((qtd / totalOrigem) * 1000) / 10
+          : 0,
+    }))
+    .sort((a, b) => b.quantidade - a.quantidade);
+
+  const pacientesAlta = filtrados.filter(
+    (p) => p.status_tratamento === 'alta',
+  ).length;
+
   return {
     ok: true,
     data: {
@@ -507,8 +567,10 @@ export async function getRelatorioPacientes(
       novosNoPeriodo,
       retornosNoPeriodo,
       taxaRetorno,
+      pacientesAlta,
       porMes,
       porGenero,
+      porOrigem,
       topPacientes,
     },
   };

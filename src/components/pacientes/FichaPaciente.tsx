@@ -27,6 +27,7 @@ import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import TabDocumentos from "./TabDocumentos";
 import AnamneseDetalhe from "./AnamneseDetalhe";
 import EvolucaoDetalhe from "./EvolucaoDetalhe";
+import AltaPacienteSection from "./AltaPacienteSection";
 import { ORIGEM_LABEL } from "@/lib/paciente-origem";
 
 function formatarAlturaMetros(altura_cm: number): string {
@@ -75,6 +76,9 @@ export type PacienteDetalhe = {
   peso: number | null;
   origem: import("@/lib/paciente-origem").OrigemPaciente | null;
   origem_detalhe: string | null;
+  status_tratamento: "ativo" | "alta" | "inativo";
+  data_alta: string | null;
+  motivo_alta: string | null;
 };
 
 export type ResponsavelDetalhe = {
@@ -229,6 +233,16 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
           Paciente
         </h1>
       </header>
+
+      {paciente.status_tratamento !== "ativo" ? (
+        <AltaPacienteSection
+          pacienteId={paciente.id}
+          pacienteNome={paciente.nome}
+          status={paciente.status_tratamento}
+          dataAlta={paciente.data_alta}
+          motivoAlta={paciente.motivo_alta}
+        />
+      ) : null}
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="flex items-start gap-4">
@@ -473,7 +487,16 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
               </div>
             ) : null}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end gap-2 pt-2">
+              {paciente.status_tratamento === "ativo" ? (
+                <AltaPacienteSection
+                  pacienteId={paciente.id}
+                  pacienteNome={paciente.nome}
+                  status={paciente.status_tratamento}
+                  dataAlta={paciente.data_alta}
+                  motivoAlta={paciente.motivo_alta}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => setModalExclusaoAberto(true)}
