@@ -11,6 +11,7 @@ export type Acao =
   | 'comissao_ver_todos'
   | 'comissao_marcar_pago'
   | 'recalcular_fechamento'
+  | 'estoque_ver_todos'
   | 'relatorios:ver'
   | 'relatorios:financeiro'
   | 'agenda:ver-todos'
@@ -33,6 +34,7 @@ const PERMISSOES: Record<Role, Set<Acao>> = {
     'comissao_ver_todos',
     'comissao_marcar_pago',
     'recalcular_fechamento',
+    'estoque_ver_todos',
     'relatorios:ver',
     'relatorios:financeiro',
     'agenda:ver-todos',

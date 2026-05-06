@@ -254,9 +254,14 @@ export type NovoLancamentoInput = {
   fornecedor?: string | null;
 };
 
+export type CriarLancamentoData = {
+  id: string;
+  sugerirEntradaEstoque?: boolean;
+};
+
 export async function criarLancamento(
   input: NovoLancamentoInput,
-): Promise<Result<{ id: string }>> {
+): Promise<Result<CriarLancamentoData>> {
   const ctx = await obterTenant();
   if (!ctx.ok) return ctx;
 
@@ -357,8 +362,18 @@ export async function criarLancamento(
     return { ok: false, error: error?.message ?? 'Falha ao salvar.' };
   }
 
+  const sugerirEntradaEstoque =
+    input.tipo === 'despesa' &&
+    (categoriaDespesa ?? '').toLowerCase() === 'produtos';
+
   revalidatePath('/financeiro');
-  return { ok: true, data: { id: data.id as string } };
+  return {
+    ok: true,
+    data: {
+      id: data.id as string,
+      sugerirEntradaEstoque: sugerirEntradaEstoque || undefined,
+    },
+  };
 }
 
 export async function atualizarPago(
