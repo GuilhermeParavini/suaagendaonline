@@ -9,6 +9,7 @@ import {
   Calendar,
   ClipboardList,
   Menu,
+  Package,
   Settings,
   Users,
   Wallet,
@@ -45,6 +46,7 @@ const itensMais: ItemMais[] = [
     Icon: ClipboardList,
     badgeKey: "listaEspera",
   },
+  { href: "/estoque", label: "Estoque", Icon: Package },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];

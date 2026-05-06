@@ -12,6 +12,7 @@ import CardUsoTranscricao from "@/components/dashboard/CardUsoTranscricao";
 import CardUsoAssistente from "@/components/dashboard/CardUsoAssistente";
 import BannerUsoTranscricao from "@/components/dashboard/BannerUsoTranscricao";
 import CardListaEspera from "@/components/dashboard/CardListaEspera";
+import CardEstoqueBaixo from "@/components/dashboard/CardEstoqueBaixo";
 import {
   getPacientesParaAcompanhar,
   type PacienteAcompanhamento,
@@ -19,6 +20,7 @@ import {
 import { getUsoTranscricao } from "@/actions/transcricao";
 import { getUsoAssistente } from "@/actions/assistente-uso";
 import { getContagemListaEspera } from "@/actions/lista-espera";
+import { getProdutosAlerta } from "@/actions/estoque";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -155,6 +157,9 @@ export default async function DashboardPage() {
   const contagemEsperaRes = await getContagemListaEspera();
   const contagemListaEspera = contagemEsperaRes.ok ? contagemEsperaRes.data : 0;
 
+  const alertaRes = await getProdutosAlerta();
+  const contagemEstoqueBaixo = alertaRes.ok ? alertaRes.data.length : 0;
+
   const mostrarAcompanhamento =
     (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
 
@@ -202,6 +207,8 @@ export default async function DashboardPage() {
       ) : null}
 
       <CardListaEspera contagem={contagemListaEspera} />
+
+      <CardEstoqueBaixo contagem={contagemEstoqueBaixo} />
 
       {/* Próximos agendamentos */}
       <section className="space-y-3">

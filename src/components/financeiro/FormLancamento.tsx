@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Package, X } from "lucide-react";
 import {
   brDateToIso,
   formatCurrencyInput,
@@ -94,6 +95,7 @@ function FormLancamento({
 }: FormLancamentoProps) {
   const [apiError, setApiError] = useState<string | null>(null);
   const [convenios, setConvenios] = useState<string[]>([]);
+  const [sugerirEstoque, setSugerirEstoque] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -153,6 +155,7 @@ function FormLancamento({
         observacoes: "",
       });
       setApiError(null);
+      setSugerirEstoque(false);
     }
     onOpenChange(next);
   };
@@ -201,8 +204,12 @@ function FormLancamento({
         setApiError(result.error);
         return;
       }
-      handleOpenChange(false);
       onCreated();
+      if (result.data.sugerirEntradaEstoque) {
+        setSugerirEstoque(true);
+      } else {
+        handleOpenChange(false);
+      }
     });
   };
 
@@ -221,7 +228,7 @@ function FormLancamento({
 
           <div className="flex items-start justify-between gap-3 shrink-0">
             <Dialog.Title className="text-base font-semibold text-slate-900">
-              Novo lançamento
+              {sugerirEstoque ? "Lançamento salvo" : "Novo lançamento"}
             </Dialog.Title>
             <Dialog.Close
               aria-label="Fechar"
@@ -231,6 +238,43 @@ function FormLancamento({
             </Dialog.Close>
           </div>
 
+          {sugerirEstoque ? (
+            <div className="mt-4 flex-1 overflow-y-auto space-y-4">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-700">
+                    <Package size={16} strokeWidth={1.5} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-amber-900">
+                      Registrar entrada no estoque?
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-800">
+                      Voce comprou produtos. Que tal lancar a entrada agora
+                      para manter o estoque atualizado?
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleOpenChange(false)}
+                  className="rounded border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Agora nao
+                </button>
+                <Link
+                  href="/estoque"
+                  onClick={() => handleOpenChange(false)}
+                  className="inline-flex items-center justify-center rounded bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark transition-colors"
+                >
+                  Ir para estoque
+                </Link>
+              </div>
+            </div>
+          ) : (
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="mt-4 flex-1 overflow-y-auto space-y-4"
@@ -440,6 +484,7 @@ function FormLancamento({
               </button>
             </div>
           </form>
+          )}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

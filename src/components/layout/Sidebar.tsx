@@ -9,6 +9,7 @@ import {
   Wallet,
   BarChart3,
   ClipboardList,
+  Package,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const items: SidebarItem[] = [
     badgeKey: "listaEspera",
   },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
+  { href: "/estoque", label: "Estoque", Icon: Package },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
