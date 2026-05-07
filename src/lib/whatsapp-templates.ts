@@ -164,5 +164,28 @@ export function mensagemSentimosFalta(d: DadosSentimosFalta): string {
   return partes.join("\n");
 }
 
+export interface DadosCobranca {
+  nome: string;
+  /** Valor formatado (ex: "120,00" ou "1.234,56"). */
+  valor: string;
+  /** Numero de dias em atraso (opcional, exibido se > 0). */
+  diasAtraso?: number;
+}
+
+export function mensagemCobranca(d: DadosCobranca): string {
+  const partes: string[] = [
+    `Ola ${primeiroNome(d.nome)}! Verificamos que voce possui um saldo pendente de R$ ${d.valor} referente a consultas realizadas.`,
+  ];
+  if (d.diasAtraso && d.diasAtraso > 0) {
+    partes.push(
+      `O lancamento mais antigo esta em aberto ha ${d.diasAtraso} ${d.diasAtraso === 1 ? "dia" : "dias"}.`,
+    );
+  }
+  partes.push(
+    "Caso ja tenha efetuado o pagamento, desconsidere esta mensagem. Qualquer duvida, estamos a disposicao!",
+  );
+  return partes.join("\n");
+}
+
 // Re-export bloco/primeiroNome para uso em telas (compor mensagens custom).
 export const _internals = { bloco, primeiroNome };

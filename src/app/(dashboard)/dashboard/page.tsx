@@ -42,6 +42,8 @@ interface AgendamentoRow {
   pacientes: { nome: string } | { nome: string }[] | null;
 }
 
+export const metadata = { title: "Dashboard" };
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

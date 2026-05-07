@@ -117,6 +117,44 @@ input[type="reset"]:not(.no-touch-min) {
 }
 
 /*
+ * Focus visivel global (WCAG 2.4.7).
+ * Aplica anel teal ao redor de qualquer elemento com foco por teclado.
+ * Componentes que ja definem focus-visible:* especifico (focus-visible:ring,
+ * focus-visible:outline) sobrescrevem este default — esta regra e fallback.
+ */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/*
+ * Skip link (acessibilidade): aparece apenas quando recebe foco por Tab,
+ * permitindo que usuarios de teclado pulem direto para o conteudo principal.
+ */
+.sao-skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 100;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform 150ms ease-out;
+}
+.sao-skip-link:focus,
+.sao-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/*
  * Skeleton shimmer.
  * Bg base (slate-200) com gradiente animado deslocando da esquerda para a
  * direita simulando "carregando". Respeita prefers-reduced-motion.

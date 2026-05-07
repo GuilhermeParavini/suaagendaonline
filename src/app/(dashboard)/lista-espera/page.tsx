@@ -4,6 +4,7 @@ import { getListaEspera } from "@/actions/lista-espera";
 import { listarProfissionaisAtivosTenant } from "@/actions/equipe";
 import ListaEsperaClient from "@/components/lista-espera/ListaEsperaClient";
 
+export const metadata = { title: "Lista de espera" };
 export const dynamic = "force-dynamic";
 
 export default async function ListaEsperaPage() {

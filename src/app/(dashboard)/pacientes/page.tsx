@@ -4,6 +4,7 @@ import ListaPacientes from "@/components/pacientes/ListaPacientes";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import type { PacienteListItem } from "@/actions/pacientes";
 
+export const metadata = { title: "Pacientes" };
 export const dynamic = "force-dynamic";
 
 export default async function PacientesPage() {

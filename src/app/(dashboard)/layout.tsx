@@ -82,6 +82,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen flex bg-slate-50">
+      <a href="#main-content" className="sao-skip-link no-touch-min">
+        Pular para o conteudo
+      </a>
       <Sidebar
         logoUrl={logoUrl}
         contagemListaEspera={contagemListaEspera}
@@ -91,7 +94,10 @@ export default async function DashboardLayout({
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header userName={userName} />
-        <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 mb-20 lg:mb-0">
+        <main
+          id="main-content"
+          className="flex-1 px-4 py-4 lg:px-6 lg:py-6 mb-20 lg:mb-0"
+        >
           <div className="w-full lg:max-w-[960px] lg:mx-auto">{children}</div>
         </main>
       </div>

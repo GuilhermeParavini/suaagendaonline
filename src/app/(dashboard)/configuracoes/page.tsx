@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getConfiguracoes } from "@/actions/configuracoes";
 import ConfiguracoesClient from "@/components/configuracoes/ConfiguracoesClient";
 
+export const metadata = { title: "Configuracoes" };
 export const dynamic = "force-dynamic";
 
 export default async function ConfiguracoesPage() {

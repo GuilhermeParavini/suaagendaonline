@@ -5,9 +5,14 @@ import {
   listarPacientesOptions,
 } from "@/actions/financeiro";
 import { getComissoesTenant } from "@/actions/comissoes";
+import { getInadimplentes } from "@/actions/inadimplencia";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import FinanceiroClient from "@/components/financeiro/FinanceiroClient";
 import PullToRefresh from "@/components/ui/PullToRefresh";
+
+export const metadata = {
+  title: "Financeiro",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +38,7 @@ export default async function FinanceiroPage() {
   const mes = hoje.getMonth() + 1;
   const ano = hoje.getFullYear();
 
-  const [resumoRes, lancamentosRes, pacientesRes, comissoesRes] =
+  const [resumoRes, lancamentosRes, pacientesRes, comissoesRes, inadimplenciaRes] =
     await Promise.all([
       getResumoFinanceiro(mes, ano),
       getLancamentos({
@@ -47,6 +52,7 @@ export default async function FinanceiroPage() {
       role === "admin"
         ? getComissoesTenant()
         : Promise.resolve({ ok: true as const, data: [] }),
+      getInadimplentes(),
     ]);
 
   if (!resumoRes.ok) {
@@ -75,6 +81,10 @@ export default async function FinanceiroPage() {
     ? comissoesRes.data.filter((c) => c.ativo).length
     : 0;
 
+  const inadimplencia = inadimplenciaRes.ok
+    ? inadimplenciaRes.data
+    : { items: [], totalPendente: 0 };
+
   return (
     <PullToRefresh>
       <FinanceiroClient
@@ -85,6 +95,8 @@ export default async function FinanceiroPage() {
         pacientes={pacientesRes.data}
         role={role}
         totalComissoesAtivas={totalComissoesAtivas}
+        inadimplenciaItems={inadimplencia.items}
+        inadimplenciaTotal={inadimplencia.totalPendente}
       />
     </PullToRefresh>
   );

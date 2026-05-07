@@ -24,6 +24,8 @@ import { useScrollRestore } from "@/hooks/useScrollRestore";
 import ListaLancamentos from "./ListaLancamentos";
 import FormLancamento from "./FormLancamento";
 import FinanceiroAdmin from "./FinanceiroAdmin";
+import CardInadimplencia from "./CardInadimplencia";
+import type { InadimplenteResumo } from "@/actions/inadimplencia";
 
 interface FinanceiroClientProps {
   initialMes: number;
@@ -33,6 +35,8 @@ interface FinanceiroClientProps {
   pacientes: PacienteOption[];
   role: "admin" | "profissional" | "secretaria";
   totalComissoesAtivas: number;
+  inadimplenciaItems: InadimplenteResumo[];
+  inadimplenciaTotal: number;
 }
 
 const MESES = [
@@ -68,6 +72,8 @@ function FinanceiroClient({
   pacientes,
   role,
   totalComissoesAtivas,
+  inadimplenciaItems,
+  inadimplenciaTotal,
 }: FinanceiroClientProps) {
   useScrollRestore("scroll-financeiro");
   const [mes, setMes] = useState(initialMes);
@@ -236,6 +242,13 @@ function FinanceiroClient({
           {MESES[mes - 1]} de {ano}
         </p>
       </header>
+
+      {inadimplenciaItems.length > 0 ? (
+        <CardInadimplencia
+          items={inadimplenciaItems}
+          totalPendente={inadimplenciaTotal}
+        />
+      ) : null}
 
       {resumo.temComissao ? (
         <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">

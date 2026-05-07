@@ -24,6 +24,7 @@ import ChecklistOnboardingWrapper from "@/components/onboarding/ChecklistOnboard
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import { cn } from "@/lib/utils";
 
+export const metadata = { title: "Inicio" };
 export const dynamic = "force-dynamic";
 
 const STATUS_VALIDOS: StatusVariant[] = [

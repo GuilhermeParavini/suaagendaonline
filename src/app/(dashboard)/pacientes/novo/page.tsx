@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import NovoPacienteForm from "@/components/pacientes/NovoPacienteForm";
 
+export const metadata = { title: "Novo paciente" };
 export const dynamic = "force-dynamic";
 
 export default async function NovoPacientePage() {

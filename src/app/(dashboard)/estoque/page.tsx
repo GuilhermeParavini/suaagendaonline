@@ -5,6 +5,7 @@ import { listarProfissionaisAtivosTenant } from "@/actions/equipe";
 import EstoqueClient from "@/components/estoque/EstoqueClient";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 
+export const metadata = { title: "Estoque" };
 export const dynamic = "force-dynamic";
 
 interface EstoquePageProps {

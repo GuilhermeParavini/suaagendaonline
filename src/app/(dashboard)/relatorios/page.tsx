@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getRelatorioFaturamento } from "@/actions/relatorios";
 import { LazyRelatoriosClient } from "@/lib/dynamic-imports";
 
+export const metadata = { title: "Relatorios" };
 export const dynamic = "force-dynamic";
 
 export default async function RelatoriosPage() {
