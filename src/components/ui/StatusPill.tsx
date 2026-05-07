@@ -51,7 +51,7 @@ function StatusPill({ status, className, children, ...props }: StatusPillProps) 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-[3px] text-[11px] font-medium leading-none",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium leading-none",
         style.className,
         className,
       )}

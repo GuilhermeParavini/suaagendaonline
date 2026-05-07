@@ -2,6 +2,7 @@ import { createAdminClient, createClient } from '@/lib/supabase/server';
 import type { CampoTemplate, CampoTipo } from '@/actions/anamnese';
 import { calculateAge } from '@/lib/validators';
 import { dataPorExtenso } from '@/lib/email-templates';
+import { mascaraCPF as mascaraCPFPadrao } from '@/lib/masks';
 
 export type AnamneseImpressaoData = {
   templateNome: string;
@@ -57,9 +58,8 @@ function normalizarCampos(raw: unknown): CampoTemplate[] {
 }
 
 function mascararCPF(cpf: string | null): string {
-  const d = (cpf ?? '').replace(/\D/g, '');
-  if (d.length !== 11) return '—';
-  return `***.***.${d.slice(6, 9)}-${d.slice(9)}`;
+  // LGPD: apenas 2 ultimos digitos.
+  return mascaraCPFPadrao(cpf) || '—';
 }
 
 function isoToBR(iso: string | null): string {

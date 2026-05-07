@@ -5,6 +5,10 @@ import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import AssistenteBubble from "@/components/assistente/AssistenteBubble";
 import { getContagemListaEspera } from "@/actions/lista-espera";
+import {
+  normalizarModulosAtivos,
+  type ModulosAtivos,
+} from "@/lib/planos";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +17,7 @@ type ProfissionalInfo = {
   nome?: string;
   logoUrl?: string | null;
   plano?: string;
+  modulos?: ModulosAtivos;
 };
 
 async function getProfissionalInfo(): Promise<ProfissionalInfo> {
@@ -40,15 +45,17 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
 
   const { data: tenant } = await admin
     .from("tenants")
-    .select("plano")
+    .select("plano, modulos_ativos")
     .eq("id", prof.tenant_id as string)
     .maybeSingle();
 
+  const plano = (tenant?.plano as string | undefined) ?? "trial";
   return {
     id: (prof.id as string | undefined) ?? undefined,
     nome: (prof.nome as string | undefined) ?? undefined,
     logoUrl: (prof.logo_url as string | null | undefined) ?? null,
-    plano: (tenant?.plano as string | undefined) ?? "trial",
+    plano,
+    modulos: normalizarModulosAtivos(tenant?.modulos_ativos, plano),
   };
 }
 
@@ -57,21 +64,28 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { id: profId, nome: userName, logoUrl, plano } =
+  const { id: profId, nome: userName, logoUrl, plano, modulos } =
     await getProfissionalInfo();
   const contagemRes = await getContagemListaEspera();
   const contagemListaEspera = contagemRes.ok ? contagemRes.data : 0;
 
   return (
     <div className="min-h-screen flex bg-slate-50">
-      <Sidebar logoUrl={logoUrl} contagemListaEspera={contagemListaEspera} />
+      <Sidebar
+        logoUrl={logoUrl}
+        contagemListaEspera={contagemListaEspera}
+        modulos={modulos}
+      />
       <div className="flex-1 flex flex-col min-w-0">
         <Header userName={userName} />
         <main className="flex-1 px-4 py-4 lg:px-6 lg:py-6 mb-20 lg:mb-0">
           <div className="w-full lg:max-w-[960px] lg:mx-auto">{children}</div>
         </main>
       </div>
-      <BottomNav contagemListaEspera={contagemListaEspera} />
+      <BottomNav
+        contagemListaEspera={contagemListaEspera}
+        modulos={modulos}
+      />
       {profId ? (
         <AssistenteBubble
           profissionalId={profId}

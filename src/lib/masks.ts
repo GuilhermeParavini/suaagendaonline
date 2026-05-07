@@ -30,6 +30,17 @@ export function formatCPF(value: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
+// LGPD: oculta o CPF em listagens, fichas e relatorios — exibe apenas os
+// 2 ultimos digitos. O CPF completo deve aparecer apenas no formulario de
+// edicao do paciente, em campo claramente identificado.
+export function mascaraCPF(value: string | null | undefined): string {
+  if (!value) return "";
+  const digits = cleanCPF(value);
+  if (digits.length === 0) return "";
+  const ultimos = digits.slice(-2).padStart(2, "*");
+  return `***.***.***-${ultimos}`;
+}
+
 export function cleanCEP(value: string): string {
   return value.replace(/\D/g, "");
 }

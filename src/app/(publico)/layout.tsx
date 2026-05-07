@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import SeloLGPD from "@/components/ui/SeloLGPD";
 
 export default function PublicoLayout({ children }: { children: ReactNode }) {
   return (
@@ -12,6 +13,9 @@ export default function PublicoLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="mx-auto w-full max-w-[480px] flex-1 px-4 py-6">
         {children}
+        <div className="mt-8 flex justify-center">
+          <SeloLGPD />
+        </div>
       </main>
       <footer className="border-t border-slate-200 py-4">
         <p className="text-center text-[11px] text-slate-400">

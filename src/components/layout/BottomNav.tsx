@@ -17,9 +17,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ModuloId, ModulosAtivos } from "@/lib/planos";
 
 interface BottomNavProps {
   contagemListaEspera?: number;
+  modulos?: ModulosAtivos;
 }
 
 const itensFixos: {
@@ -37,6 +39,7 @@ type ItemMais = {
   label: string;
   Icon: LucideIcon;
   badgeKey?: "listaEspera";
+  modulo?: ModuloId;
 };
 
 const itensMais: ItemMais[] = [
@@ -46,7 +49,7 @@ const itensMais: ItemMais[] = [
     Icon: ClipboardList,
     badgeKey: "listaEspera",
   },
-  { href: "/estoque", label: "Estoque", Icon: Package },
+  { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
@@ -55,10 +58,16 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function BottomNav({ contagemListaEspera = 0 }: BottomNavProps = {}) {
+function BottomNav({
+  contagemListaEspera = 0,
+  modulos,
+}: BottomNavProps = {}) {
   const pathname = usePathname();
   const [maisOpen, setMaisOpen] = useState(false);
-  const maisAtivo = itensMais.some((it) => isActive(pathname, it.href));
+  const itensMaisVisiveis = itensMais.filter(
+    (it) => !it.modulo || (modulos ? modulos[it.modulo] !== false : true),
+  );
+  const maisAtivo = itensMaisVisiveis.some((it) => isActive(pathname, it.href));
   const temBadgeMais = contagemListaEspera > 0;
 
   return (
@@ -126,7 +135,7 @@ function BottomNav({ contagemListaEspera = 0 }: BottomNavProps = {}) {
                   </Dialog.Close>
                 </div>
                 <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-                  {itensMais.map(({ href, label, Icon, badgeKey }) => {
+                  {itensMaisVisiveis.map(({ href, label, Icon, badgeKey }) => {
                     const active = isActive(pathname, href);
                     const badge =
                       badgeKey === "listaEspera" && contagemListaEspera > 0

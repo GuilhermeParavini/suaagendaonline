@@ -25,7 +25,7 @@ function MetricCard({
       )}
       {...props}
     >
-      <span className="text-xs font-normal text-slate-500 leading-tight">
+      <span className="text-[12px] font-normal text-slate-500 leading-tight">
         {label}
       </span>
       <span className="text-[24px] font-medium text-slate-900 leading-tight">
@@ -34,7 +34,7 @@ function MetricCard({
       {trend && (
         <span
           className={cn(
-            "text-[11px] font-medium leading-tight",
+            "text-[12px] font-medium leading-tight",
             trend.direction === "up" ? "text-success" : "text-danger",
           )}
         >

@@ -14,10 +14,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ModuloId, ModulosAtivos } from "@/lib/planos";
 
 interface SidebarProps {
   logoUrl?: string | null;
   contagemListaEspera?: number;
+  modulos?: ModulosAtivos;
 }
 
 type SidebarItem = {
@@ -26,6 +28,7 @@ type SidebarItem = {
   Icon: LucideIcon;
   exact?: boolean;
   badgeKey?: "listaEspera";
+  modulo?: ModuloId;
 };
 
 const items: SidebarItem[] = [
@@ -39,7 +42,7 @@ const items: SidebarItem[] = [
     badgeKey: "listaEspera",
   },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
-  { href: "/estoque", label: "Estoque", Icon: Package },
+  { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
   { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
@@ -52,8 +55,12 @@ function isActive(pathname: string, href: string, exact?: boolean): boolean {
 function Sidebar({
   logoUrl,
   contagemListaEspera = 0,
+  modulos,
 }: SidebarProps = {}) {
   const pathname = usePathname();
+  const itensVisiveis = items.filter(
+    (it) => !it.modulo || (modulos ? modulos[it.modulo] !== false : true),
+  );
 
   return (
     <aside className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen bg-white border-r border-slate-200">
@@ -75,7 +82,7 @@ function Sidebar({
       </div>
       <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {items.map(({ href, label, Icon, exact, badgeKey }) => {
+          {itensVisiveis.map(({ href, label, Icon, exact, badgeKey }) => {
             const active = isActive(pathname, href, exact);
             const badge =
               badgeKey === "listaEspera" && contagemListaEspera > 0

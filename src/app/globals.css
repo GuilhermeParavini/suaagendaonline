@@ -5,6 +5,7 @@
   --color-primary-dark: #115E59;
   --color-primary-light: #99F6E4;
   --color-primary-surface: #F0FDFA;
+  --color-primary-text: #0F766E;
 
   --color-accent: #F97316;
   --color-accent-surface: #FFF7ED;
@@ -20,6 +21,16 @@
 
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
+  --font-size-display: 32px;
+  --font-size-h1: 24px;
+  --font-size-h2: 20px;
+  --font-size-h3: 18px;
+  --font-size-body: 16px;
+  --font-size-body-small: 14px;
+  --font-size-label: 14px;
+  --font-size-caption: 13px;
+  --font-size-micro: 12px;
+
   --radius: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
@@ -33,13 +44,34 @@
 :root {
   --color-text-primary: #0F172A;
   --color-text-secondary: #64748B;
-  --color-text-tertiary: #94A3B8;
+  --color-text-tertiary: #64748B;
+  --color-text-muted: #94A3B8;
   --color-border: #E2E8F0;
   --color-border-hover: #CBD5E1;
   --color-bg-page: #F8FAFC;
   --color-bg-card: #FFFFFF;
   --color-bg-surface: #F1F5F9;
+
+  --touch-min: 44px;
 }
+
+/*
+ * Dark mode (preparado, ativacao futura).
+ * Para ativar, descomente o bloco abaixo e injete data-theme="dark"
+ * (ou prefers-color-scheme).
+ *
+ * [data-theme="dark"] {
+ *   --color-text-primary: #F1F5F9;
+ *   --color-text-secondary: #94A3B8;
+ *   --color-text-tertiary: #94A3B8;
+ *   --color-text-muted: #64748B;
+ *   --color-border: #334155;
+ *   --color-border-hover: #475569;
+ *   --color-bg-page: #0F172A;
+ *   --color-bg-card: #1E293B;
+ *   --color-bg-surface: #334155;
+ * }
+ */
 
 *,
 *::before,
@@ -62,4 +94,21 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Touch target minimo (WCAG 2.5.5).
+ * Aplica 44x44px em qualquer elemento clicavel/interativo.
+ * Use a classe utilitaria `no-touch-min` para anular em elementos
+ * decorativos que nao precisam atender ao alvo (ex: chips dentro de
+ * lista densa, links inline em paragrafo).
+ */
+button:not(.no-touch-min),
+a:not(.no-touch-min),
+[role="button"]:not(.no-touch-min),
+input[type="button"]:not(.no-touch-min),
+input[type="submit"]:not(.no-touch-min),
+input[type="reset"]:not(.no-touch-min) {
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
 }
