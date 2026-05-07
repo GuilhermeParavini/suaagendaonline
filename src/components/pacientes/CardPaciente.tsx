@@ -6,6 +6,7 @@ import Avatar from "@/components/ui/Avatar";
 import { formatPhone } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import type { PacienteListItem } from "@/actions/pacientes";
+import { IconeContatoPreferencial } from "./ContatoPreferencial";
 
 interface CardPacienteProps {
   paciente: PacienteListItem;
@@ -60,12 +61,16 @@ function CardPaciente({ paciente }: CardPacienteProps) {
             {telefoneFormatado ? (
               <span
                 className={cn(
-                  "truncate",
+                  "inline-flex items-center gap-1 truncate",
                   paciente.email
                     ? "text-slate-500"
                     : "font-medium text-slate-700",
                 )}
               >
+                <IconeContatoPreferencial
+                  canal={paciente.contato_preferencial}
+                  size={12}
+                />
                 {telefoneFormatado}
               </span>
             ) : null}

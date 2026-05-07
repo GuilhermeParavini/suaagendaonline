@@ -30,6 +30,10 @@ import {
   type OrigemPaciente,
 } from "@/lib/paciente-origem";
 import { cn } from "@/lib/utils";
+import ContatoPreferencial, {
+  CONTATO_VALORES,
+  type ContatoCanal,
+} from "@/components/pacientes/ContatoPreferencial";
 
 type Step = "identificacao" | "template" | "anamnese" | "sucesso";
 
@@ -80,6 +84,7 @@ const cadastroSchema = z
     convenio: z.string().optional(),
     origem: z.string(),
     origem_detalhe: z.string(),
+    contato_preferencial: z.enum(CONTATO_VALORES),
     aceite_lgpd: z
       .boolean()
       .refine((v) => v === true, "É necessário aceitar o termo"),
@@ -197,6 +202,7 @@ function PreConsultaFlow({
       convenio: "",
       origem: "",
       origem_detalhe: "",
+      contato_preferencial: "whatsapp",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -313,6 +319,7 @@ function PreConsultaFlow({
           origemFinal === "outros"
             ? data.origem_detalhe?.trim() || null
             : null,
+        contato_preferencial: data.contato_preferencial,
         aceiteLgpd: data.aceite_lgpd,
         responsavel: showResponsavel
           ? {
@@ -676,6 +683,19 @@ function PreConsultaFlow({
                   ) : null}
                 </div>
               </div>
+
+              <ContatoPreferencial
+                value={
+                  cadastroForm.watch("contato_preferencial") as ContatoCanal
+                }
+                onChange={(v) =>
+                  cadastroForm.setValue("contato_preferencial", v, {
+                    shouldDirty: true,
+                    shouldValidate: false,
+                  })
+                }
+                name="contato_preferencial_pre"
+              />
 
               <div className="space-y-1">
                 <label className={labelClass}>Convênio</label>

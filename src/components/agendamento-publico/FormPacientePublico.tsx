@@ -27,6 +27,10 @@ import {
   ORIGENS_VALIDAS,
   type OrigemPaciente,
 } from "@/lib/paciente-origem";
+import ContatoPreferencial, {
+  CONTATO_VALORES,
+  type ContatoCanal,
+} from "@/components/pacientes/ContatoPreferencial";
 
 const brazilianStates = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -95,6 +99,7 @@ const schema = z
       ),
     origem: z.string(),
     origem_detalhe: z.string(),
+    contato_preferencial: z.enum(CONTATO_VALORES),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
     resp_telefone: z.string().optional(),
@@ -199,6 +204,7 @@ function FormPacientePublico({
       cep: "",
       origem: "",
       origem_detalhe: "",
+      contato_preferencial: "whatsapp",
       resp_nome: "",
       resp_cpf: "",
       resp_telefone: "",
@@ -345,6 +351,7 @@ function FormPacientePublico({
       origem: origemFinal,
       origem_detalhe:
         origemFinal === "outros" ? data.origem_detalhe?.trim() || null : null,
+      contato_preferencial: data.contato_preferencial,
       responsavel: showResponsavel
         ? {
             nome: data.resp_nome ?? "",
@@ -448,6 +455,17 @@ function FormPacientePublico({
           {errors.email ? <p className={errorClass}>{errors.email.message}</p> : null}
         </div>
       </div>
+
+      <ContatoPreferencial
+        value={watch("contato_preferencial") as ContatoCanal}
+        onChange={(v) =>
+          setValue("contato_preferencial", v, {
+            shouldDirty: true,
+            shouldValidate: false,
+          })
+        }
+        name="contato_preferencial_pub"
+      />
 
       {showResponsavel ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 space-y-4">

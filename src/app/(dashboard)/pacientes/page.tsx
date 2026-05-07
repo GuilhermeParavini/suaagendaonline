@@ -26,7 +26,7 @@ export default async function PacientesPage() {
     const { data: pacientes } = await admin
       .from("pacientes")
       .select(
-        "id, nome, telefone, email, convenio, menor_idade, status_tratamento",
+        "id, nome, telefone, email, convenio, menor_idade, status_tratamento, contato_preferencial",
       )
       .eq("tenant_id", prof.tenant_id)
       .eq("ativo", true)
@@ -54,21 +54,29 @@ export default async function PacientesPage() {
       }
     }
 
-    initialPacientes = lista.map((p) => ({
-      id: p.id as string,
-      nome: p.nome as string,
-      telefone: (p.telefone as string) ?? "",
-      email: (p.email as string | null) ?? null,
-      convenio: (p.convenio as string | null) ?? null,
-      menor_idade: Boolean(p.menor_idade),
-      ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
-      status_tratamento:
-        ((p.status_tratamento as
-          | "ativo"
-          | "alta"
-          | "inativo"
-          | null) ?? "ativo"),
-    }));
+    initialPacientes = lista.map((p) => {
+      const cp = p.contato_preferencial as string | null;
+      const contato_preferencial: PacienteListItem["contato_preferencial"] =
+        cp === "telefone" || cp === "email" || cp === "sms" || cp === "whatsapp"
+          ? cp
+          : "whatsapp";
+      return {
+        id: p.id as string,
+        nome: p.nome as string,
+        telefone: (p.telefone as string) ?? "",
+        email: (p.email as string | null) ?? null,
+        convenio: (p.convenio as string | null) ?? null,
+        menor_idade: Boolean(p.menor_idade),
+        ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
+        status_tratamento:
+          ((p.status_tratamento as
+            | "ativo"
+            | "alta"
+            | "inativo"
+            | null) ?? "ativo"),
+        contato_preferencial,
+      };
+    });
   }
 
   return <ListaPacientes initialPacientes={initialPacientes} />;

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cleanCPF, cleanCEP, cleanPhone } from '@/lib/masks';
 import { validateCPF, isValidBirthDate, isMinor } from '@/lib/validators';
@@ -17,6 +18,19 @@ import {
 
 export type StatusTratamento = 'ativo' | 'alta' | 'inativo';
 
+export type ContatoPreferencial = 'whatsapp' | 'telefone' | 'email' | 'sms';
+
+const contatoPreferencialSchema = z
+  .enum(['whatsapp', 'telefone', 'email', 'sms'])
+  .default('whatsapp');
+
+function parseContatoPreferencial(
+  raw: unknown,
+): ContatoPreferencial {
+  const r = contatoPreferencialSchema.safeParse(raw);
+  return r.success ? r.data : 'whatsapp';
+}
+
 export type PacienteListItem = {
   id: string;
   nome: string;
@@ -26,6 +40,7 @@ export type PacienteListItem = {
   menor_idade: boolean;
   ultima_consulta: string | null;
   status_tratamento: StatusTratamento;
+  contato_preferencial: ContatoPreferencial;
 };
 
 type GetPacientesResult =
@@ -51,7 +66,7 @@ async function buildList(
   let pacientesQuery = admin
     .from('pacientes')
     .select(
-      'id, nome, telefone, email, convenio, menor_idade, status_tratamento',
+      'id, nome, telefone, email, convenio, menor_idade, status_tratamento, contato_preferencial',
     )
     .eq('tenant_id', tenantId)
     .eq('ativo', true);
@@ -122,6 +137,7 @@ async function buildList(
     ultima_consulta: ultimaPorPaciente.get(p.id as string) ?? null,
     status_tratamento:
       ((p.status_tratamento as StatusTratamento | null) ?? 'ativo'),
+    contato_preferencial: parseContatoPreferencial(p.contato_preferencial),
   }));
 }
 
@@ -216,6 +232,7 @@ export type NovoPacienteInput = {
   peso?: number | null;
   origem?: OrigemPaciente | null;
   origem_detalhe?: string | null;
+  contato_preferencial?: ContatoPreferencial;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -347,6 +364,10 @@ export async function createPaciente(
     input.origem_detalhe,
   );
 
+  const contatoPreferencial = parseContatoPreferencial(
+    input.contato_preferencial,
+  );
+
   // Inserir paciente
   const { data: pacienteRow, error: insertError } = await admin
     .from('pacientes')
@@ -367,6 +388,7 @@ export async function createPaciente(
       peso,
       origem,
       origem_detalhe,
+      contato_preferencial: contatoPreferencial,
       ativo: true,
     })
     .select('id')
@@ -436,6 +458,7 @@ export type AtualizarPacienteInput = {
   peso?: number | null;
   origem?: OrigemPaciente | null;
   origem_detalhe?: string | null;
+  contato_preferencial?: ContatoPreferencial;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -558,6 +581,10 @@ export async function atualizarPaciente(
     input.origem_detalhe,
   );
 
+  const contatoPreferencial = parseContatoPreferencial(
+    input.contato_preferencial,
+  );
+
   const { error: updError } = await admin
     .from('pacientes')
     .update({
@@ -576,6 +603,7 @@ export async function atualizarPaciente(
       peso,
       origem,
       origem_detalhe,
+      contato_preferencial: contatoPreferencial,
     })
     .eq('id', id);
   if (updError) return { ok: false, error: updError.message };
@@ -636,6 +664,7 @@ export type CadastroAvulsoInput = {
   convenio?: string;
   origem?: OrigemPaciente | null;
   origem_detalhe?: string | null;
+  contato_preferencial?: ContatoPreferencial;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -788,6 +817,10 @@ export async function cadastrarPacienteAvulso(
   const { origem: origemAvulso, origem_detalhe: origemDetalheAvulso } =
     normalizarOrigem(input.origem, input.origem_detalhe);
 
+  const contatoPreferencial = parseContatoPreferencial(
+    input.contato_preferencial,
+  );
+
   const { data: pacRow, error: insErr } = await admin
     .from('pacientes')
     .insert({
@@ -801,6 +834,7 @@ export async function cadastrarPacienteAvulso(
       convenio: input.convenio?.trim() || null,
       origem: origemAvulso,
       origem_detalhe: origemDetalheAvulso,
+      contato_preferencial: contatoPreferencial,
       ativo: true,
     })
     .select('id')

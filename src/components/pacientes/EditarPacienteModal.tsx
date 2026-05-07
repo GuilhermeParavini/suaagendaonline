@@ -36,6 +36,10 @@ import type {
   PacienteDetalhe,
   ResponsavelDetalhe,
 } from "./FichaPaciente";
+import ContatoPreferencial, {
+  CONTATO_VALORES,
+  type ContatoCanal,
+} from "./ContatoPreferencial";
 
 const brazilianStates = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -117,6 +121,7 @@ const formSchema = z
       }, "Peso entre 1 e 500 kg"),
     origem: z.string(),
     origem_detalhe: z.string(),
+    contato_preferencial: z.enum(CONTATO_VALORES),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
     resp_telefone: z.string().optional(),
@@ -236,6 +241,7 @@ function EditarPacienteModal({
         : "",
     origem: paciente.origem ?? "",
     origem_detalhe: paciente.origem_detalhe ?? "",
+    contato_preferencial: paciente.contato_preferencial ?? "whatsapp",
     resp_nome: responsavel?.nome ?? "",
     resp_cpf: responsavel ? formatCPF(responsavel.cpf) : "",
     resp_telefone: responsavel ? formatPhone(responsavel.telefone) : "",
@@ -319,6 +325,7 @@ function EditarPacienteModal({
           origemFinal === "outros"
             ? data.origem_detalhe?.trim() || null
             : null,
+        contato_preferencial: data.contato_preferencial,
         responsavel: showResponsavel
           ? {
               nome: data.resp_nome ?? "",
@@ -484,6 +491,17 @@ function EditarPacienteModal({
                   <p className={errorClass}>{errors.email.message}</p>
                 ) : null}
               </div>
+
+              <ContatoPreferencial
+                value={watch("contato_preferencial") as ContatoCanal}
+                onChange={(v) =>
+                  setValue("contato_preferencial", v, {
+                    shouldDirty: true,
+                    shouldValidate: false,
+                  })
+                }
+                name="contato_preferencial_edit"
+              />
 
               <div className="space-y-1">
                 <label className={labelClass}>Convênio</label>

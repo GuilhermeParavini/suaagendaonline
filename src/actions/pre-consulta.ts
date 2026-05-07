@@ -17,6 +17,21 @@ import type { CampoTemplate, CampoTipo } from '@/actions/anamnese';
 
 type Genero = 'masculino' | 'feminino' | 'prefiro_nao_informar';
 type GrauParentesco = 'mae' | 'pai' | 'avo' | 'tio' | 'outro';
+type ContatoPreferencial = 'whatsapp' | 'telefone' | 'email' | 'sms';
+
+const CONTATOS_VALIDOS: readonly ContatoPreferencial[] = [
+  'whatsapp',
+  'telefone',
+  'email',
+  'sms',
+];
+
+function parseContatoPreferencial(raw: unknown): ContatoPreferencial {
+  return typeof raw === 'string' &&
+    (CONTATOS_VALIDOS as readonly string[]).includes(raw)
+    ? (raw as ContatoPreferencial)
+    : 'whatsapp';
+}
 
 const LGPD_TEXT_PRECONSULTA =
   'Termo de consentimento LGPD aceito pelo paciente em pre-consulta. ' +
@@ -120,6 +135,7 @@ export type CadastroPreConsultaInput = {
   convenio?: string;
   origem?: OrigemPaciente | null;
   origem_detalhe?: string | null;
+  contato_preferencial?: ContatoPreferencial;
   aceiteLgpd: boolean;
   responsavel?: {
     nome: string;
@@ -195,6 +211,10 @@ export async function cadastrarPacientePreConsulta(
     input.origem_detalhe,
   );
 
+  const contatoPreferencial = parseContatoPreferencial(
+    input.contato_preferencial,
+  );
+
   const { data: pacRow, error: pacErr } = await admin
     .from('pacientes')
     .insert({
@@ -208,6 +228,7 @@ export async function cadastrarPacientePreConsulta(
       convenio: input.convenio?.trim() || null,
       origem,
       origem_detalhe,
+      contato_preferencial: contatoPreferencial,
       ativo: true,
     })
     .select('id')

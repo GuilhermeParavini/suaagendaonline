@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Avatar from "@/components/ui/Avatar";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
-import { formatPhone, formatCEP } from "@/lib/masks";
+import { cleanPhone, formatPhone, formatCEP } from "@/lib/masks";
 import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { getAnamneses, type Anamnese } from "@/actions/anamnese";
@@ -30,6 +30,11 @@ import AnamneseDetalhe from "./AnamneseDetalhe";
 import EvolucaoDetalhe from "./EvolucaoDetalhe";
 import AltaPacienteSection from "./AltaPacienteSection";
 import { ORIGEM_LABEL } from "@/lib/paciente-origem";
+import {
+  CONTATO_INFO,
+  PillContatoPreferencial,
+  type ContatoCanal,
+} from "./ContatoPreferencial";
 
 function formatarAlturaMetros(altura_cm: number): string {
   const m = altura_cm / 100;
@@ -80,6 +85,7 @@ export type PacienteDetalhe = {
   status_tratamento: "ativo" | "alta" | "inativo";
   data_alta: string | null;
   motivo_alta: string | null;
+  contato_preferencial: "whatsapp" | "telefone" | "email" | "sms";
 };
 
 export type ResponsavelDetalhe = {
@@ -140,6 +146,86 @@ function DadoLinha({
         {label}
       </p>
       <p className="text-sm text-slate-900 break-words">{value}</p>
+    </div>
+  );
+}
+
+function BotoesContato({ paciente }: { paciente: PacienteDetalhe }) {
+  const tel = cleanPhone(paciente.telefone ?? "");
+  const email = paciente.email ?? "";
+  const preferido = paciente.contato_preferencial;
+
+  type Botao = {
+    canal: ContatoCanal;
+    href: string | null;
+    disponivel: boolean;
+  };
+
+  const botoes: Botao[] = [
+    {
+      canal: "whatsapp",
+      href: tel ? `https://wa.me/55${tel}` : null,
+      disponivel: Boolean(tel),
+    },
+    {
+      canal: "telefone",
+      href: tel ? `tel:+55${tel}` : null,
+      disponivel: Boolean(tel),
+    },
+    {
+      canal: "email",
+      href: email ? `mailto:${email}` : null,
+      disponivel: Boolean(email),
+    },
+    {
+      canal: "sms",
+      href: tel ? `sms:+55${tel}` : null,
+      disponivel: Boolean(tel),
+    },
+  ];
+
+  const algumDisponivel = botoes.some((b) => b.disponivel);
+  if (!algumDisponivel) return null;
+
+  return (
+    <div className="space-y-2 border-t border-slate-100 pt-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        Contato rapido
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {botoes.map((b) => {
+          const info = CONTATO_INFO[b.canal];
+          const isPreferido = b.canal === preferido;
+          if (!b.disponivel || !b.href) return null;
+          return (
+            <a
+              key={b.canal}
+              href={b.href}
+              target={b.canal === "whatsapp" ? "_blank" : undefined}
+              rel={b.canal === "whatsapp" ? "noopener noreferrer" : undefined}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[14px] font-medium transition-colors",
+                isPreferido
+                  ? "border-primary bg-primary text-white hover:bg-primary-dark"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+              )}
+            >
+              <info.Icon
+                width={16}
+                height={16}
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+              {info.labelCurto}
+              {isPreferido ? (
+                <span className="ml-1 inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                  Preferido
+                </span>
+              ) : null}
+            </a>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -298,6 +384,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                   Sem e-mail
                 </span>
               ) : null}
+              <PillContatoPreferencial canal={paciente.contato_preferencial} />
             </div>
           </div>
         </div>
@@ -413,6 +500,8 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 ) : null}
                 <DadoLinha label="Convênio" value={paciente.convenio} />
               </div>
+
+              <BotoesContato paciente={paciente} />
               {paciente.altura !== null || paciente.peso !== null ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {paciente.altura !== null ? (

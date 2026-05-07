@@ -30,6 +30,24 @@ export type DiaIndisponivel =
 export type Genero = 'masculino' | 'feminino' | 'prefiro_nao_informar';
 export type GrauParentesco = 'mae' | 'pai' | 'avo' | 'tio' | 'outro';
 
+export type ContatoPreferencial = 'whatsapp' | 'telefone' | 'email' | 'sms';
+
+const CONTATOS_VALIDOS: readonly ContatoPreferencial[] = [
+  'whatsapp',
+  'telefone',
+  'email',
+  'sms',
+];
+
+function parseContatoPreferencial(
+  raw: unknown,
+): ContatoPreferencial {
+  return typeof raw === 'string' &&
+    (CONTATOS_VALIDOS as readonly string[]).includes(raw)
+    ? (raw as ContatoPreferencial)
+    : 'whatsapp';
+}
+
 export type NovoPacientePublico = {
   nome: string;
   cpf: string;
@@ -43,6 +61,7 @@ export type NovoPacientePublico = {
   cep?: string;
   origem?: OrigemPaciente | null;
   origem_detalhe?: string | null;
+  contato_preferencial?: ContatoPreferencial;
   responsavel?: {
     nome: string;
     cpf: string;
@@ -412,6 +431,10 @@ export async function criarAgendamentoPublico(
     const { origem: origemPub, origem_detalhe: origemDetalhePub } =
       normalizarOrigem(np.origem, np.origem_detalhe);
 
+    const contatoPreferencial = parseContatoPreferencial(
+      np.contato_preferencial,
+    );
+
     const { data: pacRow, error: pacErr } = await admin
       .from('pacientes')
       .insert({
@@ -428,6 +451,7 @@ export async function criarAgendamentoPublico(
         cep: cepDigits || null,
         origem: origemPub,
         origem_detalhe: origemDetalhePub,
+        contato_preferencial: contatoPreferencial,
         ativo: true,
       })
       .select('id')

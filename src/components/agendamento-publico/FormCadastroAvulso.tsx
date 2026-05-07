@@ -26,6 +26,10 @@ import {
   ORIGENS_VALIDAS,
   type OrigemPaciente,
 } from "@/lib/paciente-origem";
+import ContatoPreferencial, {
+  CONTATO_VALORES,
+  type ContatoCanal,
+} from "@/components/pacientes/ContatoPreferencial";
 
 const generoOptions: { value: Genero; label: string }[] = [
   { value: "feminino", label: "Feminino" },
@@ -85,6 +89,7 @@ const schema = z
     convenio: z.string().optional(),
     origem: z.string(),
     origem_detalhe: z.string(),
+    contato_preferencial: z.enum(CONTATO_VALORES),
     aceite_lgpd: z.boolean().refine((v) => v === true, "É necessário aceitar o termo"),
     resp_nome: z.string().optional(),
     resp_cpf: z.string().optional(),
@@ -175,6 +180,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       convenio: "",
       origem: "",
       origem_detalhe: "",
+      contato_preferencial: "whatsapp",
       aceite_lgpd: false,
       resp_nome: "",
       resp_cpf: "",
@@ -220,6 +226,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
       origem: origemFinal,
       origem_detalhe:
         origemFinal === "outros" ? data.origem_detalhe?.trim() || null : null,
+      contato_preferencial: data.contato_preferencial,
       aceiteLgpd: data.aceite_lgpd,
       responsavel: showResponsavel
         ? {
@@ -399,6 +406,17 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
           ) : null}
         </div>
       </div>
+
+      <ContatoPreferencial
+        value={watch("contato_preferencial") as ContatoCanal}
+        onChange={(v) =>
+          setValue("contato_preferencial", v, {
+            shouldDirty: true,
+            shouldValidate: false,
+          })
+        }
+        name="contato_preferencial_avulso"
+      />
 
       <div className="space-y-1">
         <label className={labelClass}>Convênio</label>

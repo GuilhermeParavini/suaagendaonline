@@ -37,13 +37,22 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
   const { data: pacienteRow, error: pacienteErr } = await admin
     .from("pacientes")
     .select(
-      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade, altura, peso, origem, origem_detalhe, status_tratamento, data_alta, motivo_alta",
+      "id, nome, cpf, data_nascimento, genero, telefone, email, endereco, cidade, estado, cep, convenio, observacoes, menor_idade, altura, peso, origem, origem_detalhe, status_tratamento, data_alta, motivo_alta, contato_preferencial",
     )
     .eq("id", id)
     .eq("tenant_id", prof.tenant_id)
     .eq("ativo", true)
     .maybeSingle();
   if (pacienteErr || !pacienteRow) notFound();
+
+  const contatoRaw = pacienteRow.contato_preferencial as string | null;
+  const contatoPreferencial: PacienteDetalhe["contato_preferencial"] =
+    contatoRaw === "telefone" ||
+    contatoRaw === "email" ||
+    contatoRaw === "sms" ||
+    contatoRaw === "whatsapp"
+      ? contatoRaw
+      : "whatsapp";
 
   const alturaRaw = pacienteRow.altura as number | string | null | undefined;
   const pesoRaw = pacienteRow.peso as number | string | null | undefined;
@@ -76,6 +85,7 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
       "ativo",
     data_alta: (pacienteRow.data_alta as string | null) ?? null,
     motivo_alta: (pacienteRow.motivo_alta as string | null) ?? null,
+    contato_preferencial: contatoPreferencial,
   };
 
   let responsavel: ResponsavelDetalhe | null = null;
