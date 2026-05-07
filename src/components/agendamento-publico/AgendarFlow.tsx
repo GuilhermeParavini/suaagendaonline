@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { ChevronLeft, Check } from "lucide-react";
+import { ChevronLeft, Check, Clock, ShieldCheck, User } from "lucide-react";
 import { format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,8 @@ import FormPacientePublico, {
   type FormResult,
 } from "./FormPacientePublico";
 import ResumoAgendamento from "./ResumoAgendamento";
+import HeaderProfissionalPublico from "./HeaderProfissionalPublico";
+import BioProfissional from "./BioProfissional";
 
 type Step = "procedimento" | "data" | "hora" | "paciente" | "resumo" | "sucesso";
 
@@ -38,6 +40,13 @@ interface AgendarFlowProps {
 
 function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
+}
+
+function formatarPreco(valor: number): string {
+  return valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 }
 
 function AgendarFlow({
@@ -63,6 +72,9 @@ function AgendarFlow({
 
   useEffect(() => {
     if (step !== "hora" || !selectedDate || !procedimento) return;
+    // Ao trocar dia/procedimento na etapa "hora", reseta selecao e erros antes
+    // de re-buscar disponibilidade. Limpeza de estado pre-fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedHora(null);
     setSlotsError(null);
     setDiaIndisponivel(null);
@@ -161,23 +173,24 @@ function AgendarFlow({
   }
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1 text-center">
-        {contexto.profissional.logo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={contexto.profissional.logo_url}
-            alt="Logo"
-            className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
-          />
-        ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-          {contexto.profissional.especialidade}
-        </p>
-        <h1 className="text-xl font-semibold text-slate-900 leading-tight">
-          {contexto.profissional.nome}
-        </h1>
-      </header>
+    <div className="space-y-5">
+      <HeaderProfissionalPublico
+        nome={contexto.profissional.nome}
+        especialidade={contexto.profissional.especialidade}
+        registroProfissional={contexto.profissional.registro_profissional}
+        avatarUrl={contexto.profissional.avatar_url}
+        logoUrl={contexto.profissional.logo_url}
+        telefone={
+          contexto.profissional.telefone ?? contexto.tenant.telefone
+        }
+        endereco={contexto.tenant.endereco}
+        cidade={contexto.tenant.cidade}
+        estado={contexto.tenant.estado}
+        horarios={contexto.horarios}
+        avaliacao={contexto.avaliacao}
+      />
+
+      <BioProfissional bio={contexto.profissional.bio} />
 
       <Stepper step={step} />
 
@@ -194,7 +207,7 @@ function AgendarFlow({
 
       {step === "procedimento" ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-700">
+          <h2 className="text-[14px] font-medium text-slate-900">
             Escolha o procedimento
           </h2>
           {contexto.procedimentos.length === 0 ? (
@@ -216,25 +229,31 @@ function AgendarFlow({
                         setStep("data");
                       }}
                       className={cn(
-                        "w-full rounded-lg border bg-white px-4 py-3 text-left transition-colors hover:border-primary",
-                        isSelected ? "border-primary bg-primary-surface" : "border-slate-200",
+                        "w-full rounded-lg border bg-white px-4 py-4 text-left transition-colors hover:border-primary",
+                        isSelected
+                          ? "border-primary bg-primary-surface"
+                          : "border-slate-200",
                       )}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-900 truncate">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="text-base font-semibold text-slate-900">
                             {p.nome}
                           </p>
-                          <p className="text-xs text-slate-500">
-                            {p.duracao_min} min
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-500">
+                            <span className="inline-flex items-center gap-1">
+                              <Clock
+                                size={12}
+                                strokeWidth={1.5}
+                                aria-hidden="true"
+                              />
+                              {p.duracao_min} min
+                            </span>
+                          </div>
                         </div>
                         {p.valor !== null ? (
-                          <p className="shrink-0 text-sm font-medium text-primary-dark">
-                            {p.valor.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
+                          <p className="shrink-0 text-base font-semibold text-primary-text">
+                            {formatarPreco(p.valor)}
                           </p>
                         ) : null}
                       </div>
@@ -249,7 +268,7 @@ function AgendarFlow({
 
       {step === "data" ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-700">
+          <h2 className="text-[14px] font-medium text-slate-900">
             Escolha o dia
           </h2>
           <CalendarioMensal
@@ -268,7 +287,7 @@ function AgendarFlow({
 
       {step === "hora" && selectedDate ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-700">
+          <h2 className="text-[14px] font-medium text-slate-900">
             Horários para{" "}
             <span className="text-slate-900">
               {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
@@ -328,9 +347,18 @@ function AgendarFlow({
 
       {step === "paciente" ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-700">
+          <h2 className="text-[14px] font-medium text-slate-900">
             Identifique-se
           </h2>
+          <p className="inline-flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-[13px] text-teal-700">
+            <ShieldCheck
+              size={14}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="shrink-0"
+            />
+            Seus dados sao protegidos e usados apenas para sua consulta.
+          </p>
           <FormPacientePublico
             tenantId={contexto.tenantId}
             onIdentified={(result) => {
@@ -344,7 +372,7 @@ function AgendarFlow({
 
       {step === "resumo" && procedimento && selectedDate && selectedHora && paciente ? (
         <section className="space-y-4">
-          <h2 className="text-sm font-medium text-slate-700">
+          <h2 className="text-[14px] font-medium text-slate-900">
             Confirme seu agendamento
           </h2>
 
@@ -399,30 +427,102 @@ function AgendarFlow({
   );
 }
 
-const stepOrder: Step[] = ["procedimento", "data", "hora", "paciente", "resumo"];
+type StepStepper = Exclude<Step, "sucesso">;
+
+const stepOrder: StepStepper[] = [
+  "procedimento",
+  "data",
+  "hora",
+  "paciente",
+  "resumo",
+];
+
+const STEP_LABELS: Record<StepStepper, string> = {
+  procedimento: "Procedimento",
+  data: "Data",
+  hora: "Hora",
+  paciente: "Seus dados",
+  resumo: "Confirmacao",
+};
 
 function Stepper({ step }: { step: Step }) {
-  const currentIdx = stepOrder.indexOf(step);
+  if (step === "sucesso") return null;
+  const stepperStep: StepStepper = step;
+  const currentIdx = stepOrder.indexOf(stepperStep);
+  const total = stepOrder.length;
+  const progresso = total === 1 ? 100 : (currentIdx / (total - 1)) * 100;
+  const labelAtual = STEP_LABELS[stepperStep];
+
   return (
-    <ol
-      aria-label="Etapas"
-      className="flex items-center gap-1.5"
+    <div
+      role="group"
+      aria-label="Etapas do agendamento"
+      className="space-y-2"
     >
-      {stepOrder.map((s, i) => {
-        const active = i === currentIdx;
-        const done = i < currentIdx;
-        return (
-          <li
-            key={s}
-            aria-current={active ? "step" : undefined}
-            className={cn(
-              "h-1.5 flex-1 rounded-full transition-colors",
-              done || active ? "bg-primary" : "bg-slate-200",
-            )}
-          />
-        );
-      })}
-    </ol>
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[13px] font-medium text-slate-900">
+          Etapa {currentIdx + 1} de {total}
+          <span className="text-slate-500 font-normal">
+            {" "}
+            — {labelAtual}
+          </span>
+        </p>
+      </div>
+      <div
+        className="relative h-2 overflow-hidden rounded-full bg-slate-200"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progresso)}
+      >
+        <div
+          className="h-full bg-primary transition-all duration-300"
+          style={{ width: `${progresso}%` }}
+        />
+      </div>
+      <ol className="hidden sm:grid grid-cols-5 gap-1 text-center">
+        {stepOrder.map((s, i) => {
+          const ativo = i === currentIdx;
+          const concluido = i < currentIdx;
+          return (
+            <li key={s} aria-current={ativo ? "step" : undefined}>
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={cn(
+                    "inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-semibold",
+                    concluido && "bg-primary text-white",
+                    ativo && "bg-primary text-white",
+                    !concluido &&
+                      !ativo &&
+                      "bg-slate-200 text-slate-500",
+                  )}
+                >
+                  {concluido ? (
+                    <Check size={12} strokeWidth={2.5} aria-hidden="true" />
+                  ) : ativo && s === "paciente" ? (
+                    <User size={12} strokeWidth={1.5} aria-hidden="true" />
+                  ) : (
+                    i + 1
+                  )}
+                </span>
+                <span
+                  className={cn(
+                    "text-[12px] leading-tight",
+                    ativo
+                      ? "font-medium text-primary-text"
+                      : concluido
+                        ? "text-slate-700"
+                        : "text-slate-500",
+                  )}
+                >
+                  {STEP_LABELS[s]}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

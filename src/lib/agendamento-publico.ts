@@ -11,9 +11,26 @@ export type Procedimento = {
   valor: number | null;
 };
 
+export type HorarioFaixa = {
+  dias: number[]; // 0=Dom..6=Sab
+  hora_inicio: string; // HH:MM
+  hora_fim: string;
+};
+
+export type AvaliacaoResumo = {
+  media: number; // 0-5
+  total: number;
+};
+
 export type ProfissionalPublico = {
   tenantId: string;
   tenantNome: string;
+  tenant: {
+    telefone: string | null;
+    endereco: string | null;
+    cidade: string | null;
+    estado: string | null;
+  };
   profissional: {
     id: string;
     nome: string;
@@ -21,8 +38,14 @@ export type ProfissionalPublico = {
     duracao_padrao_min: number;
     tolerancia_atraso_min: number;
     logo_url: string | null;
+    avatar_url: string | null;
+    registro_profissional: string | null;
+    bio: string | null;
+    telefone: string | null;
   };
   procedimentos: Procedimento[];
+  horarios: HorarioFaixa[];
+  avaliacao: AvaliacaoResumo | null;
 };
 
 export type ProfissionalListItem = {
@@ -87,7 +110,7 @@ export async function getProfissionalBySlug(
 
   const { data: tenant, error: tenantErr } = await admin
     .from('tenants')
-    .select('id, nome_empresa')
+    .select('id, nome_empresa, telefone, endereco, cidade, estado')
     .eq('slug', cleanSlug)
     .maybeSingle();
   if (tenantErr) return { ok: false, error: tenantErr.message };
@@ -96,7 +119,7 @@ export async function getProfissionalBySlug(
   let profQuery = admin
     .from('profissionais')
     .select(
-      'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min, logo_url',
+      'id, nome, especialidade, duracao_padrao_min, tolerancia_atraso_min, logo_url, avatar_url, registro_profissional, bio, telefone',
     )
     .eq('tenant_id', tenant.id)
     .eq('ativo', true);
@@ -109,26 +132,78 @@ export async function getProfissionalBySlug(
   if (profErr) return { ok: false, error: profErr.message };
   if (!prof) return { ok: false, error: 'Profissional não encontrado.' };
 
-  const { data: procs, error: procsErr } = await admin
-    .from('procedimentos')
-    .select('id, nome, duracao_min, valor')
-    .eq('tenant_id', tenant.id)
-    .eq('ativo', true)
-    .order('nome', { ascending: true });
+  const profissionalIdReal = prof.id as string;
+
+  const [
+    { data: procs, error: procsErr },
+    { data: horariosRaw },
+    { data: avaliacoesRaw },
+  ] = await Promise.all([
+    admin
+      .from('procedimentos')
+      .select('id, nome, duracao_min, valor')
+      .eq('tenant_id', tenant.id)
+      .eq('ativo', true)
+      .order('nome', { ascending: true }),
+    admin
+      .from('horarios_disponiveis')
+      .select('dia_semana, hora_inicio, hora_fim')
+      .eq('profissional_id', profissionalIdReal)
+      .eq('ativo', true)
+      .order('dia_semana', { ascending: true })
+      .order('hora_inicio', { ascending: true }),
+    admin
+      .from('avaliacoes')
+      .select('nota')
+      .eq('profissional_id', profissionalIdReal),
+  ]);
   if (procsErr) return { ok: false, error: procsErr.message };
+
+  const horarios = agruparHorariosFaixas(
+    (horariosRaw ?? []).map((r) => ({
+      dia_semana: Number(r.dia_semana),
+      hora_inicio: String(r.hora_inicio).slice(0, 5),
+      hora_fim: String(r.hora_fim).slice(0, 5),
+    })),
+  );
+
+  const notas = (avaliacoesRaw ?? [])
+    .map((r) => Number(r.nota))
+    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
+  const avaliacao =
+    notas.length > 0
+      ? {
+          media:
+            Math.round(
+              (notas.reduce((acc, n) => acc + n, 0) / notas.length) * 10,
+            ) / 10,
+          total: notas.length,
+        }
+      : null;
 
   return {
     ok: true,
     data: {
       tenantId: tenant.id as string,
       tenantNome: tenant.nome_empresa as string,
+      tenant: {
+        telefone: (tenant.telefone as string | null) ?? null,
+        endereco: (tenant.endereco as string | null) ?? null,
+        cidade: (tenant.cidade as string | null) ?? null,
+        estado: (tenant.estado as string | null) ?? null,
+      },
       profissional: {
-        id: prof.id as string,
+        id: profissionalIdReal,
         nome: prof.nome as string,
         especialidade: prof.especialidade as string,
         duracao_padrao_min: (prof.duracao_padrao_min as number) ?? 30,
         tolerancia_atraso_min: (prof.tolerancia_atraso_min as number) ?? 5,
         logo_url: (prof.logo_url as string | null) ?? null,
+        avatar_url: (prof.avatar_url as string | null) ?? null,
+        registro_profissional:
+          (prof.registro_profissional as string | null) ?? null,
+        bio: (prof.bio as string | null) ?? null,
+        telefone: (prof.telefone as string | null) ?? null,
       },
       procedimentos: (procs ?? []).map((p) => ({
         id: p.id as string,
@@ -136,8 +211,41 @@ export async function getProfissionalBySlug(
         duracao_min: p.duracao_min as number,
         valor: p.valor !== null ? Number(p.valor) : null,
       })),
+      horarios,
+      avaliacao,
     },
   };
+}
+
+/**
+ * Agrupa registros de horarios_disponiveis (um por dia/faixa) em faixas que
+ * compartilham o mesmo `hora_inicio`-`hora_fim` para exibir como
+ * "Seg-Sex 8:00-18:00" em vez de listar 5 linhas iguais.
+ *
+ * Mantem a ordem dos dias (0-6) e devolve faixas ordenadas pela primeira hora
+ * de inicio. Dias consecutivos com mesma faixa formam uma unica entrada
+ * (a renderizacao decide como exibir um intervalo "Seg-Sex").
+ */
+function agruparHorariosFaixas(
+  blocos: Array<{ dia_semana: number; hora_inicio: string; hora_fim: string }>,
+): HorarioFaixa[] {
+  const mapa = new Map<string, Set<number>>();
+  for (const b of blocos) {
+    const chave = `${b.hora_inicio}-${b.hora_fim}`;
+    if (!mapa.has(chave)) mapa.set(chave, new Set());
+    mapa.get(chave)!.add(b.dia_semana);
+  }
+  const faixas: HorarioFaixa[] = [];
+  for (const [chave, dias] of mapa) {
+    const [hora_inicio, hora_fim] = chave.split('-');
+    faixas.push({
+      dias: Array.from(dias).sort((a, b) => a - b),
+      hora_inicio,
+      hora_fim,
+    });
+  }
+  faixas.sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio));
+  return faixas;
 }
 
 export async function getDiasSemanaDisponiveis(
