@@ -112,3 +112,41 @@ input[type="reset"]:not(.no-touch-min) {
   min-height: var(--touch-min);
   min-width: var(--touch-min);
 }
+
+/*
+ * Skeleton shimmer.
+ * Bg base (slate-200) com gradiente animado deslocando da esquerda para a
+ * direita simulando "carregando". Respeita prefers-reduced-motion.
+ */
+@keyframes sao-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.sao-skeleton {
+  position: relative;
+  background-color: #E2E8F0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.sao-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: sao-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sao-skeleton::after {
+    animation: none;
+    opacity: 0.4;
+  }
+}

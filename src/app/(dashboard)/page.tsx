@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, Calendar, ChevronRight, PlayCircle } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarOff,
+  ChevronRight,
+  PlayCircle,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
 import Avatar from "@/components/ui/Avatar";
+import EmptyState from "@/components/ui/EmptyState";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
 import {
   getAgendaHoje,
@@ -107,17 +113,12 @@ export default async function HomeAgendaHojePage() {
         </div>
 
         {agendamentos.length === 0 ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center space-y-2">
-            <Calendar
-              size={24}
-              strokeWidth={1.5}
-              aria-hidden="true"
-              className="mx-auto text-slate-500"
-            />
-            <p className="text-sm text-slate-500">
-              Sem agendamentos para hoje.
-            </p>
-          </div>
+          <EmptyState
+            Icon={CalendarOff}
+            titulo="Dia livre!"
+            descricao="Nenhum agendamento para hoje. Aproveite para organizar sua agenda."
+            acao={{ label: "Novo agendamento", href: "/agenda" }}
+          />
         ) : (
           <ul className="space-y-2">
             {agendamentos.map((ag) => {

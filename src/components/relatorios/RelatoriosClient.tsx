@@ -18,6 +18,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  BarChart3,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -25,6 +26,7 @@ import {
   Filter,
   UserCheck,
 } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 import {
   getRelatorioAgendamentos,
   getRelatorioFaturamento,
@@ -596,11 +598,7 @@ function FaturamentoTab({
             </header>
 
             {data.lancamentos.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-sm text-slate-500">
-                  Nenhum dado encontrado para o período selecionado.
-                </p>
-              </div>
+              <EstadoVazio />
             ) : (
               <>
                 <div className="overflow-x-auto">
@@ -761,6 +759,8 @@ function PacientesTab({ initialPeriodo, profissionalId }: PacientesTabProps) {
     const ini =
       brDateToIso(dataInicioBr) ?? initialPeriodo.dataInicio;
     const fim = brDateToIso(dataFimBr) ?? initialPeriodo.dataFim;
+    // carregar() faz setState para atualizar `data`/`isLoading` apos o fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar({
       dataInicio: ini,
       dataFim: fim,
@@ -1247,6 +1247,8 @@ function AgendamentosTab({
     const ini =
       brDateToIso(dataInicioBr) ?? initialPeriodo.dataInicio;
     const fim = brDateToIso(dataFimBr) ?? initialPeriodo.dataFim;
+    // carregar() faz setState para atualizar `data`/`isLoading` apos o fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     carregar({
       dataInicio: ini,
       dataFim: fim,
@@ -1626,10 +1628,12 @@ function CardResumo({
 
 function EstadoVazio() {
   return (
-    <div className="mt-3 flex h-[200px] items-center justify-center rounded border border-dashed border-slate-200 bg-slate-50 text-center">
-      <p className="text-sm text-slate-500">
-        Nenhum dado encontrado para o período selecionado.
-      </p>
+    <div className="mt-3">
+      <EmptyState
+        Icon={BarChart3}
+        titulo="Dados insuficientes"
+        descricao="Os relatorios aparecerao quando voce tiver agendamentos e lancamentos no periodo selecionado."
+      />
     </div>
   );
 }

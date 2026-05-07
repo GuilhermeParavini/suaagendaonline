@@ -8,11 +8,14 @@ import {
   ArrowUpCircle,
   BarChart3,
   Filter,
+  Package,
   Pencil,
   Plus,
   Search,
+  SearchX,
   Trash2,
 } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 import {
   excluirProduto,
   getEstoque,
@@ -336,13 +339,23 @@ function EstoqueClient({
                 {error}
               </div>
             ) : produtos.length === 0 ? (
-              <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-                <p className="text-sm text-slate-500">
-                  {busca || apenasAlerta || categoria !== "todas"
-                    ? "Nenhum produto encontrado com esses filtros."
-                    : "Nenhum produto cadastrado ainda."}
-                </p>
-              </div>
+              busca || apenasAlerta || categoria !== "todas" ? (
+                <EmptyState
+                  Icon={SearchX}
+                  titulo="Nenhum resultado"
+                  descricao="Tente ajustar os filtros de busca."
+                />
+              ) : (
+                <EmptyState
+                  Icon={Package}
+                  titulo="Estoque vazio"
+                  descricao="Adicione produtos e materiais para controlar seu estoque."
+                  acao={{
+                    label: "Adicionar produto",
+                    onClick: handleAbrirNovo,
+                  }}
+                />
+              )
             ) : (
               <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
                 {produtos.map((p) => (

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Plus, Search, SearchX, Users, X } from "lucide-react";
 import {
   getConveniosExistentes,
   getPacientes,
   type PacienteListItem,
   type StatusTratamento,
 } from "@/actions/pacientes";
+import EmptyState from "@/components/ui/EmptyState";
 import CardPaciente from "./CardPaciente";
 
 interface ListaPacientesProps {
@@ -171,24 +172,18 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
           </div>
         ) : isEmpty ? (
           hasQuery ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-              <p className="text-sm text-slate-500">
-                Nenhum paciente encontrado para &quot;{query.trim()}&quot;.
-              </p>
-            </div>
+            <EmptyState
+              Icon={SearchX}
+              titulo="Nenhum resultado"
+              descricao="Tente buscar com outros termos."
+            />
           ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-8 text-center space-y-3">
-              <p className="text-sm text-slate-500">
-                Nenhum paciente cadastrado.
-              </p>
-              <Link
-                href="/pacientes/novo"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <Plus size={16} strokeWidth={2} aria-hidden="true" />
-                Cadastrar primeiro paciente
-              </Link>
-            </div>
+            <EmptyState
+              Icon={Users}
+              titulo="Nenhum paciente cadastrado"
+              descricao="Cadastre seu primeiro paciente ou compartilhe o link de agendamento."
+              acao={{ label: "Cadastrar paciente", href: "/pacientes/novo" }}
+            />
           )
         ) : (
           <ul className="space-y-2">

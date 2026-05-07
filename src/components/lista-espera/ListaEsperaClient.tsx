@@ -3,11 +3,11 @@
 import { useCallback, useState, useTransition } from "react";
 import {
   Calendar,
-  ClipboardList,
   Clock,
   MessageCircle,
   X,
 } from "lucide-react";
+import EmptyState from "@/components/ui/EmptyState";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -144,21 +144,11 @@ function ListaEsperaClient({
       ) : null}
 
       {itens.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-10 text-center">
-          <ClipboardList
-            size={32}
-            strokeWidth={1.5}
-            aria-hidden="true"
-            className="mx-auto text-primary-surface"
-          />
-          <p className="mt-3 text-sm font-medium text-slate-700">
-            Nenhum paciente na lista de espera
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Pacientes aparecem aqui quando entram na lista pelo link público ou
-            quando você os adiciona manualmente.
-          </p>
-        </div>
+        <EmptyState
+          Icon={Clock}
+          titulo="Lista de espera vazia"
+          descricao="Pacientes entrarao na lista quando nao houver horarios disponiveis no link publico."
+        />
       ) : (
         <ul
           className={cn(

@@ -1,5 +1,7 @@
-﻿import CardAgendamento from "./CardAgendamento";
+﻿import { Calendar } from "lucide-react";
+import CardAgendamento from "./CardAgendamento";
 import type { AgendamentoDia } from "@/actions/agendamentos";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface ListaHorariosProps {
   agendamentos: AgendamentoDia[];
@@ -52,9 +54,11 @@ function ListaHorarios({
 }: ListaHorariosProps) {
   if (agendamentos.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-        <p className="text-sm text-slate-500">Nenhum agendamento neste dia.</p>
-      </div>
+      <EmptyState
+        Icon={Calendar}
+        titulo="Sem agendamentos neste periodo"
+        descricao="Compartilhe seu link de agendamento para receber pacientes."
+      />
     );
   }
 

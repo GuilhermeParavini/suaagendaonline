@@ -19,6 +19,7 @@ import {
   Loader2,
   Package,
   Search,
+  SearchX,
   Settings,
   User,
   Users,
@@ -27,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { buscaGlobal, type ResultadoBusca } from "@/actions/busca-global";
+import EmptyState from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 
 const ICONES: Record<string, LucideIcon> = {
@@ -194,9 +196,14 @@ function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 Digite para buscar pacientes, paginas e agendamentos de hoje.
               </p>
             ) : !carregando && resultados.length === 0 ? (
-              <p className="px-4 py-6 text-center text-[13px] text-slate-500">
-                Nada encontrado para &quot;{termo}&quot;.
-              </p>
+              <div className="px-4 py-6">
+                <EmptyState
+                  Icon={SearchX}
+                  titulo="Nenhum resultado"
+                  descricao="Tente buscar com outros termos."
+                  semContainer
+                />
+              </div>
             ) : (
               <div className="py-1">
                 {grupos.map((grupo, gi) => {

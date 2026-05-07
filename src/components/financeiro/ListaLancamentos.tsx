@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
-import { Check, Clock, FileText, Trash2 } from "lucide-react";
+import { Check, Clock, FileText, Trash2, Wallet } from "lucide-react";
 import {
   atualizarPago,
   excluirLancamento,
@@ -11,6 +11,7 @@ import {
 } from "@/actions/financeiro";
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
+import EmptyState from "@/components/ui/EmptyState";
 
 interface ListaLancamentosProps {
   lancamentos: Lancamento[];
@@ -38,11 +39,11 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
 
   if (lancamentos.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-6 text-center">
-        <p className="text-sm text-slate-500">
-          Nenhum lançamento neste período.
-        </p>
-      </div>
+      <EmptyState
+        Icon={Wallet}
+        titulo="Sem lancamentos financeiros"
+        descricao="Registre receitas e despesas para acompanhar suas financas."
+      />
     );
   }
 
