@@ -38,6 +38,8 @@ import {
 } from "./ContatoPreferencial";
 import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
 import { mensagemRetorno } from "@/lib/whatsapp-templates";
+import ModalEnviarSMS from "@/components/sms/ModalEnviarSMS";
+import { lerModuloSMSAtivo } from "@/lib/sms-prefs";
 import { getTenantContato } from "@/actions/configuracoes";
 
 function formatarAlturaMetros(altura_cm: number): string {
@@ -166,6 +168,12 @@ function BotoesContato({
   const tel = cleanPhone(paciente.telefone ?? "");
   const email = paciente.email ?? "";
   const preferido = paciente.contato_preferencial;
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsModuloAtivo, setSmsModuloAtivo] = useState(true);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSmsModuloAtivo(lerModuloSMSAtivo());
+  }, []);
 
   // Convite para retorno: paciente com alta OU sem consulta ha mais de 30 dias.
   const diasDesdeUltima = ultimaConsultaIso
@@ -213,10 +221,12 @@ function BotoesContato({
       href: email ? `mailto:${email}` : null,
       disponivel: Boolean(email),
     },
+    // SMS agora abre o modal de envio in-app (Zenvia) em vez do app nativo.
+    // Visivel apenas quando paciente tem telefone E modulo SMS esta ativo.
     {
       canal: "sms",
-      href: tel ? `sms:+55${tel}` : null,
-      disponivel: Boolean(tel),
+      href: tel && smsModuloAtivo ? "#sms-modal" : null,
+      disponivel: Boolean(tel) && smsModuloAtivo,
     },
   ];
 
@@ -233,18 +243,45 @@ function BotoesContato({
           const info = CONTATO_INFO[b.canal];
           const isPreferido = b.canal === preferido;
           if (!b.disponivel || !b.href) return null;
+          const classeBotao = cn(
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[14px] font-medium transition-colors",
+            isPreferido
+              ? "border-primary bg-primary text-white hover:bg-primary-dark"
+              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+          );
+
+          // SMS abre o modal in-app (Zenvia) em vez de seguir o link nativo.
+          if (b.canal === "sms") {
+            return (
+              <button
+                key={b.canal}
+                type="button"
+                onClick={() => setSmsModalOpen(true)}
+                className={classeBotao}
+              >
+                <info.Icon
+                  width={16}
+                  height={16}
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
+                {info.labelCurto}
+                {isPreferido ? (
+                  <span className="ml-1 inline-flex items-center rounded-full bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                    Preferido
+                  </span>
+                ) : null}
+              </button>
+            );
+          }
+
           return (
             <a
               key={b.canal}
               href={b.href}
               target={b.canal === "whatsapp" ? "_blank" : undefined}
               rel={b.canal === "whatsapp" ? "noopener noreferrer" : undefined}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-[14px] font-medium transition-colors",
-                isPreferido
-                  ? "border-primary bg-primary text-white hover:bg-primary-dark"
-                  : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
-              )}
+              className={classeBotao}
             >
               <info.Icon
                 width={16}
@@ -271,6 +308,15 @@ function BotoesContato({
           />
         ) : null}
       </div>
+      <ModalEnviarSMS
+        open={smsModalOpen}
+        onOpenChange={setSmsModalOpen}
+        paciente={{
+          id: paciente.id,
+          nome: paciente.nome,
+          telefone: paciente.telefone,
+        }}
+      />
     </div>
   );
 }

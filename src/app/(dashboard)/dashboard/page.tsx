@@ -22,7 +22,10 @@ import { getUsoAssistente } from "@/actions/assistente-uso";
 import { getContagemListaEspera } from "@/actions/lista-espera";
 import { getProdutosAlerta } from "@/actions/estoque";
 import { calcularROI } from "@/actions/roi";
+import { getUsoSMSAtual } from "@/actions/sms";
 import CardROI from "@/components/dashboard/CardROI";
+import CardUsoSMS from "@/components/dashboard/CardUsoSMS";
+import AlertaLimiteSMS from "@/components/ui/AlertaLimiteSMS";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -170,6 +173,13 @@ export default async function DashboardPage() {
   const roiRes = await calcularROI();
   const roiDados = roiRes.ok ? roiRes.data : null;
 
+  const smsRes = await getUsoSMSAtual();
+  const smsUso = smsRes.ok ? smsRes.data : null;
+  const mostrarCardSMS =
+    smsUso !== null &&
+    (smsUso.usado > 0 || smsUso.limite > 10);
+  // smsUso.limite > 10 indica que o tenant ja tem pacote ativo (alem dos 10 grátis).
+
   let acompanhamentoLista: PacienteAcompanhamento[] = [];
   if (mostrarAcompanhamento) {
     const r = await getPacientesParaAcompanhar();
@@ -204,7 +214,19 @@ export default async function DashboardPage() {
         <MetricCard label="Receita do mês" value={currencyBRL(receitaMes)} />
       </section>
 
+      {smsUso ? (
+        <AlertaLimiteSMS usado={smsUso.usado} limite={smsUso.limite} />
+      ) : null}
+
       {roiDados ? <CardROI dados={roiDados} /> : null}
+
+      {mostrarCardSMS && smsUso ? (
+        <CardUsoSMS
+          usado={smsUso.usado}
+          limite={smsUso.limite}
+          limiteAddon={Math.max(0, smsUso.limite - 10)}
+        />
+      ) : null}
 
       {mostrarCardUso || mostrarCardAssistente ? (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">

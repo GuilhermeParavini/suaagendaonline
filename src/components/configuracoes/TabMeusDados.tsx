@@ -21,6 +21,7 @@ import SecaoAssinatura from "./SecaoAssinatura";
 import SecaoAvaliacoes from "./SecaoAvaliacoes";
 import SecaoDicasFeatures from "./SecaoDicasFeatures";
 import SecaoLogAcessoLGPD from "./SecaoLogAcessoLGPD";
+import SecaoSMS from "./SecaoSMS";
 import SecaoLogo from "./SecaoLogo";
 import SecaoMeuPlano from "./SecaoMeuPlano";
 import SecaoModulos from "./SecaoModulos";
@@ -455,6 +456,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       <SecaoAvaliacoes profissional={profissional} onSaved={onSaved} />
 
       <SecaoAcompanhamento profissional={profissional} onSaved={onSaved} />
+
+      <SecaoSMS />
 
       <SecaoDicasFeatures />
 

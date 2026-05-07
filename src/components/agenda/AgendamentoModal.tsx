@@ -31,6 +31,13 @@ import {
 import StatusPill from "@/components/ui/StatusPill";
 import Button from "@/components/ui/Button";
 import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
+import ModalEnviarSMS from "@/components/sms/ModalEnviarSMS";
+import { lerModuloSMSAtivo } from "@/lib/sms-prefs";
+import { MessageSquare } from "lucide-react";
+import {
+  templateSMSConfirmacao,
+  templateSMSLembrete,
+} from "@/lib/sms-templates";
 import { cn } from "@/lib/utils";
 import ModalReagendamento from "./ModalReagendamento";
 
@@ -109,6 +116,9 @@ function AgendamentoModal({
   const [sugestaoEspera, setSugestaoEspera] =
     useState<SugestaoListaEspera | null>(null);
   const [tenantContato, setTenantContato] = useState<TenantContato | null>(null);
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsMensagemInicial, setSmsMensagemInicial] = useState<string>("");
+  const [smsModuloAtivo, setSmsModuloAtivo] = useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -118,6 +128,8 @@ function AgendamentoModal({
       if (cancelado) return;
       if (r.ok) setTenantContato(r.data);
     })();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSmsModuloAtivo(lerModuloSMSAtivo());
     return () => {
       cancelado = true;
     };
@@ -425,6 +437,36 @@ function AgendamentoModal({
                   className="w-full"
                 />
               ) : null}
+              {smsModuloAtivo && agendamento.paciente?.id ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tplSms = ehFuturo
+                      ? templateSMSLembrete({
+                          nome: nomePaciente,
+                          data: dataBr.slice(0, 5),
+                          hora: horario,
+                        })
+                      : templateSMSConfirmacao({
+                          nome: nomePaciente,
+                          data: dataBr.slice(0, 5),
+                          hora: horario,
+                          profissional:
+                            agendamento.profissional?.nome ?? "Profissional",
+                        });
+                    setSmsMensagemInicial(tplSms);
+                    setSmsModalOpen(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-info px-4 py-2.5 text-[14px] font-medium text-white hover:bg-info/90 transition-colors min-h-[44px]"
+                >
+                  <MessageSquare
+                    size={14}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
+                  Enviar SMS
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -531,6 +573,19 @@ function AgendamentoModal({
           router.refresh();
         }}
       />
+
+      {agendamento.paciente?.id ? (
+        <ModalEnviarSMS
+          open={smsModalOpen}
+          onOpenChange={setSmsModalOpen}
+          paciente={{
+            id: agendamento.paciente.id,
+            nome: nomePaciente,
+            telefone: telefonePaciente,
+          }}
+          mensagemInicial={smsMensagemInicial}
+        />
+      ) : null}
     </Dialog.Root>
   );
 }

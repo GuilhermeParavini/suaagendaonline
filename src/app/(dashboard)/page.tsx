@@ -19,9 +19,11 @@ import {
 } from "@/actions/agendamentos";
 import { getAftercarePendente } from "@/actions/aftercare";
 import { getProgressoOnboarding } from "@/actions/onboarding";
+import { getUsoSMSAtual } from "@/actions/sms";
 import CardAftercare from "@/components/aftercare/CardAftercare";
 import ChecklistOnboardingWrapper from "@/components/onboarding/ChecklistOnboardingWrapper";
 import PullToRefresh from "@/components/ui/PullToRefresh";
+import AlertaLimiteSMS from "@/components/ui/AlertaLimiteSMS";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Inicio" };
@@ -70,12 +72,14 @@ export default async function HomeAgendaHojePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [result, progresso, aftercareRes] = await Promise.all([
+  const [result, progresso, aftercareRes, smsRes] = await Promise.all([
     getAgendaHoje(),
     getProgressoOnboarding(),
     getAftercarePendente(),
+    getUsoSMSAtual(),
   ]);
   const aftercareItens = aftercareRes.ok ? aftercareRes.data : [];
+  const smsUso = smsRes.ok ? smsRes.data : null;
 
   if (!result.ok) {
     return (
@@ -101,6 +105,10 @@ export default async function HomeAgendaHojePage() {
             {profissionalNome}!
           </h1>
         </header>
+
+      {smsUso ? (
+        <AlertaLimiteSMS usado={smsUso.usado} limite={smsUso.limite} />
+      ) : null}
 
       {mostrarChecklist ? (
         <ChecklistOnboardingWrapper progresso={progresso} />
