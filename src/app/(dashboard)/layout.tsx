@@ -5,6 +5,8 @@ import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import AssistenteBubble from "@/components/assistente/AssistenteBubble";
 import TourGuiado from "@/components/onboarding/TourGuiado";
+import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
+import BannerOffline from "@/components/ui/BannerOffline";
 import { getContagemListaEspera } from "@/actions/lista-espera";
 import { getProgressoOnboarding } from "@/actions/onboarding";
 import {
@@ -107,6 +109,8 @@ export default async function DashboardLayout({
         />
       ) : null}
       <TourGuiado />
+      <ServiceWorkerRegister />
+      <BannerOffline />
     </div>
   );
 }

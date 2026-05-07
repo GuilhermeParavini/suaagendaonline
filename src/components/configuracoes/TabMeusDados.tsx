@@ -22,6 +22,7 @@ import SecaoAvaliacoes from "./SecaoAvaliacoes";
 import SecaoLogo from "./SecaoLogo";
 import SecaoMeuPlano from "./SecaoMeuPlano";
 import SecaoModulos from "./SecaoModulos";
+import SecaoPushNotifications from "./SecaoPushNotifications";
 import SecaoTemplatesMensagem from "./SecaoTemplatesMensagem";
 
 const ESPECIALIDADES = [
@@ -245,6 +246,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
         trialExpiraEm={tenant.trial_expira_em}
       />
       <SecaoModulos plano={tenant.plano} />
+      <SecaoPushNotifications />
       <SecaoTemplatesMensagem />
       <LinkAgendamento slug={tenant.slug} />
       <LinkCadastroPaciente slug={tenant.slug} />

@@ -589,6 +589,32 @@ export async function criarAgendamentoPublico(
     console.error('[agendamento-publico] Erro ao enviar email de confirmacao:', e);
   }
 
+  // Push notification para o profissional (best-effort).
+  try {
+    const { enviarPushParaProfissional } = await import('@/lib/push');
+    const { data: pacBasic } = await admin
+      .from('pacientes')
+      .select('nome')
+      .eq('id', pacienteId)
+      .maybeSingle();
+    const nomePaciente =
+      (pacBasic?.nome as string | null) ?? 'Novo paciente';
+    const horario = horarioFromIso(dataHoraIso);
+    const dataExtenso = (() => {
+      const [y, m, d] = input.dataIso.split('-').map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      return dt.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    })();
+    await enviarPushParaProfissional(admin, input.profissionalId, {
+      titulo: 'Novo agendamento!',
+      corpo: `${nomePaciente} agendou ${proc.nome} para ${dataExtenso} as ${horario}.`,
+      url: `/agenda?ag=${agendamentoId}`,
+      tag: `agendamento-${agendamentoId}`,
+    });
+  } catch (e) {
+    console.error('[agendamento-publico] Erro ao enviar push:', e);
+  }
+
   return { ok: true, agendamentoId };
 }
 
@@ -964,6 +990,32 @@ export async function reagendarPorPaciente(
     }
   } catch (e) {
     console.error('[reagendarPorPaciente] erro ao enviar email:', e);
+  }
+
+  // Push para o profissional (best-effort).
+  try {
+    const { enviarPushParaProfissional } = await import('@/lib/push');
+    const dataAnteriorBr = (() => {
+      const iso = dataIsoFromTimestamp(ag.dataHoraIso);
+      const [y, m, d] = iso.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('pt-BR', {
+        timeZone: 'UTC',
+      });
+    })();
+    const dataNovaBr = (() => {
+      const [y, m, d] = novaDataIso.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('pt-BR', {
+        timeZone: 'UTC',
+      });
+    })();
+    await enviarPushParaProfissional(admin, ag.profissional.id, {
+      titulo: 'Consulta reagendada',
+      corpo: `${ag.paciente.nome} reagendou de ${dataAnteriorBr} as ${horarioFromIso(ag.dataHoraIso)} para ${dataNovaBr} as ${horarioFromIso(novaDataHoraIso)}.`,
+      url: `/agenda?ag=${novoId}`,
+      tag: `reagendamento-${novoId}`,
+    });
+  } catch (e) {
+    console.error('[reagendarPorPaciente] erro ao enviar push:', e);
   }
 
   revalidatePath('/agenda');
