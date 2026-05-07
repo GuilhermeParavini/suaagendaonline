@@ -10,6 +10,9 @@ interface ListaHorariosProps {
   intervaloMin?: number;
   onSelecionar?: (agendamento: AgendamentoDia) => void;
   mostrarProfissional?: boolean;
+  onConfirmar?: (agendamento: AgendamentoDia) => void;
+  onIniciar?: (agendamento: AgendamentoDia) => void;
+  onSolicitarCancelamento?: (agendamento: AgendamentoDia) => void;
 }
 
 type Slot = { key: string; label: string; agendamento: AgendamentoDia | null };
@@ -51,6 +54,9 @@ function ListaHorarios({
   intervaloMin = 30,
   onSelecionar,
   mostrarProfissional,
+  onConfirmar,
+  onIniciar,
+  onSolicitarCancelamento,
 }: ListaHorariosProps) {
   if (agendamentos.length === 0) {
     return (
@@ -77,6 +83,9 @@ function ListaHorarios({
                 agendamento={slot.agendamento}
                 onClick={onSelecionar}
                 mostrarProfissional={mostrarProfissional}
+                onConfirmar={onConfirmar}
+                onIniciar={onIniciar}
+                onSolicitarCancelamento={onSolicitarCancelamento}
               />
             ) : (
               <div className="h-full min-h-[36px] border-t border-dashed border-slate-200" />

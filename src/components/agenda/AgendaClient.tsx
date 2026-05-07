@@ -1,15 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import {
+  addDays,
+  addMonths,
+  addWeeks,
   format,
   startOfMonth,
   startOfWeek,
+  subDays,
+  subMonths,
+  subWeeks,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import {
+  atualizarStatusAgendamento,
   getAgendamentosDia,
   getAgendamentosDoDia,
   getAgendamentosDoMes,
@@ -19,6 +27,8 @@ import {
   type JanelaDisponivel,
   type StatusAgendamento,
 } from "@/actions/agendamentos";
+import { useSwipeNavigation } from "@/hooks/useSwipeNavigation";
+import { cn } from "@/lib/utils";
 import {
   listarProfissionaisAtivosTenant,
   type ProfissionalOpcaoTenant,
@@ -101,6 +111,9 @@ function AgendaClient({
     hora?: string;
   }>({});
   const [toast, setToast] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<AgendamentoDia | null>(null);
+  const [cancelMotivo, setCancelMotivo] = useState("");
+  const [cancelando, setCancelando] = useState(false);
   const router = useRouter();
 
   // Carrega visualizacao salva
@@ -155,6 +168,67 @@ function AgendaClient({
     },
     [],
   );
+
+  const mostrarToast = (mensagem: string) => {
+    setToast(mensagem);
+    window.setTimeout(() => setToast(null), 2500);
+  };
+
+  const transicionarStatus = async (
+    ag: AgendamentoDia,
+    novoStatus: StatusAgendamento,
+    sucesso: string,
+  ) => {
+    const r = await atualizarStatusAgendamento(ag.id, novoStatus);
+    if (!r.ok) {
+      mostrarToast(r.error);
+      return;
+    }
+    handleStatusAtualizado(ag.id, novoStatus);
+    mostrarToast(sucesso);
+    router.refresh();
+  };
+
+  const handleConfirmarSwipe = (ag: AgendamentoDia) => {
+    void transicionarStatus(ag, "confirmado", "Presenca confirmada");
+  };
+
+  const handleIniciarSwipe = (ag: AgendamentoDia) => {
+    void transicionarStatus(ag, "em_atendimento", "Atendimento iniciado");
+  };
+
+  const handleSolicitarCancelamento = (ag: AgendamentoDia) => {
+    setCancelTarget(ag);
+    setCancelMotivo("");
+  };
+
+  const fecharCancelDialog = (next: boolean) => {
+    if (cancelando) return;
+    if (!next) {
+      setCancelTarget(null);
+      setCancelMotivo("");
+    }
+  };
+
+  const confirmarCancelamento = async () => {
+    if (!cancelTarget || cancelando) return;
+    setCancelando(true);
+    const r = await atualizarStatusAgendamento(
+      cancelTarget.id,
+      "cancelado",
+      cancelMotivo.trim() || undefined,
+    );
+    setCancelando(false);
+    if (!r.ok) {
+      mostrarToast(r.error);
+      return;
+    }
+    handleStatusAtualizado(cancelTarget.id, "cancelado");
+    mostrarToast("Agendamento cancelado");
+    setCancelTarget(null);
+    setCancelMotivo("");
+    router.refresh();
+  };
 
   const filtroParaQuery = (): string | null | undefined => {
     if (profissionalFiltro === "self") return undefined;
@@ -269,6 +343,35 @@ function AgendaClient({
   const dataExtensoCapital =
     dataExtenso.charAt(0).toUpperCase() + dataExtenso.slice(1);
 
+  const navegarAnterior = useCallback(() => {
+    if (view === "dia") setSelectedDate((d) => subDays(d, 1));
+    else if (view === "semana") setSelectedDate((d) => subWeeks(d, 1));
+    else setVisibleMonth((m) => subMonths(m, 1));
+  }, [view]);
+
+  const navegarProximo = useCallback(() => {
+    if (view === "dia") setSelectedDate((d) => addDays(d, 1));
+    else if (view === "semana") setSelectedDate((d) => addWeeks(d, 1));
+    else setVisibleMonth((m) => addMonths(m, 1));
+  }, [view]);
+
+  const labelAnterior =
+    view === "dia" ? "Ontem" : view === "semana" ? "Semana ant." : "Mes ant.";
+  const labelProximo =
+    view === "dia" ? "Amanha" : view === "semana" ? "Prox. semana" : "Prox. mes";
+
+  const swipeNav = useSwipeNavigation({
+    onSwipeLeft: navegarProximo,
+    onSwipeRight: navegarAnterior,
+    threshold: 60,
+  });
+
+  const navOpacidade = swipeNav.active
+    ? Math.min(1, Math.abs(swipeNav.deltaX) / 60)
+    : 0;
+  const navMostraEsq = swipeNav.active && swipeNav.deltaX > 0;
+  const navMostraDir = swipeNav.active && swipeNav.deltaX < 0;
+
   return (
     <div className="space-y-5 relative pb-20">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -321,10 +424,39 @@ function AgendaClient({
       <section
         aria-busy={isPending}
         aria-live="polite"
-        className={
-          isPending ? "opacity-60 transition-opacity" : "transition-opacity"
-        }
+        onTouchStart={swipeNav.bind.onTouchStart}
+        onTouchMove={swipeNav.bind.onTouchMove}
+        onTouchEnd={swipeNav.bind.onTouchEnd}
+        onTouchCancel={swipeNav.bind.onTouchCancel}
+        className={cn(
+          "relative",
+          isPending ? "opacity-60 transition-opacity" : "transition-opacity",
+        )}
       >
+        {navMostraEsq ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-2"
+            style={{ opacity: navOpacidade }}
+          >
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2.5 py-1 text-[12px] font-medium text-white">
+              <ChevronLeft size={14} strokeWidth={2} aria-hidden="true" />
+              {labelAnterior}
+            </span>
+          </div>
+        ) : null}
+        {navMostraDir ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-2"
+            style={{ opacity: navOpacidade }}
+          >
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2.5 py-1 text-[12px] font-medium text-white">
+              {labelProximo}
+              <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+            </span>
+          </div>
+        ) : null}
         {error ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -377,6 +509,9 @@ function AgendaClient({
               agendamentos={agendamentos}
               onSelecionar={handleSelecionarAgendamento}
               mostrarProfissional={profissionais.length > 1}
+              onConfirmar={handleConfirmarSwipe}
+              onIniciar={handleIniciarSwipe}
+              onSolicitarCancelamento={handleSolicitarCancelamento}
             />
           </>
         )}
@@ -424,6 +559,72 @@ function AgendaClient({
           {toast}
         </div>
       ) : null}
+
+      <Dialog.Root
+        open={cancelTarget !== null}
+        onOpenChange={fecharCancelDialog}
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Dialog.Content
+            className={cn(
+              "fixed z-50 bg-white shadow-lg focus:outline-none flex flex-col",
+              "inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl px-4 pt-5 pb-[max(env(safe-area-inset-bottom),16px)]",
+              "md:inset-auto md:left-1/2 md:top-1/2 md:bottom-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[440px] md:max-w-[calc(100vw-32px)] md:rounded-2xl md:p-6",
+            )}
+          >
+            <div className="md:hidden mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300 shrink-0" />
+            <div className="flex items-start justify-between gap-3 shrink-0">
+              <Dialog.Title className="text-base font-semibold text-slate-900">
+                Cancelar agendamento
+              </Dialog.Title>
+              <Dialog.Close
+                aria-label="Fechar"
+                disabled={cancelando}
+                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+              >
+                <X size={18} strokeWidth={1.5} />
+              </Dialog.Close>
+            </div>
+            <Dialog.Description className="mt-2 text-sm text-slate-600">
+              {cancelTarget?.paciente?.nome
+                ? `Confirma o cancelamento do agendamento de ${cancelTarget.paciente.nome}?`
+                : "Confirma o cancelamento deste agendamento?"}
+            </Dialog.Description>
+
+            <label className="mt-4 block text-[14px] font-medium text-slate-900">
+              Motivo (opcional)
+            </label>
+            <textarea
+              value={cancelMotivo}
+              onChange={(e) => setCancelMotivo(e.target.value)}
+              rows={2}
+              maxLength={300}
+              placeholder="Ex: paciente avisou que nao podera comparecer"
+              className="mt-1 w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 resize-none"
+            />
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => fecharCancelDialog(false)}
+                disabled={cancelando}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCancelamento}
+                disabled={cancelando}
+                className="rounded-lg bg-[#EF4444] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#DC2626] disabled:opacity-50"
+              >
+                {cancelando ? "Cancelando..." : "Cancelar agendamento"}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

@@ -1,5 +1,11 @@
+"use client";
+
+import { Check, Play, X } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
+import SwipeableCard, {
+  type SwipeAction,
+} from "@/components/ui/SwipeableCard";
 import { cn } from "@/lib/utils";
 import type { AgendamentoDia } from "@/actions/agendamentos";
 
@@ -8,6 +14,12 @@ interface CardAgendamentoProps {
   className?: string;
   onClick?: (agendamento: AgendamentoDia) => void;
   mostrarProfissional?: boolean;
+  /** Confirma presenca (status agendado → confirmado). */
+  onConfirmar?: (agendamento: AgendamentoDia) => void;
+  /** Inicia atendimento (status confirmado → em_atendimento). */
+  onIniciar?: (agendamento: AgendamentoDia) => void;
+  /** Solicita cancelamento — pai abre modal de confirmacao. */
+  onSolicitarCancelamento?: (agendamento: AgendamentoDia) => void;
 }
 
 const isStatusVariant = (s: string): s is StatusVariant =>
@@ -22,6 +34,9 @@ function CardAgendamento({
   className,
   onClick,
   mostrarProfissional,
+  onConfirmar,
+  onIniciar,
+  onSolicitarCancelamento,
 }: CardAgendamentoProps) {
   const dt = new Date(agendamento.data_hora);
   const horario = dt.toLocaleTimeString("pt-BR", {
@@ -72,22 +87,18 @@ function CardAgendamento({
     </>
   );
 
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={() => onClick(agendamento)}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 cursor-pointer transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
-          className,
-        )}
-      >
-        {conteudo}
-      </button>
-    );
-  }
-
-  return (
+  const cardCore = onClick ? (
+    <button
+      type="button"
+      onClick={() => onClick(agendamento)}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 cursor-pointer transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2",
+        className,
+      )}
+    >
+      {conteudo}
+    </button>
+  ) : (
     <article
       className={cn(
         "flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3",
@@ -96,6 +107,54 @@ function CardAgendamento({
     >
       {conteudo}
     </article>
+  );
+
+  // Swipe direita: confirmar (agendado) ou iniciar (confirmado).
+  const acaoDireita: SwipeAction | undefined =
+    agendamento.status === "agendado" && onConfirmar
+      ? {
+          acao: () => onConfirmar(agendamento),
+          icone: Check,
+          cor: "bg-[#22C55E]",
+          label: "Confirmar",
+        }
+      : agendamento.status === "confirmado" && onIniciar
+        ? {
+            acao: () => onIniciar(agendamento),
+            icone: Play,
+            cor: "bg-[#F59E0B]",
+            label: "Iniciar",
+          }
+        : undefined;
+
+  // Swipe esquerda: cancelar (somente se transicao permite e ha handler).
+  const podeCancelar =
+    onSolicitarCancelamento &&
+    (agendamento.status === "agendado" ||
+      agendamento.status === "confirmado");
+  const acaoEsquerda: SwipeAction | undefined = podeCancelar
+    ? {
+        acao: () => onSolicitarCancelamento(agendamento),
+        icone: X,
+        cor: "bg-[#EF4444]",
+        label: "Cancelar",
+      }
+    : undefined;
+
+  const semSwipe = !acaoDireita && !acaoEsquerda;
+
+  if (semSwipe) {
+    return cardCore;
+  }
+
+  return (
+    <SwipeableCard
+      onSwipeRight={acaoDireita}
+      onSwipeLeft={acaoEsquerda}
+      disabled={semSwipe}
+    >
+      {cardCore}
+    </SwipeableCard>
   );
 }
 
