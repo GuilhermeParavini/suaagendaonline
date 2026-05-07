@@ -548,8 +548,26 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
           className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
         />
         <span className="text-xs text-slate-600 leading-relaxed">
-          Autorizo o armazenamento dos meus dados conforme a LGPD para fins de
-          atendimento em saúde.
+          Li e aceito a{" "}
+          <a
+            href="/privacidade"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary-text underline"
+          >
+            Politica de Privacidade
+          </a>{" "}
+          e os{" "}
+          <a
+            href="/termos"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary-text underline"
+          >
+            Termos de Uso
+          </a>
+          . Autorizo o armazenamento dos meus dados conforme a LGPD para fins
+          de atendimento em saude.
         </span>
       </label>
       {errors.aceite_lgpd ? (

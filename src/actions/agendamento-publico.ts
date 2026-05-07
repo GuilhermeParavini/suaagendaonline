@@ -22,6 +22,7 @@ import {
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
+import { registrarConsentimento } from '@/lib/consentimento';
 
 export type Slot = { time: string; available: boolean };
 export type DiaIndisponivel =
@@ -488,16 +489,28 @@ export async function criarAgendamentoPublico(
       responsavelId = respRow.id as string;
     }
 
-    const { error: consErr } = await admin.from('consentimentos').insert({
-      paciente_id: pacienteId,
-      responsavel_id: responsavelId,
-      tipo: isMenor ? 'lgpd_menor' : 'lgpd_geral',
-      aceite: true,
-      texto_aceito: LGPD_TEXT,
+    const consResult = await registrarConsentimento({
+      pacienteId,
+      responsavelId,
+      tipo: 'lgpd_agendamento',
+      textoTermo: LGPD_TEXT,
     });
-    if (consErr) {
-      await admin.from('pacientes').delete().eq('id', pacienteId);
-      return { ok: false, error: `Falha ao registrar consentimento: ${consErr.message}` };
+    if (!consResult.ok) {
+      // Fallback para tipo legacy se o novo nao for aceito pelo CHECK do schema
+      const { error: legacyErr } = await admin.from('consentimentos').insert({
+        paciente_id: pacienteId,
+        responsavel_id: responsavelId,
+        tipo: isMenor ? 'lgpd_menor' : 'lgpd_geral',
+        aceite: true,
+        texto_aceito: LGPD_TEXT,
+      });
+      if (legacyErr) {
+        await admin.from('pacientes').delete().eq('id', pacienteId);
+        return {
+          ok: false,
+          error: `Falha ao registrar consentimento: ${consResult.error}`,
+        };
+      }
     }
   } else {
     return { ok: false, error: 'Identificação do paciente obrigatória.' };

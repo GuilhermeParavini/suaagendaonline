@@ -17,6 +17,7 @@ import {
 } from '@/lib/email-templates';
 import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 import { registrarAcesso } from '@/lib/log-acesso';
+import { registrarConsentimento } from '@/lib/consentimento';
 
 export type StatusTratamento = 'ativo' | 'alta' | 'inativo';
 
@@ -877,19 +878,27 @@ export async function cadastrarPacienteAvulso(
     responsavelId = respRow.id as string;
   }
 
-  const { error: consErr } = await admin.from('consentimentos').insert({
-    paciente_id: pacienteId,
-    responsavel_id: responsavelId,
-    tipo: menor ? 'lgpd_menor' : 'lgpd_geral',
-    aceite: true,
-    texto_aceito: LGPD_TEXT_PUBLICO,
+  const consResult = await registrarConsentimento({
+    pacienteId,
+    responsavelId,
+    tipo: 'lgpd_cadastro',
+    textoTermo: LGPD_TEXT_PUBLICO,
   });
-  if (consErr) {
-    await admin.from('pacientes').delete().eq('id', pacienteId);
-    return {
-      ok: false,
-      error: `Falha ao registrar consentimento: ${consErr.message}`,
-    };
+  if (!consResult.ok) {
+    const { error: legacyErr } = await admin.from('consentimentos').insert({
+      paciente_id: pacienteId,
+      responsavel_id: responsavelId,
+      tipo: menor ? 'lgpd_menor' : 'lgpd_geral',
+      aceite: true,
+      texto_aceito: LGPD_TEXT_PUBLICO,
+    });
+    if (legacyErr) {
+      await admin.from('pacientes').delete().eq('id', pacienteId);
+      return {
+        ok: false,
+        error: `Falha ao registrar consentimento: ${consResult.error}`,
+      };
+    }
   }
 
   // Envia confirmacao ao paciente (se tiver email)

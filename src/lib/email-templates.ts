@@ -139,11 +139,22 @@ function formatEnderecoAssinatura(d: DadosAssinaturaEmail): string | null {
  * Gera bloco HTML de assinatura para o rodape do email. Quando faltam dados
  * do tenant, retorna assinatura minima ("Enviado via Sua Agenda Online").
  */
+/** URL absoluta para a pagina de privacidade — usada nos rodapes de email. */
+function urlPrivacidade(): string {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  if (!base) return "/privacidade";
+  return `${base.replace(/\/+$/, "")}/privacidade`;
+}
+
+const LINK_POLITICA_HTML = `<a href="${urlPrivacidade()}" style="color:#94A3B8;text-decoration:underline;">Politica de Privacidade</a>`;
+
 export function gerarAssinaturaEmail(
   d: DadosAssinaturaEmail | null | undefined,
 ): string {
   if (!d || !d.nomeEmpresa) {
-    return `<p style="margin:0;color:#64748B;font-size:12px;">Enviado via Sua Agenda Online</p>`;
+    return `<p style="margin:0;color:#64748B;font-size:12px;">Enviado via Sua Agenda Online · ${LINK_POLITICA_HTML}</p>`;
   }
   const telefone = formatTelefoneAssinatura(d.telefone);
   const endereco = formatEnderecoAssinatura(d);
@@ -176,7 +187,7 @@ export function gerarAssinaturaEmail(
       ${linhaTel}
       ${linhaEnd}
       ${linhaLink}
-      <p style="margin:12px 0 0 0;color:#94A3B8;font-size:11px;">Este email foi enviado por ${escapeHtml(d.nomeEmpresa)} via Sua Agenda Online.</p>
+      <p style="margin:12px 0 0 0;color:#94A3B8;font-size:11px;">Este email foi enviado por ${escapeHtml(d.nomeEmpresa)} via Sua Agenda Online · ${LINK_POLITICA_HTML}</p>
     </div>
   `;
 }

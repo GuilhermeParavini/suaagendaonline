@@ -26,6 +26,7 @@ import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
 import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import TabDocumentos from "./TabDocumentos";
 import TabPlanos from "./TabPlanos";
+import SecaoConsentimentos from "./SecaoConsentimentos";
 import AnamneseDetalhe from "./AnamneseDetalhe";
 import EvolucaoDetalhe from "./EvolucaoDetalhe";
 import AltaPacienteSection from "./AltaPacienteSection";
@@ -649,6 +650,8 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 </div>
               </div>
             ) : null}
+
+            <SecaoConsentimentos pacienteId={paciente.id} />
 
             <div className="flex justify-end gap-2 pt-2">
               {paciente.status_tratamento === "ativo" ? (

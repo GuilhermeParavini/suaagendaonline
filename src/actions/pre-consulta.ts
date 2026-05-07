@@ -9,6 +9,7 @@ import {
 } from '@/lib/paciente-origem';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
+import { registrarConsentimento } from '@/lib/consentimento';
 import {
   capitalizeNome,
   emailConfirmacaoPreConsulta,
@@ -278,19 +279,27 @@ export async function cadastrarPacientePreConsulta(
     responsavelId = respRow.id as string;
   }
 
-  const { error: consErr } = await admin.from('consentimentos').insert({
-    paciente_id: pacienteId,
-    responsavel_id: responsavelId,
-    tipo: menor ? 'lgpd_menor' : 'lgpd_geral',
-    aceite: true,
-    texto_aceito: LGPD_TEXT_PRECONSULTA,
+  const consResult = await registrarConsentimento({
+    pacienteId,
+    responsavelId,
+    tipo: 'lgpd_pre_consulta',
+    textoTermo: LGPD_TEXT_PRECONSULTA,
   });
-  if (consErr) {
-    await admin.from('pacientes').delete().eq('id', pacienteId);
-    return {
-      ok: false,
-      error: `Falha ao registrar consentimento: ${consErr.message}`,
-    };
+  if (!consResult.ok) {
+    const { error: legacyErr } = await admin.from('consentimentos').insert({
+      paciente_id: pacienteId,
+      responsavel_id: responsavelId,
+      tipo: menor ? 'lgpd_menor' : 'lgpd_geral',
+      aceite: true,
+      texto_aceito: LGPD_TEXT_PRECONSULTA,
+    });
+    if (legacyErr) {
+      await admin.from('pacientes').delete().eq('id', pacienteId);
+      return {
+        ok: false,
+        error: `Falha ao registrar consentimento: ${consResult.error}`,
+      };
+    }
   }
 
   return { ok: true, pacienteId };

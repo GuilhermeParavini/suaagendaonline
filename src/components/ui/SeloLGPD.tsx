@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Lock } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,17 @@ function SeloLGPD({ className, ...props }: SeloLGPDProps) {
     >
       <Lock size={14} strokeWidth={1.5} aria-hidden="true" />
       <span>Dados protegidos pela LGPD</span>
+      <span aria-hidden="true" className="text-teal-300">
+        ·
+      </span>
+      <Link
+        href="/privacidade"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-semibold text-teal-700 underline-offset-2 hover:underline no-touch-min"
+      >
+        Politica de Privacidade
+      </Link>
     </div>
   );
 }
