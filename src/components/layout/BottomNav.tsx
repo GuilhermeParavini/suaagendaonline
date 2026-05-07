@@ -24,18 +24,35 @@ import type { ModuloId, ModulosAtivos } from "@/lib/planos";
 interface BottomNavProps {
   contagemListaEspera?: number;
   modulos?: ModulosAtivos;
+  /** Tenant criado ha N dias. Usado para esconder itens avancados nos primeiros 3 dias. */
+  tenantCriadoHaDias?: number | null;
+  /** Quando true, todos os itens avancados aparecem (checklist 100%). */
+  onboardingCompleto?: boolean;
 }
 
-const itensFixos: {
+type ItemFixo = {
   href: string;
   label: string;
   Icon: LucideIcon;
   exact?: boolean;
-}[] = [
+  tour?: string;
+};
+
+const itensFixos: ItemFixo[] = [
   { href: "/", label: "Inicio", Icon: Home, exact: true },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
-  { href: "/pacientes", label: "Pacientes", Icon: Users },
-  { href: "/financeiro", label: "Financeiro", Icon: Wallet },
+  {
+    href: "/pacientes",
+    label: "Pacientes",
+    Icon: Users,
+    tour: "menu-pacientes-mobile",
+  },
+  {
+    href: "/financeiro",
+    label: "Financeiro",
+    Icon: Wallet,
+    tour: "menu-financeiro-mobile",
+  },
 ];
 
 type ItemMais = {
@@ -44,6 +61,8 @@ type ItemMais = {
   Icon: LucideIcon;
   badgeKey?: "listaEspera";
   modulo?: ModuloId;
+  /** Item avancado — escondido para tenants novos com onboarding incompleto. */
+  avancado?: boolean;
 };
 
 const itensMais: ItemMais[] = [
@@ -53,9 +72,21 @@ const itensMais: ItemMais[] = [
     label: "Lista de espera",
     Icon: ClipboardList,
     badgeKey: "listaEspera",
+    avancado: true,
   },
-  { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
-  { href: "/relatorios", label: "Relatórios", Icon: LineChart },
+  {
+    href: "/estoque",
+    label: "Estoque",
+    Icon: Package,
+    modulo: "estoque",
+    avancado: true,
+  },
+  {
+    href: "/relatorios",
+    label: "Relatórios",
+    Icon: LineChart,
+    avancado: true,
+  },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
@@ -71,12 +102,27 @@ function isActive(
 function BottomNav({
   contagemListaEspera = 0,
   modulos,
+  tenantCriadoHaDias = null,
+  onboardingCompleto = false,
 }: BottomNavProps = {}) {
   const pathname = usePathname();
   const [maisOpen, setMaisOpen] = useState(false);
-  const itensMaisVisiveis = itensMais.filter(
-    (it) => !it.modulo || (modulos ? modulos[it.modulo] !== false : true),
-  );
+
+  const tenantNovo =
+    tenantCriadoHaDias !== null &&
+    tenantCriadoHaDias < 3 &&
+    !onboardingCompleto;
+  const mostrarBadgeNovo =
+    tenantCriadoHaDias !== null &&
+    tenantCriadoHaDias >= 3 &&
+    tenantCriadoHaDias <= 10 &&
+    onboardingCompleto;
+
+  const itensMaisVisiveis = itensMais.filter((it) => {
+    if (it.modulo && modulos && modulos[it.modulo] === false) return false;
+    if (tenantNovo && it.avancado) return false;
+    return true;
+  });
   const maisAtivo = itensMaisVisiveis.some((it) => isActive(pathname, it.href));
   const temBadgeMais = contagemListaEspera > 0;
 
@@ -86,13 +132,14 @@ function BottomNav({
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="flex h-14">
-        {itensFixos.map(({ href, label, Icon, exact }) => {
+        {itensFixos.map(({ href, label, Icon, exact, tour }) => {
           const active = isActive(pathname, href, exact);
           return (
             <li key={href} className="flex-1">
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
+                data-tour={tour}
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
                   active ? "text-primary-text" : "text-slate-500",
@@ -110,6 +157,7 @@ function BottomNav({
               <button
                 type="button"
                 aria-label="Mais"
+                data-tour="menu-mais-mobile"
                 className={cn(
                   "relative flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
                   maisAtivo ? "text-primary-text" : "text-slate-500",
@@ -145,39 +193,47 @@ function BottomNav({
                   </Dialog.Close>
                 </div>
                 <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
-                  {itensMaisVisiveis.map(({ href, label, Icon, badgeKey }) => {
-                    const active = isActive(pathname, href);
-                    const badge =
-                      badgeKey === "listaEspera" && contagemListaEspera > 0
-                        ? contagemListaEspera
-                        : null;
-                    return (
-                      <li key={href}>
-                        <Link
-                          href={href}
-                          onClick={() => setMaisOpen(false)}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
-                            active
-                              ? "text-primary-text bg-primary-surface"
-                              : "text-slate-700 hover:bg-slate-50",
-                          )}
-                        >
-                          <Icon
-                            size={20}
-                            strokeWidth={1.5}
-                            aria-hidden="true"
-                          />
-                          <span className="flex-1">{label}</span>
-                          {badge ? (
-                            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
-                              {badge}
-                            </span>
-                          ) : null}
-                        </Link>
-                      </li>
-                    );
-                  })}
+                  {itensMaisVisiveis.map(
+                    ({ href, label, Icon, badgeKey, avancado }) => {
+                      const active = isActive(pathname, href);
+                      const badge =
+                        badgeKey === "listaEspera" && contagemListaEspera > 0
+                          ? contagemListaEspera
+                          : null;
+                      const ehNovo = mostrarBadgeNovo && avancado;
+                      return (
+                        <li key={href}>
+                          <Link
+                            href={href}
+                            onClick={() => setMaisOpen(false)}
+                            className={cn(
+                              "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
+                              active
+                                ? "text-primary-text bg-primary-surface"
+                                : "text-slate-700 hover:bg-slate-50",
+                            )}
+                          >
+                            <Icon
+                              size={20}
+                              strokeWidth={1.5}
+                              aria-hidden="true"
+                            />
+                            <span className="flex-1">{label}</span>
+                            {ehNovo && !badge ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                                Novo
+                              </span>
+                            ) : null}
+                            {badge ? (
+                              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                                {badge}
+                              </span>
+                            ) : null}
+                          </Link>
+                        </li>
+                      );
+                    },
+                  )}
                 </ul>
               </Dialog.Content>
             </Dialog.Portal>

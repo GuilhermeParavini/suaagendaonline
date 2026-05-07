@@ -11,6 +11,8 @@ import {
   getAgendaHoje,
   type AgendamentoDia,
 } from "@/actions/agendamentos";
+import { getProgressoOnboarding } from "@/actions/onboarding";
+import ChecklistOnboardingWrapper from "@/components/onboarding/ChecklistOnboardingWrapper";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +60,11 @@ export default async function HomeAgendaHojePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const result = await getAgendaHoje();
+  const [result, progresso] = await Promise.all([
+    getAgendaHoje(),
+    getProgressoOnboarding(),
+  ]);
+
   if (!result.ok) {
     return (
       <div className="space-y-4">
@@ -72,6 +78,7 @@ export default async function HomeAgendaHojePage() {
 
   const { agendamentos, proximo, proximoFuturo, profissionalNome } =
     result.data;
+  const mostrarChecklist = progresso.totalConcluidos < progresso.total;
 
   return (
     <div className="space-y-6 relative pb-12">
@@ -81,6 +88,10 @@ export default async function HomeAgendaHojePage() {
           {profissionalNome}!
         </h1>
       </header>
+
+      {mostrarChecklist ? (
+        <ChecklistOnboardingWrapper progresso={progresso} />
+      ) : null}
 
       <ProximoCard proximo={proximo} proximoFuturo={proximoFuturo} />
 
@@ -153,7 +164,10 @@ function ProximoCard({
 }) {
   if (!proximo && !proximoFuturo) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-1 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+      <section
+        data-tour="proximo-card"
+        className="rounded-xl border border-slate-200 bg-white p-5 space-y-1 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+      >
         <p className="text-[12px] font-medium uppercase tracking-wide text-slate-500">
           Proximo paciente
         </p>
@@ -173,6 +187,7 @@ function ProximoCard({
 
   return (
     <section
+      data-tour="proximo-card"
       className={cn(
         "rounded-xl border bg-white p-5 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)]",
         proximo ? "border-primary" : "border-slate-200",

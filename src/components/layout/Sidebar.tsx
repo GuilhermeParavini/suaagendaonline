@@ -21,6 +21,10 @@ interface SidebarProps {
   logoUrl?: string | null;
   contagemListaEspera?: number;
   modulos?: ModulosAtivos;
+  /** Tenant criado ha N dias. Usado para esconder itens avancados nos primeiros 3 dias. */
+  tenantCriadoHaDias?: number | null;
+  /** Quando true, todos os itens avancados aparecem (checklist 100%). */
+  onboardingCompleto?: boolean;
 }
 
 type SidebarItem = {
@@ -30,23 +34,49 @@ type SidebarItem = {
   exact?: boolean;
   badgeKey?: "listaEspera";
   modulo?: ModuloId;
+  /** Marca itens avancados — escondidos para tenants novos com onboarding incompleto. */
+  avancado?: boolean;
+  /** Atributo data-tour do elemento (anexa ao Link). */
+  tour?: string;
 };
 
 const items: SidebarItem[] = [
   { href: "/", label: "Inicio", Icon: Home, exact: true },
   { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
-  { href: "/pacientes", label: "Pacientes", Icon: Users },
+  { href: "/pacientes", label: "Pacientes", Icon: Users, tour: "menu-pacientes" },
   {
     href: "/lista-espera",
     label: "Lista de espera",
     Icon: ClipboardList,
     badgeKey: "listaEspera",
+    avancado: true,
   },
-  { href: "/financeiro", label: "Financeiro", Icon: Wallet },
-  { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
-  { href: "/relatorios", label: "Relatórios", Icon: LineChart },
-  { href: "/configuracoes", label: "Configurações", Icon: Settings },
+  {
+    href: "/financeiro",
+    label: "Financeiro",
+    Icon: Wallet,
+    tour: "menu-financeiro",
+  },
+  {
+    href: "/estoque",
+    label: "Estoque",
+    Icon: Package,
+    modulo: "estoque",
+    avancado: true,
+  },
+  {
+    href: "/relatorios",
+    label: "Relatórios",
+    Icon: LineChart,
+    avancado: true,
+  },
+  {
+    href: "/configuracoes",
+    label: "Configurações",
+    Icon: Settings,
+    tour: "menu-configuracoes",
+  },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean): boolean {
@@ -58,11 +88,30 @@ function Sidebar({
   logoUrl,
   contagemListaEspera = 0,
   modulos,
+  tenantCriadoHaDias = null,
+  onboardingCompleto = false,
 }: SidebarProps = {}) {
   const pathname = usePathname();
-  const itensVisiveis = items.filter(
-    (it) => !it.modulo || (modulos ? modulos[it.modulo] !== false : true),
-  );
+
+  // Tenant novo: criado ha menos de 3 dias E onboarding incompleto.
+  const tenantNovo =
+    tenantCriadoHaDias !== null &&
+    tenantCriadoHaDias < 3 &&
+    !onboardingCompleto;
+
+  // Badge "Novo": tenant entre 3 e 10 dias com onboarding completo
+  // (acabou de revelar os itens avancados).
+  const mostrarBadgeNovo =
+    tenantCriadoHaDias !== null &&
+    tenantCriadoHaDias >= 3 &&
+    tenantCriadoHaDias <= 10 &&
+    onboardingCompleto;
+
+  const itensVisiveis = items.filter((it) => {
+    if (it.modulo && modulos && modulos[it.modulo] === false) return false;
+    if (tenantNovo && it.avancado) return false;
+    return true;
+  });
 
   return (
     <aside className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen bg-white border-r border-slate-200">
@@ -84,35 +133,44 @@ function Sidebar({
       </div>
       <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {itensVisiveis.map(({ href, label, Icon, exact, badgeKey }) => {
-            const active = isActive(pathname, href, exact);
-            const badge =
-              badgeKey === "listaEspera" && contagemListaEspera > 0
-                ? contagemListaEspera
-                : null;
-            return (
-              <li key={href}>
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors",
-                    active
-                      ? "bg-primary-surface text-primary-text"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
-                  )}
-                >
-                  <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
-                  <span className="flex-1">{label}</span>
-                  {badge ? (
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
-                      {badge}
-                    </span>
-                  ) : null}
-                </Link>
-              </li>
-            );
-          })}
+          {itensVisiveis.map(
+            ({ href, label, Icon, exact, badgeKey, avancado, tour }) => {
+              const active = isActive(pathname, href, exact);
+              const badgeContagem =
+                badgeKey === "listaEspera" && contagemListaEspera > 0
+                  ? contagemListaEspera
+                  : null;
+              const ehNovo = mostrarBadgeNovo && avancado;
+              return (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    data-tour={tour}
+                    className={cn(
+                      "flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary-surface text-primary-text"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+                    )}
+                  >
+                    <Icon size={20} strokeWidth={1.5} aria-hidden="true" />
+                    <span className="flex-1">{label}</span>
+                    {ehNovo && !badgeContagem ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                        Novo
+                      </span>
+                    ) : null}
+                    {badgeContagem ? (
+                      <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500 px-1.5 text-[11px] font-semibold text-white">
+                        {badgeContagem}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            },
+          )}
         </ul>
       </nav>
     </aside>

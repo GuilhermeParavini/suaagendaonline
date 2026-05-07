@@ -16,6 +16,7 @@ function NovoAgendamentoFab() {
         type="button"
         aria-label="Novo agendamento"
         onClick={() => setOpen(true)}
+        data-tour="novo-agendamento"
         className="fixed right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] lg:bottom-6 lg:right-6 h-14 w-14 rounded-full bg-primary text-white shadow-md hover:shadow-lg hover:bg-primary/90 transition flex items-center justify-center z-40"
       >
         <Plus size={24} strokeWidth={2} aria-hidden="true" />

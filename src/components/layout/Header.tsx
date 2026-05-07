@@ -45,6 +45,7 @@ function Header({ userName = "Profissional" }: HeaderProps) {
               type="button"
               aria-label="Buscar"
               onClick={() => setPaletteOpen(true)}
+              data-tour="search"
               className="hidden lg:inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors min-h-[40px]"
             >
               <Search size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -58,6 +59,7 @@ function Header({ userName = "Profissional" }: HeaderProps) {
               type="button"
               aria-label="Buscar"
               onClick={() => setPaletteOpen(true)}
+              data-tour="search"
               className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               <Search size={20} strokeWidth={1.5} aria-hidden="true" />

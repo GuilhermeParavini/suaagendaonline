@@ -4,7 +4,9 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
 import Header from "@/components/layout/Header";
 import AssistenteBubble from "@/components/assistente/AssistenteBubble";
+import TourGuiado from "@/components/onboarding/TourGuiado";
 import { getContagemListaEspera } from "@/actions/lista-espera";
+import { getProgressoOnboarding } from "@/actions/onboarding";
 import {
   normalizarModulosAtivos,
   type ModulosAtivos,
@@ -64,10 +66,17 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { id: profId, nome: userName, logoUrl, plano, modulos } =
-    await getProfissionalInfo();
-  const contagemRes = await getContagemListaEspera();
+  const [
+    { id: profId, nome: userName, logoUrl, plano, modulos },
+    contagemRes,
+    progresso,
+  ] = await Promise.all([
+    getProfissionalInfo(),
+    getContagemListaEspera(),
+    getProgressoOnboarding(),
+  ]);
   const contagemListaEspera = contagemRes.ok ? contagemRes.data : 0;
+  const onboardingCompleto = progresso.totalConcluidos >= progresso.total;
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -75,6 +84,8 @@ export default async function DashboardLayout({
         logoUrl={logoUrl}
         contagemListaEspera={contagemListaEspera}
         modulos={modulos}
+        tenantCriadoHaDias={progresso.tenantCriadoHaDias}
+        onboardingCompleto={onboardingCompleto}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header userName={userName} />
@@ -85,6 +96,8 @@ export default async function DashboardLayout({
       <BottomNav
         contagemListaEspera={contagemListaEspera}
         modulos={modulos}
+        tenantCriadoHaDias={progresso.tenantCriadoHaDias}
+        onboardingCompleto={onboardingCompleto}
       />
       {profId ? (
         <AssistenteBubble
@@ -93,6 +106,7 @@ export default async function DashboardLayout({
           plano={plano ?? "trial"}
         />
       ) : null}
+      <TourGuiado />
     </div>
   );
 }
