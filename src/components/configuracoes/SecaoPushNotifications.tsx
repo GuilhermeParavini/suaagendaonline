@@ -7,7 +7,7 @@ import {
   removerSubscription,
   salvarSubscription,
 } from "@/actions/push";
-import { vapidPublicToUint8Array } from "@/lib/push";
+import { vapidPublicToUint8Array } from "@/lib/push-client";
 import { cn } from "@/lib/utils";
 
 type Estado =

@@ -591,7 +591,7 @@ export async function criarAgendamentoPublico(
 
   // Push notification para o profissional (best-effort).
   try {
-    const { enviarPushParaProfissional } = await import('@/lib/push');
+    const { enviarPushParaProfissional } = await import('@/lib/push-server');
     const { data: pacBasic } = await admin
       .from('pacientes')
       .select('nome')
@@ -994,7 +994,7 @@ export async function reagendarPorPaciente(
 
   // Push para o profissional (best-effort).
   try {
-    const { enviarPushParaProfissional } = await import('@/lib/push');
+    const { enviarPushParaProfissional } = await import('@/lib/push-server');
     const dataAnteriorBr = (() => {
       const iso = dataIsoFromTimestamp(ag.dataHoraIso);
       const [y, m, d] = iso.split('-').map(Number);
