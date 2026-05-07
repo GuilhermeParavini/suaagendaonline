@@ -11,6 +11,7 @@ import {
   ClipboardList,
   Clock,
   FileText,
+  Heart,
   Home,
   Lock,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import {
   agendarRetorno,
   atualizarStatusAgendamento,
 } from "@/actions/agendamentos";
+import { criarSequenciaAftercare } from "@/actions/aftercare";
 import {
   getSessaoPlanoByAgendamento,
   type SessaoPlanoResumo,
@@ -114,6 +116,8 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
     nome: string;
     total: number;
   } | null>(null);
+  const [aftercarePromptOpen, setAftercarePromptOpen] = useState(false);
+  const [programandoAftercare, setProgramandoAftercare] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -300,7 +304,32 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         "Atendimento concluido. Voce pode emitir relatorio, plano de cuidados ou atestado.";
       setOkMsg(mensagemRetorno ? `${mensagemRetorno} ${base}` : base);
       router.refresh();
+      // Pergunta se quer programar acompanhamento pos-consulta.
+      setAftercarePromptOpen(true);
     });
+  };
+
+  const handleProgramarAftercare = async () => {
+    setProgramandoAftercare(true);
+    try {
+      const r = await criarSequenciaAftercare(contexto.agendamento.id);
+      setAftercarePromptOpen(false);
+      if (r.ok) {
+        const txt = r.jaExistia
+          ? "Acompanhamento ja estava programado."
+          : "Acompanhamento programado para 3 mensagens.";
+        setOkMsg(txt);
+        window.setTimeout(() => setOkMsg(null), 3500);
+      } else {
+        setErro(r.error);
+      }
+    } finally {
+      setProgramandoAftercare(false);
+    }
+  };
+
+  const handlePularAftercare = () => {
+    setAftercarePromptOpen(false);
   };
 
   const dataHora = new Date(contexto.agendamento.data_hora);
@@ -695,6 +724,69 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         templates={templatesAnamnese}
         onSaved={handleAnamneseCriada}
       />
+
+      <Dialog.Root
+        open={aftercarePromptOpen}
+        onOpenChange={(next) =>
+          !next && !programandoAftercare ? handlePularAftercare() : undefined
+        }
+      >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Dialog.Content
+            className={cn(
+              "fixed z-50 bg-white shadow-lg focus:outline-none",
+              "inset-x-0 bottom-0 rounded-t-2xl px-4 pt-6 pb-[max(env(safe-area-inset-bottom),16px)]",
+              "md:inset-auto md:left-1/2 md:top-1/2 md:bottom-auto md:-translate-x-1/2 md:-translate-y-1/2 md:w-[440px] md:max-w-[calc(100vw-32px)] md:rounded-2xl md:p-6",
+            )}
+          >
+            <div className="md:hidden mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300" />
+            <div className="text-center">
+              <div className="sao-check-pop mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary-surface">
+                <Heart
+                  size={28}
+                  strokeWidth={1.8}
+                  aria-hidden="true"
+                  className="text-primary-text"
+                />
+              </div>
+              <Dialog.Title className="mt-3 text-base font-semibold text-slate-900">
+                Agendamento concluido!
+              </Dialog.Title>
+              <Dialog.Description className="mt-2 text-sm text-slate-600">
+                Enviar acompanhamento pos-consulta para{" "}
+                <span className="font-medium text-slate-900">
+                  {contexto.paciente.nome}
+                </span>
+                ?
+              </Dialog.Description>
+              <p className="mt-2 text-xs text-slate-500">
+                Programa 3 mensagens (dia 1, dia 3 e dia 7) para revisar e
+                enviar manualmente.
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={handlePularAftercare}
+                disabled={programandoAftercare}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              >
+                Nao, obrigado
+              </button>
+              <button
+                type="button"
+                onClick={handleProgramarAftercare}
+                disabled={programandoAftercare}
+                className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark disabled:opacity-50"
+              >
+                {programandoAftercare ? "Programando..." : "Sim, programar"}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <Dialog.Root
         open={planoConcluido !== null}

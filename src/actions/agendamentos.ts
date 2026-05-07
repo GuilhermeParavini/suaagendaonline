@@ -21,6 +21,7 @@ import {
   marcarSessaoFalta,
   marcarSessaoRealizada,
 } from '@/actions/planos-tratamento';
+import { criarSequenciaAftercare } from '@/actions/aftercare';
 
 export type StatusAgendamento =
   | 'agendado'
@@ -451,6 +452,12 @@ export async function atualizarStatusAgendamento(
       await marcarSessaoRealizada(id);
     } catch (e) {
       console.error('[agendamentos] erro marcarSessaoRealizada:', e);
+    }
+    // Aftercare pos-consulta (best-effort, idempotente).
+    try {
+      await criarSequenciaAftercare(id);
+    } catch (e) {
+      console.error('[agendamentos] erro criarSequenciaAftercare:', e);
     }
   } else if (novoStatus === 'faltou') {
     try {

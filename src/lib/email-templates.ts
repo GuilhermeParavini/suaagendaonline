@@ -301,13 +301,38 @@ export function emailSolicitarAvaliacao(d: DadosAvaliacao): {
   const nome = capitalizeNome(d.pacienteNome);
   const profissional = capitalizeNome(d.profissionalNome);
   const assunto = `Como foi sua consulta com ${profissional}?`;
+  // Estrelas como links preenchidos com a nota correspondente. Clicar em qualquer
+  // uma leva ao link de avaliacao com `?nota=N` para pre-selecionar.
+  const estrelaSvg = (cor: string) =>
+    `<svg width="36" height="36" viewBox="0 0 24 24" fill="${cor}" stroke="${cor}" stroke-width="1" stroke-linejoin="round" aria-hidden="true" style="display:inline-block;vertical-align:middle;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+  const estrelasLinks = [1, 2, 3, 4, 5]
+    .map((n) => {
+      const url = `${d.linkAvaliacao}${d.linkAvaliacao.includes("?") ? "&" : "?"}nota=${n}`;
+      return `<a href="${escapeHtml(url)}" style="display:inline-block;text-decoration:none;margin:0 4px;" aria-label="${n} ${n === 1 ? "estrela" : "estrelas"}">${estrelaSvg("#F59E0B")}</a>`;
+    })
+    .join("");
+
   const conteudo = `
-    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
-    <p style="margin:0 0 16px 0;">Sua opinião é importante. Avalie sua consulta com ${escapeHtml(profissional)}.</p>
-    <p style="margin:20px 0;">
-      <a href="${escapeHtml(d.linkAvaliacao)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Avaliar consulta</a>
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}!</p>
+    <p style="margin:0 0 8px 0;color:#0F172A;">Sua opinião é muito importante para nós.</p>
+    <p style="margin:0 0 20px 0;color:#0F172A;">Como foi sua consulta com <strong>${escapeHtml(profissional)}</strong>?</p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px 0;">
+      <tr>
+        <td align="center" style="padding:18px 12px;background-color:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;">
+          <p style="margin:0 0 10px 0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Toque em uma estrela para avaliar</p>
+          <p style="margin:0;line-height:0;">${estrelasLinks}</p>
+          <p style="margin:10px 0 0 0;color:#475569;font-size:12px;">Leva menos de 30 segundos.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 16px 0;text-align:center;">
+      <a href="${escapeHtml(d.linkAvaliacao)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">Avaliar consulta</a>
     </p>
-    <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;">Ou copie o link: ${escapeHtml(d.linkAvaliacao)}</p>
+
+    <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;text-align:center;">Ou copie o link: <a href="${escapeHtml(d.linkAvaliacao)}" style="color:#0D9488;">${escapeHtml(d.linkAvaliacao)}</a></p>
+    <p style="margin:16px 0 0 0;color:#475569;font-size:13px;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }

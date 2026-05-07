@@ -7,10 +7,24 @@ export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ nota?: string }>;
 }
 
-export default async function AvaliacaoPage({ params }: PageProps) {
+function parseNota(v: string | undefined): number {
+  if (!v) return 0;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  if (n < 1 || n > 5) return 0;
+  return Math.round(n);
+}
+
+export default async function AvaliacaoPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { id } = await params;
+  const sp = await searchParams;
+  const initialNota = parseNota(sp.nota);
 
   const ctx = await getContextoAvaliacao(id);
   if (!ctx.ok) notFound();
@@ -50,6 +64,7 @@ export default async function AvaliacaoPage({ params }: PageProps) {
       profissionalNome={ctx.data.profissionalNome}
       profissionalEspecialidade={ctx.data.profissionalEspecialidade}
       logoUrl={ctx.data.logoUrl}
+      initialNota={initialNota}
     />
   );
 }

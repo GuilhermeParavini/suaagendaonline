@@ -263,7 +263,7 @@ export default async function DashboardPage() {
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[18px] font-semibold text-slate-900">
-            Avaliações
+            Satisfação dos pacientes
           </h2>
           {avalTotal > 0 ? (
             <span className="text-xs text-slate-500">
@@ -275,33 +275,51 @@ export default async function DashboardPage() {
         {avalTotal === 0 ? (
           <Card>
             <p className="text-sm text-slate-500">
-              Nenhuma avaliação recebida ainda.
+              Nenhuma avaliação recebida ainda. As avaliações são solicitadas
+              automaticamente ao concluir um atendimento.
             </p>
           </Card>
         ) : (
           <div className="space-y-2">
-            <Card className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star
-                    key={n}
-                    size={18}
-                    strokeWidth={1.5}
-                    className={cn(
-                      n <= Math.round(avalMedia)
-                        ? "fill-[#F59E0B] text-[#F59E0B]"
-                        : "fill-transparent text-slate-300",
-                    )}
-                    aria-hidden="true"
-                  />
-                ))}
+            <Card>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <p className="text-[40px] font-semibold leading-none text-slate-900">
+                    {avalMedia.toFixed(1).replace(".", ",")}
+                  </p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          size={18}
+                          strokeWidth={1.5}
+                          className={cn(
+                            n <= Math.round(avalMedia)
+                              ? "fill-[#F59E0B] text-[#F59E0B]"
+                              : "fill-transparent text-slate-300",
+                          )}
+                          aria-hidden="true"
+                        />
+                      ))}
+                    </div>
+                    <p className="text-[12px] text-slate-500">
+                      Total: {avalTotal}{" "}
+                      {avalTotal === 1 ? "avaliação" : "avaliações"}
+                    </p>
+                    {avalRecentes[0] ? (
+                      <p className="text-[12px] text-slate-500">
+                        Última: {avalRecentes[0].data}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
-              <p className="text-base font-semibold text-slate-900">
-                {avalMedia.toFixed(1)}
-              </p>
-              <p className="text-xs text-slate-500">
-                média de {avalTotal} {avalTotal === 1 ? "avaliação" : "avaliações"}
-              </p>
+              {avalTotal < 5 ? (
+                <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800">
+                  Ainda poucas avaliações. Continue atendendo!
+                </p>
+              ) : null}
             </Card>
 
             <ul className="space-y-2">

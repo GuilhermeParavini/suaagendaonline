@@ -10,6 +10,7 @@ interface FormAvaliacaoProps {
   profissionalNome: string;
   profissionalEspecialidade: string;
   logoUrl: string | null;
+  initialNota?: number;
 }
 
 const inputClass =
@@ -21,8 +22,11 @@ function FormAvaliacao({
   profissionalNome,
   profissionalEspecialidade,
   logoUrl,
+  initialNota = 0,
 }: FormAvaliacaoProps) {
-  const [nota, setNota] = useState<number>(0);
+  const [nota, setNota] = useState<number>(
+    initialNota >= 1 && initialNota <= 5 ? initialNota : 0,
+  );
   const [hoverNota, setHoverNota] = useState<number>(0);
   const [gostou, setGostou] = useState("");
   const [melhorar, setMelhorar] = useState("");
