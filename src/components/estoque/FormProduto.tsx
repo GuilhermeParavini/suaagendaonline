@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
+import { Boxes, Package, X } from "lucide-react";
 import {
   criarProduto,
   atualizarProduto,
@@ -18,6 +18,7 @@ import {
   parseCurrency,
   formatCurrency,
 } from "@/lib/masks";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { cn } from "@/lib/utils";
 
 const CATEGORIAS: { value: CategoriaEstoque; label: string }[] = [
@@ -225,122 +226,155 @@ function FormProduto({
             onSubmit={handleSubmit(onSubmit)}
             className="mt-4 flex-1 overflow-y-auto space-y-4"
           >
-            <div className="space-y-1">
-              <label className={labelClass}>Nome *</label>
-              <input
-                {...register("nome")}
-                type="text"
-                placeholder="Ex.: Algodao, Bisturi, Luva"
-                className={inputClass}
-              />
-              {errors.nome ? (
-                <p className={errorClass}>{errors.nome.message}</p>
-              ) : null}
-            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-4">
+              <CollapsibleSection
+                titulo="Dados do produto"
+                Icon={Package}
+                defaultOpen
+              >
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className={labelClass}>Nome *</label>
+                    <input
+                      {...register("nome")}
+                      type="text"
+                      placeholder="Ex.: Algodao, Bisturi, Luva"
+                      className={inputClass}
+                    />
+                    {errors.nome ? (
+                      <p className={errorClass}>{errors.nome.message}</p>
+                    ) : null}
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className={labelClass}>Categoria *</label>
-                <select {...register("categoria")} className={inputClass}>
-                  {CATEGORIAS.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className={labelClass}>Categoria *</label>
+                      <select
+                        {...register("categoria")}
+                        className={inputClass}
+                      >
+                        {CATEGORIAS.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div className="space-y-1">
-                <label className={labelClass}>Unidade *</label>
-                <select {...register("unidade")} className={inputClass}>
-                  {UNIDADES.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+                    <div className="space-y-1">
+                      <label className={labelClass}>Unidade *</label>
+                      <select
+                        {...register("unidade")}
+                        className={inputClass}
+                      >
+                        {UNIDADES.map((u) => (
+                          <option key={u.value} value={u.value}>
+                            {u.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleSection>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className={labelClass}>
-                  {isEdit ? "Quantidade atual" : "Quantidade inicial"} *
-                </label>
-                <input
-                  {...register("quantidade")}
-                  type="text"
-                  inputMode="decimal"
-                  disabled={isEdit}
-                  className={cn(inputClass, isEdit && "bg-slate-50 text-slate-500")}
-                />
-                {isEdit ? (
-                  <p className="text-[11px] text-slate-500">
-                    Use o botao + ou - na lista para movimentar.
-                  </p>
-                ) : null}
-                {errors.quantidade ? (
-                  <p className={errorClass}>{errors.quantidade.message}</p>
-                ) : null}
-              </div>
+              <CollapsibleSection titulo="Estoque" Icon={Boxes} defaultOpen>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className={labelClass}>
+                        {isEdit ? "Quantidade atual" : "Quantidade inicial"} *
+                      </label>
+                      <input
+                        {...register("quantidade")}
+                        type="text"
+                        inputMode="decimal"
+                        disabled={isEdit}
+                        className={cn(
+                          inputClass,
+                          isEdit && "bg-slate-50 text-slate-500",
+                        )}
+                      />
+                      {isEdit ? (
+                        <p className="text-[11px] text-slate-500">
+                          Use o botao + ou - na lista para movimentar.
+                        </p>
+                      ) : null}
+                      {errors.quantidade ? (
+                        <p className={errorClass}>
+                          {errors.quantidade.message}
+                        </p>
+                      ) : null}
+                    </div>
 
-              <div className="space-y-1">
-                <label className={labelClass}>Quantidade minima *</label>
-                <input
-                  {...register("quantidadeMinima")}
-                  type="text"
-                  inputMode="decimal"
-                  className={inputClass}
-                />
-                <p className="text-[11px] text-slate-500">
-                  Alerta quando atingir este valor.
-                </p>
-                {errors.quantidadeMinima ? (
-                  <p className={errorClass}>
-                    {errors.quantidadeMinima.message}
-                  </p>
-                ) : null}
-              </div>
-            </div>
+                    <div className="space-y-1">
+                      <label className={labelClass}>Quantidade minima *</label>
+                      <input
+                        {...register("quantidadeMinima")}
+                        type="text"
+                        inputMode="decimal"
+                        className={inputClass}
+                      />
+                      <p className="text-[11px] text-slate-500">
+                        Alerta quando atingir este valor.
+                      </p>
+                      {errors.quantidadeMinima ? (
+                        <p className={errorClass}>
+                          {errors.quantidadeMinima.message}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
 
-            <div className="space-y-1">
-              <label className={labelClass}>Valor unitario</label>
-              <input
-                {...register("valorUnitario", {
-                  onChange: (e) => {
-                    setValue(
-                      "valorUnitario",
-                      formatCurrencyInput(e.target.value),
-                      { shouldDirty: true },
-                    );
-                  },
-                })}
-                type="text"
-                inputMode="numeric"
-                placeholder="R$ 0,00"
-                className={inputClass}
-              />
-            </div>
+                  <div className="space-y-1">
+                    <label className={labelClass}>Valor unitario</label>
+                    <input
+                      {...register("valorUnitario", {
+                        onChange: (e) => {
+                          setValue(
+                            "valorUnitario",
+                            formatCurrencyInput(e.target.value),
+                            { shouldDirty: true },
+                          );
+                        },
+                      })}
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="R$ 0,00"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </CollapsibleSection>
 
-            <div className="space-y-1">
-              <label className={labelClass}>Fornecedor padrao</label>
-              <input
-                {...register("fornecedorPadrao")}
-                type="text"
-                maxLength={120}
-                placeholder="Nome do fornecedor"
-                className={inputClass}
-              />
-            </div>
+              <CollapsibleSection
+                titulo="Detalhes"
+                defaultOpen={false}
+                hint="Opcional"
+              >
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className={labelClass}>Fornecedor padrao</label>
+                    <input
+                      {...register("fornecedorPadrao")}
+                      type="text"
+                      maxLength={120}
+                      placeholder="Nome do fornecedor"
+                      className={inputClass}
+                    />
+                  </div>
 
-            <div className="space-y-1">
-              <label className={labelClass}>Observacoes</label>
-              <textarea
-                {...register("observacoes")}
-                rows={2}
-                maxLength={500}
-                className={cn(inputClass, "resize-none")}
-              />
+                  <div className="space-y-1">
+                    <label className={labelClass}>Observacoes</label>
+                    <textarea
+                      {...register("observacoes")}
+                      rows={2}
+                      maxLength={500}
+                      className={cn(inputClass, "resize-none")}
+                    />
+                  </div>
+                </div>
+              </CollapsibleSection>
             </div>
 
             {apiError ? (

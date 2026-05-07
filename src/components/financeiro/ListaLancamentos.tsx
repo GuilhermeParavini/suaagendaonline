@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Clock, FileText, Trash2, Wallet } from "lucide-react";
 import {
@@ -37,7 +37,32 @@ function ddmm(iso: string): string {
 
 function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
   const [isPending, startTransition] = useTransition();
+  const [pulsoPagoId, setPulsoPagoId] = useState<string | null>(null);
+  // Snapshot dos ids ja existentes no render anterior. Apenas itens cujo id
+  // nao estava no snapshot recebem a animacao sao-slide-in. Snapshot inicial
+  // contem os ids do primeiro render para evitar animar tudo no mount.
+  const [idsConhecidos, setIdsConhecidos] = useState<Set<string>>(
+    () => new Set(lancamentos.map((l) => l.id)),
+  );
   const toast = useToast();
+
+  // Sincroniza o snapshot de ids vistos sempre que a prop `lancamentos` muda.
+  // Precisa ocorrer apos o render para que o item recem-inserido apareca uma
+  // vez com sao-slide-in antes de ser marcado como conhecido.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIdsConhecidos((atual) => {
+      let mudou = false;
+      const novo = new Set(atual);
+      for (const l of lancamentos) {
+        if (!novo.has(l.id)) {
+          novo.add(l.id);
+          mudou = true;
+        }
+      }
+      return mudou ? novo : atual;
+    });
+  }, [lancamentos]);
 
   if (lancamentos.length === 0) {
     return (
@@ -52,7 +77,15 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
   const handleTogglePago = (id: string, novoPago: boolean) => {
     startTransition(async () => {
       const result = await atualizarPago(id, novoPago);
-      if (result.ok) onChanged();
+      if (result.ok) {
+        if (novoPago) {
+          setPulsoPagoId(id);
+          window.setTimeout(() => {
+            setPulsoPagoId((atual) => (atual === id ? null : atual));
+          }, 1000);
+        }
+        onChanged();
+      }
     });
   };
 
@@ -89,8 +122,15 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
         const valorLiquido = ehReceita ? l.valor - valorComissao : 0;
         const mostrarComissao = ehReceita && l.comissao_aplicavel && valorComissao > 0;
 
+        const ehNovo = !idsConhecidos.has(l.id);
         return (
-          <li key={l.id} className="px-3 py-3 sm:px-4">
+          <li
+            key={l.id}
+            className={cn(
+              "px-3 py-3 sm:px-4",
+              ehNovo && "sao-slide-in",
+            )}
+          >
             <div className="flex items-start gap-3">
               <div className="w-10 shrink-0 text-center">
                 <span className="text-[11px] font-medium text-slate-500">
@@ -130,6 +170,7 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
                       l.pago
                         ? "bg-[#D1FAE5] text-[#065F46] hover:bg-[#A7F3D0]"
                         : "bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A]",
+                      pulsoPagoId === l.id && "sao-pulse-success",
                     )}
                     aria-label={
                       l.pago ? "Marcar como pendente" : "Marcar como pago"

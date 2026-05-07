@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, ChevronUp, PlayCircle, Sparkles } from "lucide-react";
 import {
@@ -26,6 +26,8 @@ function ChecklistOnboarding({
   const [dispensado, setDispensado] = useState(false);
   const [linkCompartilhado, setLinkCompartilhado] = useState(false);
   const [recolhido, setRecolhido] = useState(false);
+  const [confetti, setConfetti] = useState(false);
+  const confettiJaTocado = useRef(false);
 
   // Hidrata o estado do localStorage. Sem isso o SSR mostra/esconde diferente
   // do client e haveria flash. Usamos `pronto` como gate para nao renderizar
@@ -56,6 +58,18 @@ function ChecklistOnboarding({
   const percentual = total === 0 ? 0 : Math.round((totalConcluidos / total) * 100);
   const tudoConcluido = totalConcluidos === total;
 
+  // Toca confetti uma unica vez quando o checklist atinge 100%. Evita
+  // re-disparar em re-renders ou ao abrir/fechar o checklist.
+  useEffect(() => {
+    if (!pronto) return;
+    if (!tudoConcluido) return;
+    if (confettiJaTocado.current) return;
+    confettiJaTocado.current = true;
+    setConfetti(true);
+    const t = window.setTimeout(() => setConfetti(false), 1200);
+    return () => window.clearTimeout(t);
+  }, [pronto, tudoConcluido]);
+
   const handleDispensar = () => {
     try {
       window.localStorage.setItem(STORAGE_DISMISS, "1");
@@ -71,15 +85,42 @@ function ChecklistOnboarding({
   return (
     <section
       aria-label="Checklist de configuracao"
-      className="rounded-xl border border-primary/30 bg-primary-surface p-5 space-y-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+      className="relative overflow-hidden rounded-xl border border-primary/30 bg-primary-surface p-5 space-y-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
     >
+      {confetti ? (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 flex justify-center gap-3"
+        >
+          {[
+            "#22C55E",
+            "#0D9488",
+            "#F59E0B",
+            "#3B82F6",
+            "#EF4444",
+            "#A855F7",
+          ].map((cor, i) => (
+            <span
+              key={i}
+              className="sao-confetti inline-block h-2 w-2 rounded-sm"
+              style={{
+                backgroundColor: cor,
+                animationDelay: `${i * 60}ms`,
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
       <header className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           <Sparkles
             size={18}
             strokeWidth={1.5}
             aria-hidden="true"
-            className="mt-0.5 shrink-0 text-primary-text"
+            className={cn(
+              "mt-0.5 shrink-0 text-primary-text",
+              tudoConcluido && "sao-check-pop",
+            )}
           />
           <div className="min-w-0">
             <h2 className="text-[16px] font-semibold text-slate-900">

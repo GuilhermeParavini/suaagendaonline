@@ -34,10 +34,11 @@ import ContatoPreferencial, {
   CONTATO_VALORES,
   type ContatoCanal,
 } from "@/components/pacientes/ContatoPreferencial";
+import FormStepper, {
+  type FormStepperItem,
+} from "@/components/ui/FormStepper";
 
 type Step = "identificacao" | "template" | "anamnese" | "sucesso";
-
-type StepperStep = "identificacao" | "template" | "anamnese";
 
 interface PreConsultaFlowProps {
   slug: string;
@@ -470,16 +471,31 @@ function PreConsultaFlow({
     });
   };
 
-  const stepOrder: StepperStep[] = templatePadrao
-    ? ["identificacao", "anamnese"]
-    : ["identificacao", "template", "anamnese"];
-  const stepperPos: Record<Step, number> = {
-    identificacao: 0,
-    template: templatePadrao ? 0 : 1,
-    anamnese: templatePadrao ? 1 : 2,
-    sucesso: stepOrder.length - 1,
-  };
-  const stepIdx = stepperPos[step];
+  const stepperItems: FormStepperItem[] = (() => {
+    const idAtual: "identificacao" | "anamnese" | "confirmacao" =
+      step === "sucesso"
+        ? "confirmacao"
+        : step === "anamnese" || step === "template"
+          ? "anamnese"
+          : "identificacao";
+    const ordemAbs: Array<"identificacao" | "anamnese" | "confirmacao"> = [
+      "identificacao",
+      "anamnese",
+      "confirmacao",
+    ];
+    const idxAtual = ordemAbs.indexOf(idAtual);
+    return ordemAbs.map((id, i) => ({
+      id,
+      label:
+        id === "identificacao"
+          ? "Identificacao"
+          : id === "anamnese"
+            ? "Anamnese"
+            : "Confirmacao",
+      status:
+        i < idxAtual ? "concluido" : i === idxAtual ? "atual" : "futuro",
+    }));
+  })();
 
   return (
     <div className="space-y-6">
@@ -505,24 +521,7 @@ function PreConsultaFlow({
         </p>
       </header>
 
-      {step !== "sucesso" ? (
-        <ol aria-label="Etapas" className="flex items-center gap-1.5">
-          {stepOrder.map((s, i) => {
-            const ativo = i === stepIdx;
-            const feito = i < stepIdx;
-            return (
-              <li
-                key={s}
-                aria-current={ativo ? "step" : undefined}
-                className={cn(
-                  "h-1.5 flex-1 rounded-full transition-colors",
-                  feito || ativo ? "bg-primary" : "bg-slate-200",
-                )}
-              />
-            );
-          })}
-        </ol>
-      ) : null}
+      <FormStepper steps={stepperItems} />
 
       {step === "identificacao" ? (
         <section className="space-y-4">
@@ -831,7 +830,10 @@ function PreConsultaFlow({
               ) : null}
 
               {cpfErro ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <p
+                  key={cpfErro}
+                  className="sao-shake rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
                   {cpfErro}
                 </p>
               ) : null}
@@ -940,7 +942,10 @@ function PreConsultaFlow({
           </div>
 
           {erroAnamnese ? (
-            <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <p
+              key={erroAnamnese}
+              className="sao-shake rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+            >
               {erroAnamnese}
             </p>
           ) : null}
@@ -958,7 +963,7 @@ function PreConsultaFlow({
 
       {step === "sucesso" ? (
         <div className="space-y-6 text-center pt-6">
-          <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
+          <div className="sao-check-pop mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
             <Check
               size={32}
               strokeWidth={2.5}

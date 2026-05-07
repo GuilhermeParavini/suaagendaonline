@@ -33,6 +33,7 @@ import ContatoPreferencial, {
   CONTATO_VALORES,
   type ContatoCanal,
 } from "./ContatoPreferencial";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 const brazilianStates = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -319,355 +320,401 @@ function NovoPacienteForm() {
         </p>
       </header>
 
-      <fieldset className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
-        <legend className="px-2 text-[13px] font-medium text-slate-500">
-          Dados pessoais
-        </legend>
-
-        <div className="space-y-1">
-          <label className={labelClass}>Nome completo *</label>
-          <input
-            {...register("nome")}
-            type="text"
-            autoComplete="name"
-            placeholder="Maria Silva"
-            className={inputClass}
-          />
-          {errors.nome ? <p className={errorClass}>{errors.nome.message}</p> : null}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className={labelClass}>CPF *</label>
-            <input
-              {...register("cpf", { onChange: handleMaskedChange("cpf", formatCPF) })}
-              type="text"
-              inputMode="numeric"
-              autoComplete="off"
-              maxLength={14}
-              placeholder="000.000.000-00"
-              className={inputClass}
-            />
-            {errors.cpf ? <p className={errorClass}>{errors.cpf.message}</p> : null}
-          </div>
-
-          <div className="space-y-1">
-            <label className={labelClass}>Data de nascimento *</label>
-            <div className="flex items-center gap-2">
-              <input
-                {...register("data_nascimento", {
-                  onChange: handleMaskedChange("data_nascimento", formatDate),
-                })}
-                type="text"
-                inputMode="numeric"
-                autoComplete="bday"
-                maxLength={10}
-                placeholder="DD/MM/AAAA"
-                className={inputClass}
-              />
-              {idade !== null && idade >= 0 ? (
-                <span className="shrink-0 text-xs text-slate-500">
-                  {idade} {idade === 1 ? "ano" : "anos"}
-                </span>
-              ) : null}
-            </div>
-            {errors.data_nascimento ? (
-              <p className={errorClass}>{errors.data_nascimento.message}</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className={labelClass}>Gênero *</label>
-            <select
-              {...register("genero")}
-              className={inputClass}
-            >
-              {generoOptions.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-            {errors.genero ? <p className={errorClass}>{errors.genero.message}</p> : null}
-          </div>
-
-          <div className="space-y-1">
-            <label className={labelClass}>Telefone *</label>
-            <input
-              {...register("telefone", {
-                onChange: handleMaskedChange("telefone", formatPhone),
-              })}
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={15}
-              placeholder="(11) 99999-9999"
-              className={inputClass}
-            />
-            {errors.telefone ? (
-              <p className={errorClass}>{errors.telefone.message}</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className={labelClass}>E-mail</label>
-          <input
-            {...register("email")}
-            type="email"
-            autoComplete="email"
-            placeholder="maria@email.com"
-            className={inputClass}
-          />
-          <p className="text-xs text-slate-500">
-            Opcional. Sem e-mail, o paciente nao recebera avisos por e-mail.
-          </p>
-          {errors.email ? <p className={errorClass}>{errors.email.message}</p> : null}
-        </div>
-
-        <ContatoPreferencial
-          value={watch("contato_preferencial") as ContatoCanal}
-          onChange={(v) =>
-            setValue("contato_preferencial", v, {
-              shouldDirty: true,
-              shouldValidate: false,
-            })
-          }
-        />
-
-        <div className="space-y-1">
-          <label className={labelClass}>Convênio</label>
-          <input
-            {...register("convenio")}
-            type="text"
-            list="convenios-sugestoes"
-            autoComplete="off"
-            placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
-            className={inputClass}
-          />
-          <datalist id="convenios-sugestoes">
-            {convenios.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className={labelClass}>Altura (cm)</label>
-            <div className="relative">
-              <Ruler
-                size={16}
-                strokeWidth={1.5}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-              />
-              <input
-                {...register("altura")}
-                type="text"
-                inputMode="decimal"
-                placeholder="Ex: 170"
-                className={`${inputClass} pl-9`}
-              />
-            </div>
-            {errors.altura ? (
-              <p className={errorClass}>{errors.altura.message}</p>
-            ) : null}
-          </div>
-
-          <div className="space-y-1">
-            <label className={labelClass}>Peso (kg)</label>
-            <div className="relative">
-              <Scale
-                size={16}
-                strokeWidth={1.5}
-                aria-hidden="true"
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-              />
-              <input
-                {...register("peso")}
-                type="text"
-                inputMode="decimal"
-                placeholder="Ex: 72.5"
-                className={`${inputClass} pl-9`}
-              />
-            </div>
-            {errors.peso ? (
-              <p className={errorClass}>{errors.peso.message}</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className={labelClass}>Como nos conheceu?</label>
-          <select {...register("origem")} className={inputClass}>
-            <option value="">Selecione</option>
-            {ORIGENS_VALIDAS.map((o) => (
-              <option key={o} value={o}>
-                {ORIGEM_LABEL[o]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {watch("origem") === "outros" ? (
-          <div className="space-y-1">
-            <label className={labelClass}>Especifique</label>
-            <input
-              {...register("origem_detalhe")}
-              type="text"
-              maxLength={100}
-              placeholder="Ex: Convênio, panfleto, evento"
-              className={inputClass}
-            />
-          </div>
-        ) : null}
-      </fieldset>
-
-      {showResponsavel ? (
-        <fieldset className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-          <legend className="px-2 text-[13px] font-medium text-amber-800">
-            Responsável legal (paciente menor de idade)
-          </legend>
-
-          <div className="space-y-1">
-            <label className={labelClass}>Nome do responsável *</label>
-            <input
-              {...register("resp_nome")}
-              type="text"
-              placeholder="Carla Costa"
-              className={inputClass}
-            />
-            {errors.resp_nome ? (
-              <p className={errorClass}>{errors.resp_nome.message}</p>
-            ) : null}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="rounded-lg border border-slate-200 bg-white px-4">
+        <CollapsibleSection titulo="Dados pessoais">
+          <div className="space-y-4">
             <div className="space-y-1">
-              <label className={labelClass}>CPF do responsável *</label>
+              <label className={labelClass}>Nome completo *</label>
               <input
-                {...register("resp_cpf", {
-                  onChange: handleMaskedChange("resp_cpf", formatCPF),
-                })}
+                {...register("nome")}
                 type="text"
-                inputMode="numeric"
-                maxLength={14}
-                placeholder="000.000.000-00"
+                autoComplete="name"
+                placeholder="Maria Silva"
                 className={inputClass}
               />
-              {errors.resp_cpf ? (
-                <p className={errorClass}>{errors.resp_cpf.message}</p>
+              {errors.nome ? (
+                <p className={errorClass}>{errors.nome.message}</p>
               ) : null}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className={labelClass}>CPF *</label>
+                <input
+                  {...register("cpf", {
+                    onChange: handleMaskedChange("cpf", formatCPF),
+                  })}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  maxLength={14}
+                  placeholder="000.000.000-00"
+                  className={inputClass}
+                />
+                {errors.cpf ? (
+                  <p className={errorClass}>{errors.cpf.message}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelClass}>Data de nascimento *</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    {...register("data_nascimento", {
+                      onChange: handleMaskedChange(
+                        "data_nascimento",
+                        formatDate,
+                      ),
+                    })}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="bday"
+                    maxLength={10}
+                    placeholder="DD/MM/AAAA"
+                    className={inputClass}
+                  />
+                  {idade !== null && idade >= 0 ? (
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {idade} {idade === 1 ? "ano" : "anos"}
+                    </span>
+                  ) : null}
+                </div>
+                {errors.data_nascimento ? (
+                  <p className={errorClass}>
+                    {errors.data_nascimento.message}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
             <div className="space-y-1">
-              <label className={labelClass}>Telefone do responsável *</label>
+              <label className={labelClass}>Gênero *</label>
+              <select {...register("genero")} className={inputClass}>
+                {generoOptions.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+              {errors.genero ? (
+                <p className={errorClass}>{errors.genero.message}</p>
+              ) : null}
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection titulo="Contato">
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className={labelClass}>Telefone *</label>
               <input
-                {...register("resp_telefone", {
-                  onChange: handleMaskedChange("resp_telefone", formatPhone),
+                {...register("telefone", {
+                  onChange: handleMaskedChange("telefone", formatPhone),
                 })}
                 type="tel"
                 inputMode="tel"
+                autoComplete="tel"
                 maxLength={15}
                 placeholder="(11) 99999-9999"
                 className={inputClass}
               />
-              {errors.resp_telefone ? (
-                <p className={errorClass}>{errors.resp_telefone.message}</p>
+              {errors.telefone ? (
+                <p className={errorClass}>{errors.telefone.message}</p>
               ) : null}
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className={labelClass}>E-mail do responsável</label>
+              <label className={labelClass}>E-mail</label>
               <input
-                {...register("resp_email")}
+                {...register("email")}
                 type="email"
-                placeholder="responsavel@email.com"
+                autoComplete="email"
+                placeholder="maria@email.com"
                 className={inputClass}
               />
-              {errors.resp_email ? (
-                <p className={errorClass}>{errors.resp_email.message}</p>
+              <p className="text-xs text-slate-500">
+                Opcional. Sem e-mail, o paciente nao recebera avisos por
+                e-mail.
+              </p>
+              {errors.email ? (
+                <p className={errorClass}>{errors.email.message}</p>
               ) : null}
             </div>
 
+            <ContatoPreferencial
+              value={watch("contato_preferencial") as ContatoCanal}
+              onChange={(v) =>
+                setValue("contato_preferencial", v, {
+                  shouldDirty: true,
+                  shouldValidate: false,
+                })
+              }
+            />
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          titulo="Dados complementares"
+          defaultOpen={false}
+          hint="Opcional"
+        >
+          <div className="space-y-4">
             <div className="space-y-1">
-              <label className={labelClass}>Grau de parentesco *</label>
-              <select {...register("resp_grau")} className={inputClass}>
+              <label className={labelClass}>Convênio</label>
+              <input
+                {...register("convenio")}
+                type="text"
+                list="convenios-sugestoes"
+                autoComplete="off"
+                placeholder="Ex: Unimed, Bradesco Saude, SulAmerica"
+                className={inputClass}
+              />
+              <datalist id="convenios-sugestoes">
+                {convenios.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className={labelClass}>Altura (cm)</label>
+                <div className="relative">
+                  <Ruler
+                    size={16}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    {...register("altura")}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ex: 170"
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+                {errors.altura ? (
+                  <p className={errorClass}>{errors.altura.message}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1">
+                <label className={labelClass}>Peso (kg)</label>
+                <div className="relative">
+                  <Scale
+                    size={16}
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  />
+                  <input
+                    {...register("peso")}
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ex: 72.5"
+                    className={`${inputClass} pl-9`}
+                  />
+                </div>
+                {errors.peso ? (
+                  <p className={errorClass}>{errors.peso.message}</p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className={labelClass}>Como nos conheceu?</label>
+              <select {...register("origem")} className={inputClass}>
                 <option value="">Selecione</option>
-                {parentescoOptions.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
+                {ORIGENS_VALIDAS.map((o) => (
+                  <option key={o} value={o}>
+                    {ORIGEM_LABEL[o]}
                   </option>
                 ))}
               </select>
-              {errors.resp_grau ? (
-                <p className={errorClass}>{errors.resp_grau.message}</p>
-              ) : null}
             </div>
+
+            {watch("origem") === "outros" ? (
+              <div className="space-y-1">
+                <label className={labelClass}>Especifique</label>
+                <input
+                  {...register("origem_detalhe")}
+                  type="text"
+                  maxLength={100}
+                  placeholder="Ex: Convênio, panfleto, evento"
+                  className={inputClass}
+                />
+              </div>
+            ) : null}
           </div>
-        </fieldset>
+        </CollapsibleSection>
+      </div>
+
+      {showResponsavel ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 px-4">
+          <CollapsibleSection
+            titulo="Responsável legal (paciente menor de idade)"
+            hint="Obrigatorio"
+          >
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className={labelClass}>Nome do responsável *</label>
+                <input
+                  {...register("resp_nome")}
+                  type="text"
+                  placeholder="Carla Costa"
+                  className={inputClass}
+                />
+                {errors.resp_nome ? (
+                  <p className={errorClass}>{errors.resp_nome.message}</p>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className={labelClass}>CPF do responsável *</label>
+                  <input
+                    {...register("resp_cpf", {
+                      onChange: handleMaskedChange("resp_cpf", formatCPF),
+                    })}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={14}
+                    placeholder="000.000.000-00"
+                    className={inputClass}
+                  />
+                  {errors.resp_cpf ? (
+                    <p className={errorClass}>{errors.resp_cpf.message}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelClass}>
+                    Telefone do responsável *
+                  </label>
+                  <input
+                    {...register("resp_telefone", {
+                      onChange: handleMaskedChange(
+                        "resp_telefone",
+                        formatPhone,
+                      ),
+                    })}
+                    type="tel"
+                    inputMode="tel"
+                    maxLength={15}
+                    placeholder="(11) 99999-9999"
+                    className={inputClass}
+                  />
+                  {errors.resp_telefone ? (
+                    <p className={errorClass}>
+                      {errors.resp_telefone.message}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className={labelClass}>E-mail do responsável</label>
+                  <input
+                    {...register("resp_email")}
+                    type="email"
+                    placeholder="responsavel@email.com"
+                    className={inputClass}
+                  />
+                  {errors.resp_email ? (
+                    <p className={errorClass}>{errors.resp_email.message}</p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-1">
+                  <label className={labelClass}>Grau de parentesco *</label>
+                  <select
+                    {...register("resp_grau")}
+                    className={inputClass}
+                  >
+                    <option value="">Selecione</option>
+                    {parentescoOptions.map((p) => (
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.resp_grau ? (
+                    <p className={errorClass}>{errors.resp_grau.message}</p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </CollapsibleSection>
+        </div>
       ) : null}
 
-      <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4">
-        <div className="space-y-1">
-          <label className={labelClass}>Endereço</label>
-          <input
-            {...register("endereco")}
-            type="text"
-            autoComplete="street-address"
-            placeholder="Rua, número, complemento"
-            className={inputClass}
-          />
-        </div>
+      <div className="rounded-lg border border-slate-200 bg-white px-4">
+        <CollapsibleSection
+          titulo="Endereço"
+          defaultOpen={false}
+          hint="Opcional"
+        >
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className={labelClass}>Endereço</label>
+              <input
+                {...register("endereco")}
+                type="text"
+                autoComplete="street-address"
+                placeholder="Rua, número, complemento"
+                className={inputClass}
+              />
+            </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <label className={labelClass}>CEP</label>
-            <input
-              {...register("cep", {
-                onChange: handleMaskedChange("cep", formatCEP),
-              })}
-              type="text"
-              inputMode="numeric"
-              maxLength={9}
-              placeholder="00000-000"
-              className={inputClass}
-            />
-            {errors.cep ? <p className={errorClass}>{errors.cep.message}</p> : null}
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <label className={labelClass}>CEP</label>
+                <input
+                  {...register("cep", {
+                    onChange: handleMaskedChange("cep", formatCEP),
+                  })}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={9}
+                  placeholder="00000-000"
+                  className={inputClass}
+                />
+                {errors.cep ? (
+                  <p className={errorClass}>{errors.cep.message}</p>
+                ) : null}
+              </div>
 
-          <div className="space-y-1">
-            <label className={labelClass}>Cidade</label>
-            <input
-              {...register("cidade")}
-              type="text"
-              autoComplete="address-level2"
-              placeholder="São Paulo"
-              className={inputClass}
-            />
-          </div>
+              <div className="space-y-1">
+                <label className={labelClass}>Cidade</label>
+                <input
+                  {...register("cidade")}
+                  type="text"
+                  autoComplete="address-level2"
+                  placeholder="São Paulo"
+                  className={inputClass}
+                />
+              </div>
 
-          <div className="space-y-1">
-            <label className={labelClass}>Estado</label>
-            <select
-              {...register("estado")}
-              autoComplete="address-level1"
-              className={inputClass}
-            >
-              <option value="">UF</option>
-              {brazilianStates.map((uf) => (
-                <option key={uf} value={uf}>
-                  {uf}
-                </option>
-              ))}
-            </select>
+              <div className="space-y-1">
+                <label className={labelClass}>Estado</label>
+                <select
+                  {...register("estado")}
+                  autoComplete="address-level1"
+                  className={inputClass}
+                >
+                  <option value="">UF</option>
+                  {brazilianStates.map((uf) => (
+                    <option key={uf} value={uf}>
+                      {uf}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
 
       {apiError ? (

@@ -10,6 +10,9 @@ import { completeOnboarding } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
 import RegistroInput from '@/components/ui/RegistroInput';
+import FormStepper, {
+  type FormStepperItem,
+} from '@/components/ui/FormStepper';
 
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -197,6 +200,19 @@ export default function OnboardingPage() {
     }
   };
 
+  const stepperItems: FormStepperItem[] = [
+    {
+      id: 'seus-dados',
+      label: 'Seus dados',
+      status: step === 1 ? 'atual' : 'concluido',
+    },
+    {
+      id: 'sua-clinica',
+      label: 'Sua clinica',
+      status: step === 2 ? 'atual' : 'futuro',
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -204,10 +220,9 @@ export default function OnboardingPage() {
         <h1 className="text-2xl font-semibold text-teal-800">
           Complete seu cadastro
         </h1>
-        <p className="text-sm text-slate-500">
-          Passo {step} de 2
-        </p>
       </div>
+
+      <FormStepper steps={stepperItems} />
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
@@ -376,7 +391,10 @@ export default function OnboardingPage() {
 
         {/* API Error */}
         {apiError && (
-          <p className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <p
+            key={apiError}
+            className="sao-shake text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+          >
             {apiError}
           </p>
         )}

@@ -609,12 +609,18 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
       ) : null}
 
       {okMsg ? (
-        <p className="rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]">
+        <p
+          key={okMsg}
+          className="sao-pulse-success rounded border border-[#CCFBF1] bg-[#F0FDFA] px-3 py-2 text-xs font-medium text-[#115E59]"
+        >
           {okMsg}
         </p>
       ) : null}
       {erro ? (
-        <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+        <p
+          key={erro}
+          className="sao-shake rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700"
+        >
           {erro}
         </p>
       ) : null}
@@ -704,7 +710,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
             )}
           >
             <div className="md:hidden mx-auto mb-3 h-1 w-10 rounded-full bg-slate-300" />
-            <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
+            <div className="sao-check-pop mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
               <CheckCircle2
                 size={36}
                 strokeWidth={2}
