@@ -5,6 +5,7 @@ import FichaPaciente, {
   type PacienteDetalhe,
   type ResponsavelDetalhe,
 } from "@/components/pacientes/FichaPaciente";
+import { registrarAcesso } from "@/lib/log-acesso";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,14 @@ export default async function PacienteDetalhePage({ params }: PageProps) {
     .eq("ativo", true)
     .maybeSingle();
   if (pacienteErr || !pacienteRow) notFound();
+
+  // LGPD: registra acesso a ficha do paciente. Fire-and-forget para nao
+  // adicionar latencia ao carregamento.
+  void registrarAcesso({
+    acao: "visualizar_paciente",
+    recurso: "paciente",
+    recursoId: id,
+  });
 
   const contatoRaw = pacienteRow.contato_preferencial as string | null;
   const contatoPreferencial: PacienteDetalhe["contato_preferencial"] =

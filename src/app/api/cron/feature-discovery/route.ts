@@ -6,6 +6,7 @@ import {
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
 import { normalizarModulosAtivos } from "@/lib/planos";
+import { getTenantEmailSignature } from "@/lib/tenant-email-signature";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -250,6 +251,7 @@ export async function GET(req: Request) {
       ? `${appUrl.replace(/\/+$/, "")}/configuracoes`
       : "/configuracoes";
 
+    const assinatura = await getTenantEmailSignature(tenant.id, prof.id);
     const tpl = emailFuncionalidadeNaoUsada({
       nome: prof.nome ?? "Profissional",
       funcionalidadeNome: meta.nome,
@@ -261,6 +263,7 @@ export async function GET(req: Request) {
       funcionalidadeKey: meta.key,
       configLink,
       logoUrl: prof.logo_url,
+      assinatura,
     });
 
     const r = await enviarNotificacaoEmail({

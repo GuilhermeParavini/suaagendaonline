@@ -21,6 +21,7 @@ import {
   montarLinkReagendar,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 
 export type Slot = { time: string; available: boolean };
 export type DiaIndisponivel =
@@ -564,6 +565,10 @@ export async function criarAgendamentoPublico(
     const linkReagendar = montarLinkReagendar(appUrl, tokenReagendamento);
 
     if (destino) {
+      const assinatura = await getTenantEmailSignature(
+        input.tenantId,
+        input.profissionalId,
+      );
       const tpl = emailConfirmacaoAgendamento({
         pacienteNome,
         profissionalNome,
@@ -575,6 +580,7 @@ export async function criarAgendamentoPublico(
         endereco: enderecoTenant,
         cidade: cidadeTenant,
         estado: estadoTenant,
+        assinatura,
       });
       await enviarNotificacaoEmail({
         tenantId: input.tenantId,

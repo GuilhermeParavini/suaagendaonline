@@ -21,6 +21,8 @@ import { getUsoTranscricao } from "@/actions/transcricao";
 import { getUsoAssistente } from "@/actions/assistente-uso";
 import { getContagemListaEspera } from "@/actions/lista-espera";
 import { getProdutosAlerta } from "@/actions/estoque";
+import { calcularROI } from "@/actions/roi";
+import CardROI from "@/components/dashboard/CardROI";
 import { cn } from "@/lib/utils";
 
 const currencyBRL = (value: number) =>
@@ -163,6 +165,9 @@ export default async function DashboardPage() {
   const mostrarAcompanhamento =
     (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
 
+  const roiRes = await calcularROI();
+  const roiDados = roiRes.ok ? roiRes.data : null;
+
   let acompanhamentoLista: PacienteAcompanhamento[] = [];
   if (mostrarAcompanhamento) {
     const r = await getPacientesParaAcompanhar();
@@ -196,6 +201,8 @@ export default async function DashboardPage() {
         <MetricCard label="Pendentes" value={pendentes ?? 0} />
         <MetricCard label="Receita do mês" value={currencyBRL(receitaMes)} />
       </section>
+
+      {roiDados ? <CardROI dados={roiDados} /> : null}
 
       {mostrarCardUso || mostrarCardAssistente ? (
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">

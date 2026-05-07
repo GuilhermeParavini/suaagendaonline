@@ -8,6 +8,7 @@ import {
   type OrigemPaciente,
 } from '@/lib/paciente-origem';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 import {
   capitalizeNome,
   emailConfirmacaoPreConsulta,
@@ -507,12 +508,17 @@ export async function salvarAnamnesePreConsulta(
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
       const linkAgendamento = montarLinkAgendamento(baseUrl, ctx.slug);
 
+      const assinatura = await getTenantEmailSignature(
+        ctx.tenantId,
+        ctx.profissional.id,
+      );
       const tpl = emailConfirmacaoPreConsulta({
         pacienteNome: pac.nome as string,
         profissionalNome: ctx.profissional.nome,
         profissionalEspecialidade: ctx.profissional.especialidade,
         linkAgendamento,
         logoUrl: ctx.profissional.logo_url,
+        assinatura,
       });
 
       await enviarNotificacaoEmail({

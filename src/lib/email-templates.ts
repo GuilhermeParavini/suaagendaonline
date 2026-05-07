@@ -101,7 +101,92 @@ function logoBlock(logoUrl: string | null | undefined): string {
           </tr>`;
 }
 
-function layout(content: string, logoUrl?: string | null): string {
+// ============================================================
+// Assinatura personalizada por tenant
+// ============================================================
+
+export interface DadosAssinaturaEmail {
+  nomeEmpresa: string;
+  nomeProfissional: string | null;
+  especialidade: string | null;
+  telefone: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+  logoUrl: string | null;
+  linkAgendamento: string | null;
+}
+
+function formatTelefoneAssinatura(digits: string | null): string | null {
+  if (!digits) return null;
+  const d = digits.replace(/\D/g, '');
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return digits;
+}
+
+function formatEnderecoAssinatura(d: DadosAssinaturaEmail): string | null {
+  const cidadeEstado = [d.cidade, d.estado]
+    .filter((s): s is string => Boolean(s && s.trim()))
+    .join(' - ');
+  const partes = [d.endereco, cidadeEstado].filter(
+    (s): s is string => Boolean(s && s.trim()),
+  );
+  return partes.length > 0 ? partes.join(', ') : null;
+}
+
+/**
+ * Gera bloco HTML de assinatura para o rodape do email. Quando faltam dados
+ * do tenant, retorna assinatura minima ("Enviado via Sua Agenda Online").
+ */
+export function gerarAssinaturaEmail(
+  d: DadosAssinaturaEmail | null | undefined,
+): string {
+  if (!d || !d.nomeEmpresa) {
+    return `<p style="margin:0;color:#64748B;font-size:12px;">Enviado via Sua Agenda Online</p>`;
+  }
+  const telefone = formatTelefoneAssinatura(d.telefone);
+  const endereco = formatEnderecoAssinatura(d);
+  const profLinha = (() => {
+    if (!d.nomeProfissional) return null;
+    const partes = [escapeHtml(d.nomeProfissional)];
+    if (d.especialidade && d.especialidade.trim()) {
+      partes.push(`<span style="color:#64748B;">· ${escapeHtml(d.especialidade.trim())}</span>`);
+    }
+    return partes.join(' ');
+  })();
+  const logoLinha = d.logoUrl
+    ? `<img src="${escapeHtml(d.logoUrl)}" alt="" style="display:block;height:40px;width:auto;object-fit:contain;margin:0 auto 8px auto;" />`
+    : '';
+  const linhaTel = telefone
+    ? `<p style="margin:2px 0 0 0;color:#475569;font-size:12px;">Telefone: <a href="tel:+55${escapeHtml(d.telefone ?? '')}" style="color:#0D9488;text-decoration:none;">${escapeHtml(telefone)}</a></p>`
+    : '';
+  const linhaEnd = endereco
+    ? `<p style="margin:2px 0 0 0;color:#475569;font-size:12px;">${escapeHtml(endereco)}</p>`
+    : '';
+  const linhaLink = d.linkAgendamento
+    ? `<p style="margin:8px 0 0 0;"><a href="${escapeHtml(d.linkAgendamento)}" style="display:inline-block;color:#0F766E;font-size:12px;text-decoration:underline;font-weight:500;">Agendar consulta</a></p>`
+    : '';
+
+  return `
+    <div style="text-align:center;border-top:1px solid #E2E8F0;padding-top:14px;margin-top:6px;">
+      ${logoLinha}
+      <p style="margin:0;color:#0F172A;font-size:13px;font-weight:600;">${escapeHtml(d.nomeEmpresa)}</p>
+      ${profLinha ? `<p style="margin:2px 0 0 0;color:#0F172A;font-size:12px;">${profLinha}</p>` : ''}
+      ${linhaTel}
+      ${linhaEnd}
+      ${linhaLink}
+      <p style="margin:12px 0 0 0;color:#94A3B8;font-size:11px;">Este email foi enviado por ${escapeHtml(d.nomeEmpresa)} via Sua Agenda Online.</p>
+    </div>
+  `;
+}
+
+function layout(
+  content: string,
+  logoUrl?: string | null,
+  assinatura?: DadosAssinaturaEmail | null,
+): string {
+  const rodape = gerarAssinaturaEmail(assinatura);
   return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -125,8 +210,8 @@ function layout(content: string, logoUrl?: string | null): string {
             </td>
           </tr>
           <tr>
-            <td style="padding:16px 24px;background-color:#F1F5F9;border-top:1px solid #E2E8F0;text-align:center;">
-              <p style="margin:0;color:#64748B;font-size:12px;">Sua Agenda Online · Sistema de agendamento</p>
+            <td style="padding:16px 24px;background-color:#F1F5F9;border-top:1px solid #E2E8F0;">
+              ${rodape}
             </td>
           </tr>
         </table>
@@ -193,6 +278,7 @@ export type DadosConfirmacao = {
   endereco?: string | null;
   cidade?: string | null;
   estado?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
@@ -213,7 +299,7 @@ export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
     ${d.linkReagendar ? "" : linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosLembrete = {
@@ -225,6 +311,7 @@ export type DadosLembrete = {
   endereco?: string | null;
   cidade?: string | null;
   estado?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailLembrete24h(d: DadosLembrete): {
@@ -243,7 +330,7 @@ export function emailLembrete24h(d: DadosLembrete): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosFollowup = {
@@ -253,6 +340,7 @@ export type DadosFollowup = {
   telefoneProfissional: string | null;
   mensagemPersonalizada: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 function formatarTelefoneBR(digits: string | null): string | null {
@@ -284,7 +372,7 @@ export function emailFollowupConsulta(d: DadosFollowup): {
     ${mensagem ? `<p style="margin:16px 0 0 0;padding:12px;background-color:#F0FDFA;border-left:3px solid #0D9488;color:#0F172A;">${escapeHtml(mensagem)}</p>` : ''}
     <p style="margin:20px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosAvaliacao = {
@@ -292,6 +380,7 @@ export type DadosAvaliacao = {
   profissionalNome: string;
   linkAvaliacao: string;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailSolicitarAvaliacao(d: DadosAvaliacao): {
@@ -334,7 +423,7 @@ export function emailSolicitarAvaliacao(d: DadosAvaliacao): {
     <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;text-align:center;">Ou copie o link: <a href="${escapeHtml(d.linkAvaliacao)}" style="color:#0D9488;">${escapeHtml(d.linkAvaliacao)}</a></p>
     <p style="margin:16px 0 0 0;color:#475569;font-size:13px;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosPreConsultaConfirmacao = {
@@ -343,6 +432,7 @@ export type DadosPreConsultaConfirmacao = {
   profissionalEspecialidade: string | null;
   linkAgendamento: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailConfirmacaoPreConsulta(d: DadosPreConsultaConfirmacao): {
@@ -371,7 +461,7 @@ export function emailConfirmacaoPreConsulta(d: DadosPreConsultaConfirmacao): {
     <p style="margin:0 0 12px 0;">Eles estarão disponíveis na sua próxima consulta.</p>
     ${botao}
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosCadastroConfirmacao = {
@@ -380,6 +470,7 @@ export type DadosCadastroConfirmacao = {
   profissionalEspecialidade: string | null;
   linkAgendamento: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailConfirmacaoCadastro(d: DadosCadastroConfirmacao): {
@@ -407,7 +498,7 @@ export function emailConfirmacaoCadastro(d: DadosCadastroConfirmacao): {
     <p style="margin:0 0 12px 0;">Seu cadastro com ${profissionalLabel} foi realizado com sucesso.</p>
     ${botao}
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosReagendamento = {
@@ -425,6 +516,7 @@ export type DadosReagendamento = {
   endereco?: string | null;
   cidade?: string | null;
   estado?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailReagendamento(d: DadosReagendamento): {
@@ -478,7 +570,7 @@ export function emailReagendamento(d: DadosReagendamento): {
     <p style="margin:20px 0 0 0;color:#475569;font-size:13px;">Caso precise de algo, entre em contato.</p>
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosConvite = {
@@ -490,6 +582,7 @@ export type DadosConvite = {
   linkConvite: string;
   expiraEmDias: number;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -522,7 +615,7 @@ export function emailConviteProfissional(d: DadosConvite): {
     <p style="margin:12px 0 0 0;font-size:12px;color:#64748B;">Ou copie o link: ${escapeHtml(d.linkConvite)}</p>
     <p style="margin:16px 0 0 0;font-size:12px;color:#64748B;">O convite expira em ${d.expiraEmDias} ${d.expiraEmDias === 1 ? 'dia' : 'dias'}.</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosNovaListaEspera = {
@@ -534,6 +627,7 @@ export type DadosNovaListaEspera = {
   observacoes: string | null;
   linkLista: string;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 const TURNO_LABEL_EMAIL: Record<string, string> = {
@@ -572,7 +666,7 @@ export function emailNovaListaEspera(d: DadosNovaListaEspera): {
       <a href="${escapeHtml(d.linkLista)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Ver lista de espera</a>
     </p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 // ============================================================
@@ -597,6 +691,7 @@ export interface DadosFuncionalidadeNaoUsada {
   funcionalidadeKey: FuncionalidadeKey;
   configLink: string;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 }
 
 export function emailFuncionalidadeNaoUsada(
@@ -629,7 +724,7 @@ export function emailFuncionalidadeNaoUsada(
       Para parar de receber dicas, acesse <a href="${escapeHtml(d.configLink)}" style="color:#0D9488;">configuracoes</a> e desative o aviso.
     </p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosCancelamento = {
@@ -639,6 +734,7 @@ export type DadosCancelamento = {
   horario: string;
   linkAgendamento: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailCancelamento(d: DadosCancelamento): {
@@ -657,7 +753,7 @@ export function emailCancelamento(d: DadosCancelamento): {
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 // ============================================================
@@ -705,6 +801,7 @@ export type DadosRelatorioProfissional = {
   lucroReal: number;
   appUrl: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 function listaPagamentosHtml(
@@ -844,7 +941,7 @@ export function emailRelatorioProfissional(
     }
   `;
 
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
 export type DadosRelatorioAdminProfissional = {
@@ -872,6 +969,7 @@ export type DadosRelatorioAdmin = {
   adminFaturamento: number;
   appUrl: string | null;
   logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
 };
 
 export function emailRelatorioAdmin(
@@ -1001,5 +1099,5 @@ export function emailRelatorioAdmin(
     }
   `;
 
-  return { assunto, html: layout(conteudo, d.logoUrl) };
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }

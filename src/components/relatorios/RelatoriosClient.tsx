@@ -46,6 +46,7 @@ import {
   type ProfissionalOpcaoTenant,
 } from "@/actions/equipe";
 import type { FormaPagamento } from "@/actions/financeiro";
+import { registrarAcessoAction } from "@/actions/log-acesso";
 import { formatCurrency, brDateToIso, isoToBrDate, formatDate } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 
@@ -325,6 +326,10 @@ function FaturamentoTab({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    void registrarAcessoAction({
+      acao: "exportar_dados",
+      recurso: "relatorio_financeiro_csv",
+    });
   };
 
   const piePorForma = data.porFormaPagamento.map((p) => ({

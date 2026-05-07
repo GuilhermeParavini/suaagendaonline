@@ -6,6 +6,7 @@ import {
   emailFollowupConsulta,
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
+import { getTenantEmailSignature } from "@/lib/tenant-email-signature";
 import {
   getAniversariantesHoje,
   getPacientesInativos,
@@ -160,6 +161,10 @@ export async function GET(req: Request) {
     const dataHoraIso = ag.data_hora as string;
     const dataIso = dataHoraIso.slice(0, 10);
 
+    const assinatura = await getTenantEmailSignature(
+      ag.tenant_id as string,
+      ag.profissional_id as string,
+    );
     const tpl = emailFollowupConsulta({
       pacienteNome: pac.nome,
       profissionalNome: profInfo.nome,
@@ -167,6 +172,7 @@ export async function GET(req: Request) {
       telefoneProfissional: profInfo.telefone,
       mensagemPersonalizada: profInfo.mensagem,
       logoUrl: profInfo.logoUrl,
+      assinatura,
     });
     const result = await enviarNotificacaoEmail({
       tenantId: ag.tenant_id as string,

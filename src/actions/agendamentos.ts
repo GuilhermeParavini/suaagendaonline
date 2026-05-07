@@ -13,6 +13,7 @@ import {
   montarLinkReagendar,
 } from '@/lib/email-templates';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 import {
   getBloqueiosForProfissional,
   getFeriadosForTenant,
@@ -503,12 +504,17 @@ export async function atualizarStatusAgendamento(
             ? `${baseUrl.replace(/\/+$/, '')}/avaliacao/${id}`
             : `/avaliacao/${id}`;
 
+          const assinatura = await getTenantEmailSignature(
+            ag.tenant_id as string,
+            ag.profissional_id as string,
+          );
           const tpl = emailSolicitarAvaliacao({
             pacienteNome: (paciente?.nome as string) ?? 'Paciente',
             profissionalNome:
               (profissional?.nome as string) ?? 'Profissional',
             linkAvaliacao,
             logoUrl: (profissional?.logo_url as string | null) ?? null,
+            assinatura,
           });
           await enviarNotificacaoEmail({
             tenantId: ag.tenant_id as string,
@@ -561,6 +567,10 @@ export async function atualizarStatusAgendamento(
           const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
 
           const dataHoraIso = ag.data_hora as string;
+          const assinatura = await getTenantEmailSignature(
+            ag.tenant_id as string,
+            ag.profissional_id as string,
+          );
           const tpl = emailCancelamento({
             pacienteNome: (paciente?.nome as string) ?? 'Paciente',
             profissionalNome:
@@ -569,6 +579,7 @@ export async function atualizarStatusAgendamento(
             horario: horarioFromIso(dataHoraIso),
             linkAgendamento,
             logoUrl: (profissional?.logo_url as string | null) ?? null,
+            assinatura,
           });
           await enviarNotificacaoEmail({
             tenantId: ag.tenant_id as string,
@@ -1080,6 +1091,10 @@ export async function criarAgendamentoPainel(
       const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
       const linkReagendar = montarLinkReagendar(baseUrl, tokenReagendamento);
 
+      const assinatura = await getTenantEmailSignature(
+        tenantId,
+        prof.id as string,
+      );
       const tpl = emailConfirmacaoAgendamento({
         pacienteNome: (pac.nome as string) ?? 'Paciente',
         profissionalNome: (prof.nome as string) ?? 'Profissional',
@@ -1091,6 +1106,7 @@ export async function criarAgendamentoPainel(
         endereco: (tenant?.endereco as string | null) ?? null,
         cidade: (tenant?.cidade as string | null) ?? null,
         estado: (tenant?.estado as string | null) ?? null,
+        assinatura,
       });
       await enviarNotificacaoEmail({
         tenantId,
@@ -1353,6 +1369,10 @@ export async function reagendarConsulta(
       }
 
       const dataAnteriorIso = antigo.data_hora as string;
+      const assinatura = await getTenantEmailSignature(
+        tenantId,
+        prof.id as string,
+      );
       const tpl = emailReagendamento({
         pacienteNome: (paciente?.nome as string) ?? 'Paciente',
         profissionalNome: (prof.nome as string) ?? 'Profissional',
@@ -1368,6 +1388,7 @@ export async function reagendarConsulta(
         endereco: (tenant?.endereco as string | null) ?? null,
         cidade: (tenant?.cidade as string | null) ?? null,
         estado: (tenant?.estado as string | null) ?? null,
+        assinatura,
       });
       await enviarNotificacaoEmail({
         tenantId,
@@ -1886,6 +1907,10 @@ export async function agendarRetorno(
           (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
         const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
         const linkReagendar = montarLinkReagendar(baseUrl, tokenReagendamento);
+        const assinatura = await getTenantEmailSignature(
+          tenantId,
+          prof.id as string,
+        );
         const tpl = emailConfirmacaoAgendamento({
           pacienteNome: (pac.nome as string) ?? 'Paciente',
           profissionalNome: (prof.nome as string) ?? 'Profissional',
@@ -1897,6 +1922,7 @@ export async function agendarRetorno(
           endereco: (tenant?.endereco as string | null) ?? null,
           cidade: (tenant?.cidade as string | null) ?? null,
           estado: (tenant?.estado as string | null) ?? null,
+          assinatura,
         });
         await enviarNotificacaoEmail({
           tenantId,

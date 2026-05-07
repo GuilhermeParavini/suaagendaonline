@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import { emailConviteProfissional } from '@/lib/email-templates';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 import { getMaxProfissionais } from '@/lib/planos';
 
 export type ConviteRole = 'profissional' | 'secretaria';
@@ -178,6 +179,10 @@ export async function convidarProfissional(input: {
       .eq('id', ctx.profissionalId)
       .maybeSingle();
 
+    const assinatura = await getTenantEmailSignature(
+      ctx.tenantId,
+      ctx.profissionalId,
+    );
     const tpl = emailConviteProfissional({
       conviteNome: nome,
       convidadoPorNome: ctx.profissionalNome,
@@ -187,6 +192,7 @@ export async function convidarProfissional(input: {
       linkConvite,
       expiraEmDias: EXPIRACAO_DIAS,
       logoUrl: (profLogo?.logo_url as string | null) ?? null,
+      assinatura,
     });
 
     await enviarNotificacaoEmail({

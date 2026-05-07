@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAtestadoData } from "@/actions/documentos";
 import { LazyAtestadoPrint } from "@/lib/dynamic-imports";
+import { registrarAcesso } from "@/lib/log-acesso";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,12 @@ export default async function AtestadoPage({ params }: PageProps) {
       </div>
     );
   }
+
+  void registrarAcesso({
+    acao: "exportar_pdf",
+    recurso: "atestado",
+    recursoId: id,
+  });
 
   return <LazyAtestadoPrint data={result.data} />;
 }

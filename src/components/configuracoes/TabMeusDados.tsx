@@ -20,6 +20,7 @@ import SecaoAcompanhamento from "./SecaoAcompanhamento";
 import SecaoAssinatura from "./SecaoAssinatura";
 import SecaoAvaliacoes from "./SecaoAvaliacoes";
 import SecaoDicasFeatures from "./SecaoDicasFeatures";
+import SecaoLogAcessoLGPD from "./SecaoLogAcessoLGPD";
 import SecaoLogo from "./SecaoLogo";
 import SecaoMeuPlano from "./SecaoMeuPlano";
 import SecaoModulos from "./SecaoModulos";
@@ -456,6 +457,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       <SecaoAcompanhamento profissional={profissional} onSaved={onSaved} />
 
       <SecaoDicasFeatures />
+
+      <SecaoLogAcessoLGPD role={profissional.role} />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 sm:p-5 space-y-4">
         <header className="flex items-center justify-between gap-2">

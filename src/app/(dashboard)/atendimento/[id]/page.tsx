@@ -4,6 +4,7 @@ import type { CampoTemplate, CampoTipo } from "@/actions/anamnese";
 import AtendimentoClient, {
   type AtendimentoContexto,
 } from "@/components/atendimento/AtendimentoClient";
+import { registrarAcesso } from "@/lib/log-acesso";
 
 function normalizarCampos(raw: unknown): CampoTemplate[] {
   if (!Array.isArray(raw)) return [];
@@ -65,6 +66,13 @@ export default async function AtendimentoPage({ params }: PageProps) {
     .maybeSingle();
   if (agErr || !ag) notFound();
   if (ag.tenant_id !== prof.tenant_id) notFound();
+
+  // LGPD: registra acesso a evolucao clinica.
+  void registrarAcesso({
+    acao: "visualizar_evolucao",
+    recurso: "agendamento",
+    recursoId: id,
+  });
 
   const paciente = Array.isArray(ag.pacientes) ? ag.pacientes[0] : ag.pacientes;
   const procedimento = Array.isArray(ag.procedimentos)

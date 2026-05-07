@@ -6,6 +6,7 @@ import { cleanCPF } from '@/lib/masks';
 import { validateCPF } from '@/lib/validators';
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import { emailNovaListaEspera } from '@/lib/email-templates';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 
 export type TurnoPreferencia = 'manha' | 'tarde' | 'qualquer';
 export type StatusListaEspera = 'aguardando' | 'agendado' | 'cancelado';
@@ -347,6 +348,7 @@ export async function adicionarListaEsperaPublica(
       ? `${baseUrl.replace(/\/+$/, '')}/lista-espera`
       : '/lista-espera';
 
+    const assinatura = await getTenantEmailSignature(tenantId);
     const tpl = emailNovaListaEspera({
       profissionalNome: (prof.nome as string) ?? 'Profissional',
       pacienteNome: (paciente.nome as string) ?? 'Paciente',
@@ -356,6 +358,7 @@ export async function adicionarListaEsperaPublica(
       observacoes: input.observacoes ?? null,
       linkLista,
       logoUrl: (prof.logo_url as string | null) ?? null,
+      assinatura,
     });
     await enviarNotificacaoEmail({
       tenantId,

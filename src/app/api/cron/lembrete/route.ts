@@ -6,6 +6,7 @@ import {
   montarLinkAgendamento,
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
+import { getTenantEmailSignature } from "@/lib/tenant-email-signature";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -139,6 +140,10 @@ export async function GET(req: Request) {
     const tenantInfo = tenantMap.get(ag.tenant_id as string);
     const slug = tenantInfo?.slug ?? null;
     const linkAgendamento = montarLinkAgendamento(appUrl, slug);
+    const assinatura = await getTenantEmailSignature(
+      ag.tenant_id as string,
+      ag.profissional_id as string,
+    );
     const tpl = emailLembrete24h({
       pacienteNome: pac.nome,
       profissionalNome: profNome,
@@ -148,6 +153,7 @@ export async function GET(req: Request) {
       endereco: tenantInfo?.endereco ?? null,
       cidade: tenantInfo?.cidade ?? null,
       estado: tenantInfo?.estado ?? null,
+      assinatura,
     });
     const result = await enviarNotificacaoEmail({
       tenantId: ag.tenant_id as string,

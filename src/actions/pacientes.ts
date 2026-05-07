@@ -15,6 +15,8 @@ import {
   emailConfirmacaoCadastro,
   montarLinkAgendamento,
 } from '@/lib/email-templates';
+import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
+import { registrarAcesso } from '@/lib/log-acesso';
 
 export type StatusTratamento = 'ativo' | 'alta' | 'inativo';
 
@@ -648,6 +650,13 @@ export async function atualizarPaciente(
     if (delErr) return { ok: false, error: delErr.message };
   }
 
+  // LGPD: registra a edicao do paciente.
+  void registrarAcesso({
+    acao: 'editar_paciente',
+    recurso: 'paciente',
+    recursoId: id,
+  });
+
   revalidatePath(`/pacientes/${id}`);
   revalidatePath('/pacientes');
   return { ok: true };
@@ -891,12 +900,14 @@ export async function cadastrarPacienteAvulso(
         (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
       const linkAgendamento = montarLinkAgendamento(baseUrl, slug);
 
+      const assinatura = await getTenantEmailSignature(tenantId);
       const tpl = emailConfirmacaoCadastro({
         pacienteNome: nome,
         profissionalNome,
         profissionalEspecialidade,
         linkAgendamento,
         logoUrl: profissionalLogoUrl,
+        assinatura,
       });
 
       await enviarNotificacaoEmail({
