@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getRelatorioFaturamento } from "@/actions/relatorios";
-import RelatoriosClient from "@/components/relatorios/RelatoriosClient";
+import { LazyRelatoriosClient } from "@/lib/dynamic-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export default async function RelatoriosPage() {
   }
 
   return (
-    <RelatoriosClient
+    <LazyRelatoriosClient
       initialFaturamento={result.data}
       initialPeriodo={result.data.periodo}
     />

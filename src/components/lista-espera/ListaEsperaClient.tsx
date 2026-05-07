@@ -20,7 +20,7 @@ import {
 import type { ProfissionalOpcaoTenant } from "@/actions/equipe";
 import { formatPhone, cleanPhone } from "@/lib/masks";
 import { cn } from "@/lib/utils";
-import NovoAgendamentoModal from "@/components/agenda/NovoAgendamentoModal";
+import { LazyNovoAgendamentoModal } from "@/lib/dynamic-imports";
 
 interface ListaEsperaClientProps {
   initialItens: ItemListaEspera[];
@@ -168,7 +168,7 @@ function ListaEsperaClient({
         </ul>
       )}
 
-      <NovoAgendamentoModal
+      <LazyNovoAgendamentoModal
         key={`novo-le-${agendarPara?.id ?? "fechado"}`}
         open={agendarPara !== null}
         onOpenChange={(o) => {

@@ -38,25 +38,39 @@ type SidebarItem = {
   avancado?: boolean;
   /** Atributo data-tour do elemento (anexa ao Link). */
   tour?: string;
+  /**
+   * Define se o Next.js deve fazer prefetch automatico do JS da rota.
+   * Para rotas pouco usadas (relatorios/estoque/lista-espera), desativamos
+   * para nao competir por bandwidth no carregamento inicial.
+   */
+  prefetch?: boolean;
 };
 
 const items: SidebarItem[] = [
-  { href: "/", label: "Inicio", Icon: Home, exact: true },
-  { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
-  { href: "/agenda", label: "Agenda", Icon: Calendar },
-  { href: "/pacientes", label: "Pacientes", Icon: Users, tour: "menu-pacientes" },
+  { href: "/", label: "Inicio", Icon: Home, exact: true, prefetch: true },
+  { href: "/dashboard", label: "Dashboard", Icon: BarChart3, prefetch: false },
+  { href: "/agenda", label: "Agenda", Icon: Calendar, prefetch: true },
+  {
+    href: "/pacientes",
+    label: "Pacientes",
+    Icon: Users,
+    tour: "menu-pacientes",
+    prefetch: true,
+  },
   {
     href: "/lista-espera",
     label: "Lista de espera",
     Icon: ClipboardList,
     badgeKey: "listaEspera",
     avancado: true,
+    prefetch: false,
   },
   {
     href: "/financeiro",
     label: "Financeiro",
     Icon: Wallet,
     tour: "menu-financeiro",
+    prefetch: true,
   },
   {
     href: "/estoque",
@@ -64,18 +78,21 @@ const items: SidebarItem[] = [
     Icon: Package,
     modulo: "estoque",
     avancado: true,
+    prefetch: false,
   },
   {
     href: "/relatorios",
     label: "Relatórios",
     Icon: LineChart,
     avancado: true,
+    prefetch: false,
   },
   {
     href: "/configuracoes",
     label: "Configurações",
     Icon: Settings,
     tour: "menu-configuracoes",
+    prefetch: false,
   },
 ];
 
@@ -134,7 +151,16 @@ function Sidebar({
       <nav aria-label="Navegação lateral" className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
           {itensVisiveis.map(
-            ({ href, label, Icon, exact, badgeKey, avancado, tour }) => {
+            ({
+              href,
+              label,
+              Icon,
+              exact,
+              badgeKey,
+              avancado,
+              tour,
+              prefetch,
+            }) => {
               const active = isActive(pathname, href, exact);
               const badgeContagem =
                 badgeKey === "listaEspera" && contagemListaEspera > 0
@@ -147,6 +173,7 @@ function Sidebar({
                     href={href}
                     aria-current={active ? "page" : undefined}
                     data-tour={tour}
+                    prefetch={prefetch ?? true}
                     className={cn(
                       "flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors",
                       active

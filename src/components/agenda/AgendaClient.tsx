@@ -30,7 +30,7 @@ import CalendarioDiario from "./CalendarioDiario";
 import CalendarioMensal from "./CalendarioMensal";
 import ListaHorarios from "./ListaHorarios";
 import AgendamentoModal from "./AgendamentoModal";
-import NovoAgendamentoModal from "./NovoAgendamentoModal";
+import { LazyNovoAgendamentoModal } from "@/lib/dynamic-imports";
 
 interface AgendaClientProps {
   initialDate: string;
@@ -107,6 +107,8 @@ function AgendaClient({
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved && isAgendaView(saved)) {
+        // Sincroniza visao salva pelo usuario apos hydration.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setView(saved);
       }
     } catch {
@@ -221,7 +223,9 @@ function AgendaClient({
   // Recarrega dados quando view, data ou filtro mudam
   useEffect(() => {
     const filtro = filtroParaQuery();
+    // Os helpers carregar*() chamam setState internamente apos o fetch.
     if (view === "dia") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       carregarDia(selectedDate, filtro);
     } else if (view === "semana") {
       carregarSemana(selectedDate, filtro);
@@ -392,7 +396,7 @@ function AgendaClient({
         <Plus size={24} strokeWidth={2} aria-hidden="true" />
       </button>
 
-      <NovoAgendamentoModal
+      <LazyNovoAgendamentoModal
         key={`novo-${novoModalPrefill.dataIso ?? ""}-${novoModalPrefill.hora ?? ""}-${novoModalOpen ? "open" : "closed"}`}
         open={novoModalOpen}
         onOpenChange={setNovoModalOpen}

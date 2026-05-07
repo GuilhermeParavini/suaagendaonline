@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAtestadoData } from "@/actions/documentos";
-import AtestadoPrint from "@/components/documentos/AtestadoPrint";
+import { LazyAtestadoPrint } from "@/lib/dynamic-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +27,5 @@ export default async function AtestadoPage({ params }: PageProps) {
     );
   }
 
-  return <AtestadoPrint data={result.data} />;
+  return <LazyAtestadoPrint data={result.data} />;
 }

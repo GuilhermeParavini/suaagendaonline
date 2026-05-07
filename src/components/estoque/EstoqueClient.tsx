@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
 import {
+  LazyFormProduto,
+  LazyModalMovimentacao,
+} from "@/lib/dynamic-imports";
+import {
   excluirProduto,
   getEstoque,
   type CategoriaEstoque,
@@ -26,8 +30,6 @@ import {
 } from "@/actions/estoque";
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
-import FormProduto from "./FormProduto";
-import ModalMovimentacao from "./ModalMovimentacao";
 import RelatorioEstoque from "./RelatorioEstoque";
 
 type CategoriaFiltro = CategoriaEstoque | "todas";
@@ -439,14 +441,14 @@ function EstoqueClient({
         </>
       )}
 
-      <FormProduto
+      <LazyFormProduto
         open={modalProdutoOpen}
         onOpenChange={setModalProdutoOpen}
         onSaved={handleSaved}
         produto={produtoEdicao}
       />
 
-      <ModalMovimentacao
+      <LazyModalMovimentacao
         open={modalMovOpen}
         onOpenChange={setModalMovOpen}
         onMoved={handleSaved}

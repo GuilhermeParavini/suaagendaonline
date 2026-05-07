@@ -229,6 +229,7 @@ function ProximoCard({
           </Link>
           <Link
             href={`/atendimento/${ag.id}`}
+            prefetch
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[14px] font-medium text-white hover:bg-primary-dark transition-colors"
           >
             <PlayCircle size={16} strokeWidth={1.5} aria-hidden="true" />

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getEvolucaoDocumento } from "@/actions/documentos";
-import RelatorioClinicoPrint from "@/components/documentos/RelatorioClinicoPrint";
+import { LazyRelatorioClinicoPrint } from "@/lib/dynamic-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +27,5 @@ export default async function RelatorioClinicoPage({ params }: PageProps) {
     );
   }
 
-  return <RelatorioClinicoPrint data={result.data} />;
+  return <LazyRelatorioClinicoPrint data={result.data} />;
 }

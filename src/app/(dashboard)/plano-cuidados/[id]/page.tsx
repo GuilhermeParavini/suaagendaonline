@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getEvolucaoDocumento } from "@/actions/documentos";
-import PlanoCuidadosPrint from "@/components/documentos/PlanoCuidadosPrint";
+import { LazyPlanoCuidadosPrint } from "@/lib/dynamic-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -34,5 +34,5 @@ export default async function PlanoCuidadosPage({ params }: PageProps) {
     );
   }
 
-  return <PlanoCuidadosPrint data={result.data} />;
+  return <LazyPlanoCuidadosPrint data={result.data} />;
 }

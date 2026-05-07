@@ -63,16 +63,18 @@ type ItemMais = {
   modulo?: ModuloId;
   /** Item avancado — escondido para tenants novos com onboarding incompleto. */
   avancado?: boolean;
+  prefetch?: boolean;
 };
 
 const itensMais: ItemMais[] = [
-  { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
+  { href: "/dashboard", label: "Dashboard", Icon: BarChart3, prefetch: false },
   {
     href: "/lista-espera",
     label: "Lista de espera",
     Icon: ClipboardList,
     badgeKey: "listaEspera",
     avancado: true,
+    prefetch: false,
   },
   {
     href: "/estoque",
@@ -80,14 +82,16 @@ const itensMais: ItemMais[] = [
     Icon: Package,
     modulo: "estoque",
     avancado: true,
+    prefetch: false,
   },
   {
     href: "/relatorios",
     label: "Relatórios",
     Icon: LineChart,
     avancado: true,
+    prefetch: false,
   },
-  { href: "/configuracoes", label: "Configurações", Icon: Settings },
+  { href: "/configuracoes", label: "Configurações", Icon: Settings, prefetch: false },
 ];
 
 function isActive(
@@ -194,7 +198,7 @@ function BottomNav({
                 </div>
                 <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
                   {itensMaisVisiveis.map(
-                    ({ href, label, Icon, badgeKey, avancado }) => {
+                    ({ href, label, Icon, badgeKey, avancado, prefetch }) => {
                       const active = isActive(pathname, href);
                       const badge =
                         badgeKey === "listaEspera" && contagemListaEspera > 0
@@ -206,6 +210,7 @@ function BottomNav({
                           <Link
                             href={href}
                             onClick={() => setMaisOpen(false)}
+                            prefetch={prefetch ?? true}
                             className={cn(
                               "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
                               active

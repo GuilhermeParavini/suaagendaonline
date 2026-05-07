@@ -21,10 +21,11 @@ import type {
   ProfissionalPublico,
 } from "@/lib/agendamento-publico";
 import CalendarioMensal from "./CalendarioMensal";
-import SeletorHorario from "./SeletorHorario";
-import FormPacientePublico, {
-  type FormResult,
-} from "./FormPacientePublico";
+import {
+  LazyFormPacientePublico,
+  LazySeletorHorario,
+} from "@/lib/dynamic-imports";
+import { type FormResult } from "./FormPacientePublico";
 import ResumoAgendamento from "./ResumoAgendamento";
 import HeaderProfissionalPublico from "./HeaderProfissionalPublico";
 import BioProfissional from "./BioProfissional";
@@ -298,7 +299,7 @@ function AgendarFlow({
             </p>
           ) : (
             <div className={slotsLoading ? "opacity-60" : undefined}>
-              <SeletorHorario
+              <LazySeletorHorario
                 slots={slots}
                 selected={selectedHora}
                 onSelect={(h) => {
@@ -354,7 +355,7 @@ function AgendarFlow({
             />
             Seus dados sao protegidos e usados apenas para sua consulta.
           </p>
-          <FormPacientePublico
+          <LazyFormPacientePublico
             tenantId={contexto.tenantId}
             onIdentified={(result) => {
               setPaciente(result);

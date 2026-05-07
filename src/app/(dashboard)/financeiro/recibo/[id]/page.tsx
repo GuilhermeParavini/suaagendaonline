@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getReciboData } from "@/actions/financeiro";
 import { formatCurrency, isoToBrDate, valorPorExtenso } from "@/lib/masks";
-import ReciboPrint from "@/components/financeiro/ReciboPrint";
+import { LazyReciboPrint } from "@/lib/dynamic-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function ReciboPage({ params }: ReciboPageProps) {
   const cidade = [tenant.cidade, tenant.estado].filter(Boolean).join(" - ");
 
   return (
-    <ReciboPrint
+    <LazyReciboPrint
       id={lancamento.id}
       pacienteEmail={pacienteEmail}
       pacienteTelefone={pacienteTelefone}

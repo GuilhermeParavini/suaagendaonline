@@ -3,34 +3,45 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import NovoAgendamentoModal from "@/components/agenda/NovoAgendamentoModal";
+import { LazyNovoAgendamentoModal } from "@/lib/dynamic-imports";
 
 function NovoAgendamentoFab() {
   const [open, setOpen] = useState(false);
+  // `montado` cresce monotonicamente: depois que o modal foi aberto pela
+  // primeira vez, mantemos o componente carregado para evitar re-baixar o
+  // chunk em aberturas seguintes.
+  const [montado, setMontado] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const router = useRouter();
+
+  const abrir = () => {
+    setMontado(true);
+    setOpen(true);
+  };
 
   return (
     <>
       <button
         type="button"
         aria-label="Novo agendamento"
-        onClick={() => setOpen(true)}
+        onClick={abrir}
         data-tour="novo-agendamento"
         className="fixed right-4 bottom-[calc(56px+env(safe-area-inset-bottom)+16px)] lg:bottom-6 lg:right-6 h-14 w-14 rounded-full bg-primary text-white shadow-md hover:shadow-lg hover:bg-primary/90 transition flex items-center justify-center z-40"
       >
         <Plus size={24} strokeWidth={2} aria-hidden="true" />
       </button>
 
-      <NovoAgendamentoModal
-        open={open}
-        onOpenChange={setOpen}
-        onCriado={() => {
-          setToast("Agendamento criado");
-          window.setTimeout(() => setToast(null), 2500);
-          router.refresh();
-        }}
-      />
+      {montado ? (
+        <LazyNovoAgendamentoModal
+          open={open}
+          onOpenChange={setOpen}
+          onCriado={() => {
+            setToast("Agendamento criado");
+            window.setTimeout(() => setToast(null), 2500);
+            router.refresh();
+          }}
+        />
+      ) : null}
 
       {toast ? (
         <div

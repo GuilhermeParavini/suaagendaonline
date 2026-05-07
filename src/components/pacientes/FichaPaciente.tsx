@@ -21,7 +21,7 @@ import { calculateAge } from "@/lib/validators";
 import { cn } from "@/lib/utils";
 import { getAnamneses, type Anamnese } from "@/actions/anamnese";
 import { getEvolucoes, type Evolucao } from "@/actions/evolucoes";
-import EditarPacienteModal from "./EditarPacienteModal";
+import { LazyEditarPacienteModal } from "@/lib/dynamic-imports";
 import ExcluirPacienteDialog from "./ExcluirPacienteDialog";
 import TabAnamnesePaciente from "./TabAnamnesePaciente";
 import TabDocumentos from "./TabDocumentos";
@@ -860,12 +860,14 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
         </Tabs.Content>
       </Tabs.Root>
 
-      <EditarPacienteModal
-        paciente={paciente}
-        responsavel={responsavel}
-        open={modalEdicaoAberto}
-        onOpenChange={setModalEdicaoAberto}
-      />
+      {modalEdicaoAberto ? (
+        <LazyEditarPacienteModal
+          paciente={paciente}
+          responsavel={responsavel}
+          open={modalEdicaoAberto}
+          onOpenChange={setModalEdicaoAberto}
+        />
+      ) : null}
 
       <ExcluirPacienteDialog
         pacienteId={paciente.id}
