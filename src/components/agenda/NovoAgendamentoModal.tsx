@@ -8,7 +8,7 @@ import {
   useTransition,
 } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Check, ExternalLink, Search, X } from "lucide-react";
+import { Check, ExternalLink, Repeat, Search, X } from "lucide-react";
 import {
   buscarPacientesPainel,
   criarAgendamentoPainel,
@@ -19,10 +19,16 @@ import {
   type ProcedimentoOpcao,
   type SlotPainel,
 } from "@/actions/agendamentos";
+import { criarAgendamentosRecorrentes } from "@/actions/agendamentos-recorrentes";
+import {
+  calcularDatasRecorrencia,
+  type FrequenciaRecorrencia,
+} from "@/lib/recorrencia-utils";
 import { formatPhone } from "@/lib/masks";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { cn } from "@/lib/utils";
 import CalendarioMensal from "@/components/agendamento-publico/CalendarioMensal";
-import { addMonths, endOfMonth, startOfMonth, format } from "date-fns";
+import { addMonths, endOfMonth, format, parseISO, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface NovoAgendamentoModalProps {
@@ -87,6 +93,12 @@ function NovoAgendamentoModal({
   const [okMsg, setOkMsg] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Recorrencia
+  const [frequencia, setFrequencia] = useState<"nao" | FrequenciaRecorrencia>(
+    "nao",
+  );
+  const [repeticoes, setRepeticoes] = useState<number>(4);
+
   const buscaTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetar = useCallback(() => {
@@ -107,6 +119,8 @@ function NovoAgendamentoModal({
     setObservacoes("");
     setErro(null);
     setOkMsg(false);
+    setFrequencia("nao");
+    setRepeticoes(4);
   }, []);
 
   useEffect(() => {
@@ -242,6 +256,38 @@ function NovoAgendamentoModal({
     }
     setErro(null);
     startTransition(async () => {
+      if (frequencia !== "nao") {
+        const r = await criarAgendamentosRecorrentes({
+          pacienteId: pacienteSelecionado.id,
+          procedimentoId,
+          dataInicialIso: isoDate(selectedDate),
+          hora: horaSelecionada,
+          observacoes: observacoes || undefined,
+          frequencia,
+          repeticoes,
+        });
+        if (!r.ok) {
+          setErro(r.error);
+          return;
+        }
+        if (r.criados === 0) {
+          const motivos = r.conflitos
+            .slice(0, 3)
+            .map((c) => `${c.dataIso} (${c.motivo})`)
+            .join("; ");
+          setErro(
+            `Nenhum agendamento criado por conflitos. Detalhes: ${motivos}`,
+          );
+          return;
+        }
+        setOkMsg(true);
+        window.setTimeout(() => {
+          resetar();
+          onOpenChange(false);
+          onCriado?.();
+        }, 800);
+        return;
+      }
       const r = await criarAgendamentoPainel({
         pacienteId: pacienteSelecionado.id,
         procedimentoId,
@@ -507,6 +553,73 @@ function NovoAgendamentoModal({
               </>
             ) : null}
 
+            {/* Recorrencia */}
+            {selectedDate && horaSelecionada ? (
+              <div className="rounded-lg border border-slate-200 bg-white px-4">
+                <CollapsibleSection
+                  titulo="Repetir"
+                  Icon={Repeat}
+                  defaultOpen={false}
+                  hint={frequencia === "nao" ? "Opcional" : undefined}
+                >
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label className={labelClass}>Frequencia</label>
+                        <select
+                          value={frequencia}
+                          onChange={(e) =>
+                            setFrequencia(
+                              e.target.value as "nao" | FrequenciaRecorrencia,
+                            )
+                          }
+                          className={inputClass}
+                        >
+                          <option value="nao">Nao repetir</option>
+                          <option value="semanal">Semanal</option>
+                          <option value="quinzenal">Quinzenal</option>
+                          <option value="mensal">Mensal</option>
+                        </select>
+                      </div>
+                      {frequencia !== "nao" ? (
+                        <div className="space-y-1">
+                          <label className={labelClass}>Repetir por</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min={1}
+                              max={52}
+                              value={repeticoes}
+                              onChange={(e) =>
+                                setRepeticoes(
+                                  Math.max(
+                                    1,
+                                    Math.min(52, Number(e.target.value) || 1),
+                                  ),
+                                )
+                              }
+                              className={inputClass}
+                            />
+                            <span className="shrink-0 text-sm text-slate-500">
+                              vezes
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {frequencia !== "nao" ? (
+                      <PreviewRecorrencia
+                        dataIso={isoDate(selectedDate)}
+                        frequencia={frequencia}
+                        repeticoes={repeticoes}
+                      />
+                    ) : null}
+                  </div>
+                </CollapsibleSection>
+              </div>
+            ) : null}
+
             {/* Observacoes */}
             <div className="space-y-1">
               <label className={labelClass}>Observações</label>
@@ -534,12 +647,53 @@ function NovoAgendamentoModal({
               disabled={!podeSalvar}
               className="w-full rounded bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? "Agendando..." : "Agendar"}
+              {isPending
+                ? "Agendando..."
+                : frequencia !== "nao"
+                  ? `Agendar ${repeticoes} consultas`
+                  : "Agendar"}
             </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function PreviewRecorrencia({
+  dataIso,
+  frequencia,
+  repeticoes,
+}: {
+  dataIso: string;
+  frequencia: FrequenciaRecorrencia;
+  repeticoes: number;
+}) {
+  const datas = calcularDatasRecorrencia(dataIso, frequencia, repeticoes);
+  if (datas.length === 0) return null;
+  const visiveis = datas.slice(0, 6);
+  const restante = datas.length - visiveis.length;
+
+  return (
+    <div className="rounded-lg border border-primary/20 bg-primary-surface px-3 py-2 space-y-1">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-primary-text">
+        Serao criados {datas.length} agendamentos
+      </p>
+      <ul className="text-[12px] text-slate-700 leading-relaxed">
+        {visiveis.map((iso) => (
+          <li key={iso}>
+            {format(parseISO(iso), "EEE, d 'de' MMMM", { locale: ptBR })}
+          </li>
+        ))}
+        {restante > 0 ? (
+          <li className="text-slate-500">+ {restante} mais</li>
+        ) : null}
+      </ul>
+      <p className="text-[11px] text-slate-500">
+        Conflitos com horarios ocupados, feriados ou bloqueios serao reportados
+        ao confirmar.
+      </p>
+    </div>
   );
 }
 

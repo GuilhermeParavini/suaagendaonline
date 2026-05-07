@@ -727,6 +727,69 @@ export function emailFuncionalidadeNaoUsada(
   return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
 }
 
+// ============================================================
+// Agendamentos recorrentes
+// ============================================================
+
+export type DadosAgendamentosRecorrentes = {
+  pacienteNome: string;
+  profissionalNome: string;
+  procedimentoNome: string | null;
+  horario: string;
+  datasIso: string[];
+  linkAgendamento: string | null;
+  logoUrl?: string | null;
+  assinatura?: DadosAssinaturaEmail | null;
+};
+
+export function emailAgendamentosRecorrentes(
+  d: DadosAgendamentosRecorrentes,
+): { assunto: string; html: string } {
+  const nome = capitalizeNome(d.pacienteNome);
+  const profissional = capitalizeNome(d.profissionalNome);
+  const total = d.datasIso.length;
+  const assunto = `${total} ${total === 1 ? "consulta agendada" : "consultas agendadas"} com ${profissional}`;
+  const procedimento = (d.procedimentoNome ?? "").trim();
+
+  const linhas = d.datasIso
+    .map(
+      (iso) =>
+        `<li style="margin:6px 0;color:#0F172A;font-size:14px;">${escapeHtml(dataPorExtenso(iso))} as <strong>${escapeHtml(d.horario)}</strong></li>`,
+    )
+    .join("");
+
+  const botao = d.linkAgendamento
+    ? `<p style="margin:20px 0 0 0;text-align:center;">
+         <a href="${escapeHtml(d.linkAgendamento)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:500;">Ver detalhes</a>
+       </p>`
+    : "";
+
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}.</p>
+    <p style="margin:0 0 12px 0;color:#0F172A;">
+      Suas consultas com <strong>${escapeHtml(profissional)}</strong> foram agendadas.
+    </p>
+    ${procedimento ? `<p style="margin:0 0 12px 0;color:#475569;">Procedimento: <strong>${escapeHtml(procedimento)}</strong></p>` : ""}
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:14px 0 0 0;">
+      <tr>
+        <td style="padding:14px 16px;background-color:#F0FDFA;border:1px solid #99F6E4;border-radius:10px;">
+          <p style="margin:0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">${total} ${total === 1 ? "consulta" : "consultas"} agendada${total === 1 ? "" : "s"}</p>
+          <ul style="margin:10px 0 0 0;padding:0 0 0 18px;color:#0F172A;font-size:14px;">${linhas}</ul>
+        </td>
+      </tr>
+    </table>
+
+    ${botao}
+
+    <p style="margin:20px 0 0 0;color:#475569;font-size:13px;">
+      Voce recebera um lembrete 24h antes de cada consulta. Para reagendar, entre em contato.
+    </p>
+    <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl, d.assinatura) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

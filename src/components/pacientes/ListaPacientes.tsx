@@ -1,8 +1,9 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Plus, Search, SearchX, Users, X } from "lucide-react";
+import { Plus, Search, SearchX, Upload, Users, X } from "lucide-react";
 import {
   getConveniosExistentes,
   getPacientes,
@@ -11,6 +12,7 @@ import {
 } from "@/actions/pacientes";
 import EmptyState from "@/components/ui/EmptyState";
 import CardPaciente from "./CardPaciente";
+import ImportarPacientes from "./ImportarPacientes";
 import { useScrollRestore } from "@/hooks/useScrollRestore";
 
 interface ListaPacientesProps {
@@ -21,12 +23,14 @@ type StatusFiltro = StatusTratamento | "todos";
 
 function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
   useScrollRestore("scroll-pacientes");
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [convenioFiltro, setConvenioFiltro] = useState("");
   const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");
   const [convenios, setConvenios] = useState<string[]>([]);
   const [pacientes, setPacientes] = useState<PacienteListItem[]>(initialPacientes);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstRender = useRef(true);
@@ -78,18 +82,40 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
   return (
     <div className="space-y-4 pb-20">
       <header className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
             Pacientes
           </h1>
-          <Link
-            href="/pacientes/novo"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          >
-            <Plus size={16} strokeWidth={2} aria-hidden="true" />
-            <span className="hidden sm:inline">Novo paciente</span>
-            <span className="sm:hidden">Novo</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <ImportarPacientes
+              trigger={
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <Upload size={16} strokeWidth={1.5} aria-hidden="true" />
+                  <span className="hidden sm:inline">Importar</span>
+                </button>
+              }
+              onConcluido={({ importados }) => {
+                if (importados > 0) {
+                  setToast(
+                    `${importados} ${importados === 1 ? "paciente importado" : "pacientes importados"} com sucesso`,
+                  );
+                  window.setTimeout(() => setToast(null), 3500);
+                  router.refresh();
+                }
+              }}
+            />
+            <Link
+              href="/pacientes/novo"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <Plus size={16} strokeWidth={2} aria-hidden="true" />
+              <span className="hidden sm:inline">Novo paciente</span>
+              <span className="sm:hidden">Novo</span>
+            </Link>
+          </div>
         </div>
 
         <div className="relative">
@@ -195,6 +221,16 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
           </ul>
         )}
       </section>
+
+      {toast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 -translate-x-1/2 bottom-[calc(56px+env(safe-area-inset-bottom)+96px)] lg:bottom-24 z-50 inline-flex items-center gap-2 rounded-lg border border-[#CCFBF1] bg-[#F0FDFA] px-4 py-2.5 text-sm font-medium text-[#115E59] shadow-md"
+        >
+          {toast}
+        </div>
+      ) : null}
     </div>
   );
 }
