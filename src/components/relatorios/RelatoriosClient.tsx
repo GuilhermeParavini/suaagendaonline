@@ -65,7 +65,7 @@ const COLOR_ORIGEM: Record<string, string> = {
   Indicacao: "#22C55E",
   Facebook: "#1877F2",
   Site: "#0D9488",
-  Outros: "#94A3B8",
+  Outros: "#64748B",
   "Nao informado": "#CBD5E1",
 };
 
@@ -81,7 +81,7 @@ const FORMA_LABEL: Record<FormaPagamento, string> = {
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 interface RelatoriosClientProps {
   initialFaturamento: FaturamentoData;
@@ -588,7 +588,7 @@ function FaturamentoTab({
                 type="button"
                 onClick={handleExportarCsv}
                 disabled={data.lancamentos.length === 0}
-                className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface disabled:opacity-50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface disabled:opacity-50 transition-colors"
               >
                 <Download size={13} strokeWidth={1.5} aria-hidden="true" />
                 Exportar CSV
@@ -1422,7 +1422,7 @@ function AgendamentosTab({
                 <Clock size={22} strokeWidth={1.5} aria-hidden="true" />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                   Horário de pico
                 </p>
                 <p className="text-xl font-semibold leading-tight text-slate-900">
@@ -1609,7 +1609,7 @@ function CardResumo({
             : "text-slate-900";
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {icon ? (
           <span className={cn("inline-flex items-center", accentClass)}>
             {icon}

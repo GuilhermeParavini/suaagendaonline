@@ -27,7 +27,7 @@ function CardUsoAssistente({ uso }: CardUsoAssistenteProps) {
             </p>
             <Link
               href="/configuracoes"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary-text hover:underline"
             >
               Fazer upgrade
             </Link>

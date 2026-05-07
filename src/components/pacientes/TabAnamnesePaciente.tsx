@@ -144,7 +144,7 @@ function TabAnamnesePaciente({
                   <ClipboardList
                     size={18}
                     strokeWidth={1.5}
-                    className="shrink-0 text-primary"
+                    className="shrink-0 text-primary-text"
                     aria-hidden="true"
                   />
                   <div className="min-w-0 flex-1">
@@ -157,14 +157,14 @@ function TabAnamnesePaciente({
                     <ChevronUp
                       size={16}
                       strokeWidth={1.5}
-                      className="text-slate-400"
+                      className="text-slate-500"
                       aria-hidden="true"
                     />
                   ) : (
                     <ChevronDown
                       size={16}
                       strokeWidth={1.5}
-                      className="text-slate-400"
+                      className="text-slate-500"
                       aria-hidden="true"
                     />
                   )}

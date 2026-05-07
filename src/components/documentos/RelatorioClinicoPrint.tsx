@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef } from "react";
 import { format } from "date-fns";
@@ -108,7 +108,7 @@ function RelatorioClinicoPrint({ data }: RelatorioClinicoPrintProps) {
 
           <section className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Paciente
               </p>
               <p className="text-slate-900 font-medium break-words">
@@ -129,7 +129,7 @@ function RelatorioClinicoPrint({ data }: RelatorioClinicoPrintProps) {
               ) : null}
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Atendimento
               </p>
               <p className="text-slate-900 font-medium">
@@ -182,7 +182,7 @@ function RelatorioClinicoPrint({ data }: RelatorioClinicoPrintProps) {
             assinaturaUrl={profissional.assinatura_url}
           />
 
-          <p className="mt-6 text-center text-[11px] text-slate-400">
+          <p className="mt-6 text-center text-[11px] text-slate-500">
             Emitido em {dataEmissao} · Este documento e de uso exclusivo do
             paciente e profissional
           </p>

@@ -96,7 +96,7 @@ function Sidebar({
                   className={cn(
                     "flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors",
                     active
-                      ? "bg-primary-surface text-primary"
+                      ? "bg-primary-surface text-primary-text"
                       : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
                   )}
                 >

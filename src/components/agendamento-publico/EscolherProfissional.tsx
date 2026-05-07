@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
@@ -19,7 +19,7 @@ function EscolherProfissional({
   return (
     <div className="space-y-5">
       <header className="space-y-1 text-center">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           Agendamento
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -65,7 +65,7 @@ function EscolherProfissional({
                 size={18}
                 strokeWidth={1.5}
                 aria-hidden="true"
-                className="shrink-0 text-slate-400"
+                className="shrink-0 text-slate-500"
               />
             </Link>
           </li>

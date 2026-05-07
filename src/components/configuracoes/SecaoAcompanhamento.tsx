@@ -10,7 +10,7 @@ interface SecaoAcompanhamentoProps {
   onSaved: () => void;
 }
 
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 function Switch({
   checked,
@@ -162,7 +162,7 @@ function SecaoAcompanhamento({
           className="w-full resize-y rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10"
         />
         <div className="flex items-center justify-between">
-          <p className="text-[11px] text-slate-400">{mensagem.length}/500</p>
+          <p className="text-[11px] text-slate-500">{mensagem.length}/500</p>
           <button
             type="button"
             onClick={salvarMensagem}

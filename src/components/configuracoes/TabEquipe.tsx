@@ -43,7 +43,7 @@ import Avatar from "@/components/ui/Avatar";
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 function formatExpira(iso: string): string {
   const d = new Date(iso);
@@ -305,7 +305,7 @@ function ItemProfissional({
             {ROLE_LABEL[role] ?? role}
           </span>
           {prof.is_self ? (
-            <span className="text-[10px] text-slate-400">(você)</span>
+            <span className="text-[10px] text-slate-500">(você)</span>
           ) : null}
           {!prof.ativo ? (
             <span className="inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-600">
@@ -336,7 +336,7 @@ function ItemProfissional({
             disabled={isPending}
             aria-label="Configurar comissao"
             title="Comissao"
-            className="inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50"
           >
             <Percent size={12} strokeWidth={1.75} aria-hidden="true" />
             Comissao
@@ -363,8 +363,8 @@ function ItemProfissional({
             disabled={isPending}
             aria-label={prof.ativo ? "Desativar" : "Reativar"}
             className={cn(
-              "inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 transition-colors disabled:opacity-50",
-              prof.ativo ? "hover:text-red-600" : "hover:text-primary",
+              "inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50",
+              prof.ativo ? "hover:text-red-600" : "hover:text-primary-text",
             )}
             title={prof.ativo ? "Desativar" : "Reativar"}
           >
@@ -463,7 +463,7 @@ function ItemConvite({
             disabled={isPending}
             aria-label="Reenviar convite"
             title="Reenviar"
-            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors disabled:opacity-50"
           >
             <RotateCcw size={14} strokeWidth={1.5} aria-hidden="true" />
           </button>
@@ -475,7 +475,7 @@ function ItemConvite({
             disabled={isPending}
             aria-label="Cancelar convite"
             title="Cancelar"
-            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-colors disabled:opacity-50"
+            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-red-600 transition-colors disabled:opacity-50"
           >
             <X size={14} strokeWidth={1.5} aria-hidden="true" />
           </button>

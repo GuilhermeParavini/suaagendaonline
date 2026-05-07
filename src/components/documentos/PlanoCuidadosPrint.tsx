@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef } from "react";
 import { format } from "date-fns";
@@ -69,7 +69,7 @@ function PlanoCuidadosPrint({ data }: PlanoCuidadosPrintProps) {
 
           <section className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Paciente
               </p>
               <p className="text-slate-900 font-medium break-words">
@@ -77,7 +77,7 @@ function PlanoCuidadosPrint({ data }: PlanoCuidadosPrintProps) {
               </p>
             </div>
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Data
               </p>
               <p className="text-slate-900 font-medium">{dataReferencia}</p>
@@ -106,7 +106,7 @@ function PlanoCuidadosPrint({ data }: PlanoCuidadosPrintProps) {
             assinaturaUrl={profissional.assinatura_url}
           />
 
-          <p className="mt-6 text-center text-[11px] text-slate-400">
+          <p className="mt-6 text-center text-[11px] text-slate-500">
             Emitido em {dataEmissao}
           </p>
         </article>

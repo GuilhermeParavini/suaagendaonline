@@ -13,7 +13,7 @@ const baseStyles =
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-primary text-white border border-transparent hover:bg-primary-dark",
   secondary:
-    "bg-transparent text-primary border border-primary hover:bg-primary-surface",
+    "bg-transparent text-primary-text border border-primary hover:bg-primary-surface",
   destructive:
     "bg-transparent text-danger border border-danger hover:bg-danger-surface",
   ghost:

@@ -104,8 +104,7 @@ function ContatoPreferencial({
               key={canal}
               htmlFor={id}
               className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-[14px] font-medium transition-colors no-touch-min",
-                "min-h-[44px]",
+                "flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-[14px] font-medium transition-colors min-h-[44px]",
                 ativo
                   ? "border-primary bg-primary-surface text-[#0F766E]"
                   : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",

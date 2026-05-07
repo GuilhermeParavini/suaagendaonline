@@ -114,7 +114,7 @@ export default function SignupPage() {
               para ativar sua conta.
             </p>
           </div>
-          <p className="text-xs text-slate-400 mt-4">
+          <p className="text-xs text-slate-500 mt-4">
             Redirecionando para login...
           </p>
         </div>
@@ -243,7 +243,7 @@ export default function SignupPage() {
       {/* Sign In Link */}
       <div className="text-center text-sm text-slate-600">
         Já tem conta?{' '}
-        <Link href="/login" className="text-teal-600 hover:text-teal-700 font-medium">
+        <Link href="/login" className="text-teal-700 hover:text-teal-700 font-medium">
           Entrar
         </Link>
       </div>

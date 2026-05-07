@@ -26,7 +26,7 @@ import DateInputBR from "@/components/ui/DateInputBR";
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const errorClass = "text-xs text-danger";
 
 function formatarDataIsoExtenso(iso: string): string {
@@ -165,7 +165,7 @@ function TabBloqueios() {
           <button
             type="button"
             onClick={() => setOpenFeriado(true)}
-            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors shrink-0"
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors shrink-0"
           >
             <Plus size={14} strokeWidth={1.5} aria-hidden="true" />
             Novo feriado
@@ -262,7 +262,7 @@ function ItemBloqueio({
         onClick={handleExcluir}
         disabled={isPending}
         aria-label="Excluir bloqueio"
-        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+        className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
       >
         <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
       </button>
@@ -327,14 +327,14 @@ function ItemFeriado({
       </div>
 
       {isNacional ? (
-        <span className="text-[11px] text-slate-400">Não removível</span>
+        <span className="text-[11px] text-slate-500">Não removível</span>
       ) : (
         <button
           type="button"
           onClick={handleExcluir}
           disabled={isPending}
           aria-label="Excluir feriado"
-          className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+          className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
         >
           <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
         </button>

@@ -80,7 +80,7 @@ function ConviteFlow({ token, convite, userEmail }: ConviteFlowProps) {
   return (
     <div className="space-y-5">
       <header className="space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           Convite
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -162,7 +162,7 @@ function ConviteFlow({ token, convite, userEmail }: ConviteFlowProps) {
           </Link>
           <Link
             href={`/login?convite=${token}`}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary px-4 py-2.5 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors"
           >
             Já tenho conta
           </Link>

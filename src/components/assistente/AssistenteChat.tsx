@@ -328,7 +328,7 @@ function AssistenteChat({
               : "Limite de perguntas atingido este mês."}{" "}
             <Link
               href="/configuracoes"
-              className="font-medium text-teal-600 hover:underline"
+              className="font-medium text-teal-700 hover:underline"
             >
               Fazer upgrade
             </Link>

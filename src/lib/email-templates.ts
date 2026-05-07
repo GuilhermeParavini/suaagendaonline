@@ -377,8 +377,8 @@ export function emailReagendamento(d: DadosReagendamento): {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0 0;">
       <tr>
         <td style="padding:12px;border:1px solid #E2E8F0;border-radius:8px;background-color:#F8FAFC;">
-          <p style="margin:0;color:#94A3B8;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">De</p>
-          <p style="margin:4px 0 0 0;color:#94A3B8;font-size:14px;text-decoration:line-through;">${escapeHtml(dataPorExtenso(d.dataAnteriorIso))} às ${escapeHtml(d.horarioAnterior)}</p>
+          <p style="margin:0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">De</p>
+          <p style="margin:4px 0 0 0;color:#64748B;font-size:14px;text-decoration:line-through;">${escapeHtml(dataPorExtenso(d.dataAnteriorIso))} às ${escapeHtml(d.horarioAnterior)}</p>
         </td>
       </tr>
       <tr>

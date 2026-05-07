@@ -452,7 +452,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
                   <p className="text-xs font-medium text-slate-500">{data}</p>
                   <p className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">
                     {resumo || (
-                      <span className="italic text-slate-400">Sem texto</span>
+                      <span className="italic text-slate-500">Sem texto</span>
                     )}
                   </p>
                 </li>
@@ -468,7 +468,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         </h2>
 
         <div className="space-y-1">
-          <label className="block text-[13px] font-medium text-slate-700">
+          <label className="block text-[14px] font-medium text-slate-900">
             Observações clínicas
           </label>
           <textarea
@@ -486,7 +486,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
               size={16}
               strokeWidth={1.5}
               aria-hidden="true"
-              className="mt-0.5 shrink-0 text-slate-400"
+              className="mt-0.5 shrink-0 text-slate-500"
             />
             <p className="min-w-0 flex-1">{transcricaoBloqueio.mensagem}</p>
           </div>
@@ -499,7 +499,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         )}
 
         <div className="space-y-1">
-          <label className="block text-[13px] font-medium text-slate-700">
+          <label className="block text-[14px] font-medium text-slate-900">
             Receita / Prescrição
           </label>
           <textarea
@@ -512,7 +512,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[13px] font-medium text-slate-700">
+          <label className="block text-[14px] font-medium text-slate-900">
             Diagnóstico
           </label>
           <textarea
@@ -525,12 +525,12 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
         </div>
 
         <div className="space-y-1">
-          <label className="flex items-center gap-1.5 text-[13px] font-medium text-slate-700">
+          <label className="flex items-center gap-1.5 text-[14px] font-medium text-slate-900">
             <ClipboardList
               size={14}
               strokeWidth={1.5}
               aria-hidden="true"
-              className="text-slate-400"
+              className="text-slate-500"
             />
             Plano de cuidados em casa
           </label>
@@ -551,7 +551,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
               size={16}
               strokeWidth={1.5}
               aria-hidden="true"
-              className="text-primary"
+              className="text-primary-text"
             />
             <h2 className="text-sm font-medium text-slate-700">
               Sugestao de retorno
@@ -628,7 +628,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
                 href={`/relatorio-clinico/${evolucaoSalvaId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors"
               >
                 <FileText size={14} strokeWidth={1.5} aria-hidden="true" />
                 Relatorio clinico
@@ -639,7 +639,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
                 href={`/plano-cuidados/${evolucaoSalvaId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors"
               >
                 <Home size={14} strokeWidth={1.5} aria-hidden="true" />
                 Plano de cuidados
@@ -650,7 +650,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
                 href={`/atestado/${contexto.agendamento.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors"
               >
                 <Award size={14} strokeWidth={1.5} aria-hidden="true" />
                 Atestado
@@ -666,7 +666,7 @@ function AtendimentoClient({ contexto }: AtendimentoClientProps) {
             type="button"
             onClick={handleSalvarRascunho}
             disabled={isSaving || isConcluindo}
-            className="rounded border border-primary bg-transparent px-4 py-2.5 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+            className="rounded border border-primary bg-transparent px-4 py-2.5 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50"
           >
             {isSaving ? "Salvando..." : "Salvar rascunho"}
           </button>
@@ -750,11 +750,11 @@ function Resumo({
 }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
       <p className="flex items-center gap-1.5 text-sm font-medium text-slate-900">
-        {icon ? <span className="text-slate-400">{icon}</span> : null}
+        {icon ? <span className="text-slate-500">{icon}</span> : null}
         {value}
       </p>
     </div>
@@ -786,9 +786,9 @@ function SecaoColapsavel({
           {titulo}
         </h2>
         {aberta ? (
-          <ChevronUp size={16} strokeWidth={1.5} className="text-slate-400" />
+          <ChevronUp size={16} strokeWidth={1.5} className="text-slate-500" />
         ) : (
-          <ChevronDown size={16} strokeWidth={1.5} className="text-slate-400" />
+          <ChevronDown size={16} strokeWidth={1.5} className="text-slate-500" />
         )}
       </button>
       {aberta ? (

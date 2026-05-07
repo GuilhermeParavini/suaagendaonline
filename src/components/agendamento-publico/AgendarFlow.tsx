@@ -136,7 +136,7 @@ function AgendarFlow({
     return (
       <div className="space-y-6 text-center pt-4">
         <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary-surface">
-          <Check size={32} strokeWidth={2.5} className="text-primary" aria-hidden="true" />
+          <Check size={32} strokeWidth={2.5} className="text-primary-text" aria-hidden="true" />
         </div>
         <div className="space-y-2">
           <h2 className="text-xl font-semibold text-slate-900">
@@ -171,7 +171,7 @@ function AgendarFlow({
             className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
           />
         ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           {contexto.profissional.especialidade}
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -362,7 +362,7 @@ function AgendarFlow({
               type="checkbox"
               checked={aceiteLgpd}
               onChange={(e) => setAceiteLgpd(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
             />
             <span className="text-xs text-slate-600 leading-relaxed">
               Concordo com o tratamento dos meus dados pessoais para finalidade clínica
@@ -503,7 +503,7 @@ function ListaEsperaInline({
       ) : (
         <div className="space-y-3">
           <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
+            <label className="block text-[14px] font-medium text-slate-900">
               CPF
             </label>
             <input
@@ -521,7 +521,7 @@ function ListaEsperaInline({
           </div>
 
           <div className="space-y-1">
-            <p className="text-[13px] font-medium text-slate-700">
+            <p className="text-[14px] font-medium text-slate-900">
               Turno de preferência
             </p>
             <div className="grid grid-cols-3 gap-2">
@@ -550,7 +550,7 @@ function ListaEsperaInline({
           </div>
 
           <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
+            <label className="block text-[14px] font-medium text-slate-900">
               Observação (opcional)
             </label>
             <textarea
@@ -569,7 +569,7 @@ function ListaEsperaInline({
               {precisaCadastro ? (
                 <a
                   href={`/cadastro-paciente/${slug}`}
-                  className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                  className="mt-1 inline-block text-xs font-medium text-primary-text hover:underline"
                 >
                   Fazer meu cadastro →
                 </a>

@@ -245,7 +245,7 @@ function FinanceiroAdmin({ mes, ano }: FinanceiroAdminProps) {
             type="button"
             onClick={handleRecalcular}
             disabled={recalculando}
-            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50"
           >
             {recalculando ? (
               <Loader2
@@ -376,7 +376,7 @@ function FinanceiroAdmin({ mes, ano }: FinanceiroAdminProps) {
                       {f ? (
                         <StatusPill status={status} atrasado={atrasado} />
                       ) : (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-slate-500">
                           Sem fechamento
                         </span>
                       )}
@@ -386,7 +386,7 @@ function FinanceiroAdmin({ mes, ano }: FinanceiroAdminProps) {
                         <button
                           type="button"
                           onClick={() => setPagamentoTarget(f)}
-                          className="rounded border border-primary px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary-surface transition-colors"
+                          className="rounded border border-primary px-2 py-1 text-[11px] font-medium text-primary-text hover:bg-primary-surface transition-colors"
                         >
                           Marcar pago
                         </button>
@@ -396,7 +396,7 @@ function FinanceiroAdmin({ mes, ano }: FinanceiroAdminProps) {
                           {f.data_pagamento.slice(5, 7)}
                         </span>
                       ) : (
-                        <span className="text-[11px] text-slate-400">—</span>
+                        <span className="text-[11px] text-slate-500">—</span>
                       )}
                     </td>
                   </tr>
@@ -486,7 +486,7 @@ function ModalMarcarPago({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[13px] font-medium text-slate-700">
+              <label className="block text-[14px] font-medium text-slate-900">
                 Forma de pagamento *
               </label>
               <select
@@ -503,7 +503,7 @@ function ModalMarcarPago({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-[13px] font-medium text-slate-700">
+              <label className="block text-[14px] font-medium text-slate-900">
                 Observacoes
               </label>
               <textarea

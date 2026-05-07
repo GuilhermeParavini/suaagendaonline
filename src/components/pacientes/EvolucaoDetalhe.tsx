@@ -12,7 +12,7 @@ function Bloco({ label, valor }: { label: string; valor: string | null }) {
   if (!valor || !valor.trim()) return null;
   return (
     <div className="space-y-1">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
       <p className="text-sm text-slate-900 whitespace-pre-wrap break-words">
@@ -33,7 +33,7 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
 
   if (semConteudo) {
     return (
-      <p className="text-sm italic text-slate-400">Evolução sem conteúdo.</p>
+      <p className="text-sm italic text-slate-500">Evolução sem conteúdo.</p>
     );
   }
 
@@ -42,7 +42,7 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
       <Bloco label="Observações clínicas" valor={evolucao.texto} />
       {evolucao.audio_url ? (
         <div className="space-y-1">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
             Áudio
           </p>
           <audio
@@ -63,7 +63,7 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
           href={`/relatorio-clinico/${evolucao.id}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
         >
           <FileText size={13} strokeWidth={1.5} aria-hidden="true" />
           Relatorio clinico
@@ -73,7 +73,7 @@ function EvolucaoDetalhe({ evolucao }: EvolucaoDetalheProps) {
             href={`/plano-cuidados/${evolucao.id}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
           >
             <Home size={13} strokeWidth={1.5} aria-hidden="true" />
             Plano de cuidados

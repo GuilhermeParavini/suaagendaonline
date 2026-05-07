@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -94,7 +94,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
             size={16}
             strokeWidth={1.5}
             aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
           />
           <input
             type="search"
@@ -110,7 +110,7 @@ function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
               type="button"
               aria-label="Limpar busca"
               onClick={() => setQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
               <X size={14} strokeWidth={1.5} aria-hidden="true" />
             </button>

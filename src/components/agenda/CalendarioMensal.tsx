@@ -106,7 +106,7 @@ function CalendarioMensal({
             <button
               type="button"
               onClick={() => onChangeMonth(startOfMonth(new Date()))}
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-primary-text hover:underline"
             >
               Voltar para hoje
             </button>
@@ -122,7 +122,7 @@ function CalendarioMensal({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-px text-center text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <div className="grid grid-cols-7 gap-px text-center text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {SEMANA_LABELS.map((d) => (
           <div key={d} className="py-2">
             {d}
@@ -170,7 +170,7 @@ function CalendarioMensal({
                     isHoje
                       ? "bg-primary text-white font-semibold"
                       : noMes
-                        ? "text-slate-400"
+                        ? "text-slate-500"
                         : "text-slate-700 font-medium",
                   )}
                 >

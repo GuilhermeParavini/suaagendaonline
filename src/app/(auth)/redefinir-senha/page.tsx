@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -170,7 +170,7 @@ export default function RedefinirSenhaPage() {
               type="button"
               onClick={() => setShowSenha((v) => !v)}
               aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
             >
               {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -198,7 +198,7 @@ export default function RedefinirSenhaPage() {
               aria-label={
                 showConfirmar ? 'Ocultar senha' : 'Mostrar senha'
               }
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
             >
               {showConfirmar ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>

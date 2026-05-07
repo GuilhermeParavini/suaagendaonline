@@ -30,7 +30,7 @@ export default async function AvaliacaoPage({ params }: PageProps) {
           <Check
             size={32}
             strokeWidth={2.5}
-            className="text-primary"
+            className="text-primary-text"
             aria-hidden="true"
           />
         </div>

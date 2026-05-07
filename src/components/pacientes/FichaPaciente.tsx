@@ -142,7 +142,7 @@ function DadoLinha({
   if (!value) return null;
   return (
     <div className="space-y-0.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
       <p className="text-sm text-slate-900 break-words">{value}</p>
@@ -189,7 +189,7 @@ function BotoesContato({ paciente }: { paciente: PacienteDetalhe }) {
 
   return (
     <div className="space-y-2 border-t border-slate-100 pt-4">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         Contato rapido
       </p>
       <div className="flex flex-wrap gap-2">
@@ -468,7 +468,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                   type="button"
                   onClick={() => setModalEdicaoAberto(true)}
                   aria-label="Editar paciente"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                 >
                   <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
                   Editar
@@ -476,7 +476,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-0.5">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                     Telefone
                     {!paciente.email ? (
                       <span className="ml-1 text-primary-dark">
@@ -528,7 +528,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                             : "bg-danger-surface text-danger";
                       return (
                         <div className="space-y-0.5">
-                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                             IMC
                           </p>
                           <p className="text-sm text-slate-900">
@@ -550,7 +550,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
               ) : null}
               {paciente.origem ? (
                 <div className="space-y-1">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                     Como nos conheceu
                   </p>
                   <span className="inline-flex items-center rounded-full bg-teal-50 px-2.5 py-[3px] text-[12px] font-medium leading-none text-teal-700">
@@ -658,13 +658,13 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                         <FileText
                           size={18}
                           strokeWidth={1.5}
-                          className="shrink-0 text-primary"
+                          className="shrink-0 text-primary-text"
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <p className="text-sm font-medium text-slate-900">
                             {dataLabel}
-                            <span className="text-slate-400">·</span>
+                            <span className="text-slate-500">·</span>
                             <span className="text-slate-600 ml-1">
                               {horaLabel}
                             </span>
@@ -678,14 +678,14 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                           <ChevronUp
                             size={16}
                             strokeWidth={1.5}
-                            className="text-slate-400 shrink-0"
+                            className="text-slate-500 shrink-0"
                             aria-hidden="true"
                           />
                         ) : (
                           <ChevronDown
                             size={16}
                             strokeWidth={1.5}
-                            className="text-slate-400 shrink-0"
+                            className="text-slate-500 shrink-0"
                             aria-hidden="true"
                           />
                         )}
@@ -717,7 +717,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <p className="text-sm font-medium text-slate-900">
                             {dataLabel}
-                            <span className="text-slate-400">·</span>
+                            <span className="text-slate-500">·</span>
                             <span className="text-slate-600 ml-1">
                               {horaLabel}
                             </span>
@@ -726,7 +726,7 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                             {ag.procedimento_nome ?? "Procedimento"}
                             {ag.profissional_nome ? (
                               <>
-                                <span className="mx-1 text-slate-400">·</span>
+                                <span className="mx-1 text-slate-500">·</span>
                                 {ag.profissional_nome}
                               </>
                             ) : null}
@@ -757,13 +757,13 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                       <ClipboardList
                         size={18}
                         strokeWidth={1.5}
-                        className="shrink-0 text-primary"
+                        className="shrink-0 text-primary-text"
                         aria-hidden="true"
                       />
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="text-sm font-medium text-slate-900">
                           {dataLabel}
-                          <span className="text-slate-400">·</span>
+                          <span className="text-slate-500">·</span>
                           <span className="text-slate-600 ml-1">{horaLabel}</span>
                         </p>
                         <p className="text-xs text-slate-500 truncate">
@@ -774,14 +774,14 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                         <ChevronUp
                           size={16}
                           strokeWidth={1.5}
-                          className="text-slate-400 shrink-0"
+                          className="text-slate-500 shrink-0"
                           aria-hidden="true"
                         />
                       ) : (
                         <ChevronDown
                           size={16}
                           strokeWidth={1.5}
-                          className="text-slate-400 shrink-0"
+                          className="text-slate-500 shrink-0"
                           aria-hidden="true"
                         />
                       )}

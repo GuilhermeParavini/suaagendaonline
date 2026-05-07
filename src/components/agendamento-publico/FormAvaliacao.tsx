@@ -14,7 +14,7 @@ interface FormAvaliacaoProps {
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 function FormAvaliacao({
   agendamentoId,
@@ -84,7 +84,7 @@ function FormAvaliacao({
             className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
           />
         ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           {profissionalEspecialidade}
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -140,7 +140,7 @@ function FormAvaliacao({
             placeholder="Opcional"
             className={`${inputClass} resize-y`}
           />
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {gostou.length}/500
           </p>
         </div>
@@ -155,7 +155,7 @@ function FormAvaliacao({
             placeholder="Opcional"
             className={`${inputClass} resize-y`}
           />
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             {melhorar.length}/500
           </p>
         </div>

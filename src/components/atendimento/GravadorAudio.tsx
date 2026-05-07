@@ -288,7 +288,7 @@ function GravadorAudio({
           <Loader2
             size={16}
             strokeWidth={1.5}
-            className="animate-spin text-primary"
+            className="animate-spin text-primary-text"
             aria-hidden="true"
           />
           Transcrevendo áudio...
@@ -297,7 +297,7 @@ function GravadorAudio({
 
       {estado === "concluido" ? (
         <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
-          <label className="block text-[13px] font-medium text-slate-700">
+          <label className="block text-[14px] font-medium text-slate-900">
             Transcrição
           </label>
           <textarea
@@ -337,7 +337,7 @@ function GravadorAudio({
               type="button"
               onClick={handleRegravar}
               className={cn(
-                "inline-flex items-center justify-center gap-1.5 rounded border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary hover:bg-primary-surface transition-colors",
+                "inline-flex items-center justify-center gap-1.5 rounded border border-primary bg-transparent px-4 py-2 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors",
               )}
             >
               <RefreshCw size={13} strokeWidth={1.5} aria-hidden="true" />

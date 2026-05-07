@@ -142,7 +142,7 @@ function FeedbackInline({ historicoId, onFeedbackSent }: FeedbackInlineProps) {
         type="button"
         onClick={handlePositivo}
         aria-label="Foi útil"
-        className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-teal-600 transition-colors"
+        className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-teal-700 transition-colors"
       >
         <ThumbsUp size={12} strokeWidth={1.75} aria-hidden="true" />
       </button>

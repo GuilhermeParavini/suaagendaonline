@@ -163,7 +163,7 @@ function CalendarioDiario({
             <button
               type="button"
               onClick={() => onSelectDate(new Date())}
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-primary-text hover:underline"
             >
               Voltar para hoje
             </button>
@@ -219,7 +219,7 @@ function CalendarioDiario({
                 className="absolute left-0 right-0 border-t border-slate-100"
                 style={{ top: `${top}px`, height: `${PIXELS_POR_HORA}px` }}
               >
-                <span className="absolute left-2 top-1 text-[11px] font-medium text-slate-400 leading-none">
+                <span className="absolute left-2 top-1 text-[11px] font-medium text-slate-500 leading-none">
                   {pad2(h)}:00
                 </span>
                 {/* meia hora */}

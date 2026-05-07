@@ -37,7 +37,7 @@ interface NovoAgendamentoModalProps {
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -326,7 +326,7 @@ function NovoAgendamentoModal({
                   <button
                     type="button"
                     onClick={handleTrocarPaciente}
-                    className="text-xs font-medium text-primary hover:underline"
+                    className="text-xs font-medium text-primary-text hover:underline"
                   >
                     Trocar
                   </button>
@@ -337,7 +337,7 @@ function NovoAgendamentoModal({
                     <Search
                       size={14}
                       strokeWidth={1.5}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                       aria-hidden="true"
                     />
                     <input
@@ -349,7 +349,7 @@ function NovoAgendamentoModal({
                     />
                   </div>
                   {buscandoPacientes ? (
-                    <p className="text-xs text-slate-400">Buscando...</p>
+                    <p className="text-xs text-slate-500">Buscando...</p>
                   ) : null}
                   {!buscandoPacientes &&
                   resultados.length === 0 &&
@@ -361,7 +361,7 @@ function NovoAgendamentoModal({
                         href="/pacientes/novo"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        className="inline-flex items-center gap-1 font-medium text-primary-text hover:underline"
                       >
                         Cadastrar novo paciente
                         <ExternalLink
@@ -404,7 +404,7 @@ function NovoAgendamentoModal({
             <div className="space-y-1">
               <label className={labelClass}>Procedimento *</label>
               {carregandoProcs ? (
-                <p className="text-xs text-slate-400">Carregando...</p>
+                <p className="text-xs text-slate-500">Carregando...</p>
               ) : procedimentos.length === 0 ? (
                 <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                   Nenhum procedimento ativo. Cadastre em Configurações &gt;
@@ -460,7 +460,7 @@ function NovoAgendamentoModal({
                       *
                     </label>
                     {carregandoSlots ? (
-                      <p className="text-xs text-slate-400">Carregando...</p>
+                      <p className="text-xs text-slate-500">Carregando...</p>
                     ) : slotsErro ? (
                       <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                         {slotsErro}
@@ -488,7 +488,7 @@ function NovoAgendamentoModal({
                                 className={cn(
                                   "w-full rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
                                   s.available && !isSelected &&
-                                    "border-primary text-primary hover:bg-primary-surface",
+                                    "border-primary text-primary-text hover:bg-primary-surface",
                                   s.available && isSelected &&
                                     "border-primary bg-primary text-white",
                                   !s.available &&

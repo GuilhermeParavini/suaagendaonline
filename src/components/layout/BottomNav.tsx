@@ -85,7 +85,7 @@ function BottomNav({
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex h-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-                  active ? "text-primary" : "text-slate-400",
+                  active ? "text-primary-text" : "text-slate-500",
                 )}
               >
                 <Icon size={24} strokeWidth={1.5} aria-hidden="true" />
@@ -102,7 +102,7 @@ function BottomNav({
                 aria-label="Mais"
                 className={cn(
                   "relative flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
-                  maisAtivo ? "text-primary" : "text-slate-400",
+                  maisAtivo ? "text-primary-text" : "text-slate-500",
                 )}
               >
                 <Menu size={24} strokeWidth={1.5} aria-hidden="true" />
@@ -149,7 +149,7 @@ function BottomNav({
                           className={cn(
                             "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors",
                             active
-                              ? "text-primary bg-primary-surface"
+                              ? "text-primary-text bg-primary-surface"
                               : "text-slate-700 hover:bg-slate-50",
                           )}
                         >

@@ -321,7 +321,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
                     <FileText
                       size={36}
                       strokeWidth={1.5}
-                      className="text-slate-400"
+                      className="text-slate-500"
                       aria-hidden="true"
                     />
                   )}
@@ -336,7 +336,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
                     >
                       {CATEGORIA_LABEL[doc.categoria]}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-500">
                       {formatTamanho(doc.tamanho_bytes)}
                     </span>
                   </div>
@@ -354,7 +354,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
                       {doc.descricao}
                     </p>
                   ) : null}
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-500">
                     {format(new Date(doc.created_at), "dd MMM yyyy HH:mm", {
                       locale: ptBR,
                     })}
@@ -447,7 +447,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
                   size={28}
                   strokeWidth={1.5}
                   aria-hidden="true"
-                  className="mx-auto mb-2 text-slate-400"
+                  className="mx-auto mb-2 text-slate-500"
                 />
                 {arquivo ? (
                   <>
@@ -471,7 +471,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Categoria
                 </label>
                 <select
@@ -490,7 +490,7 @@ function TabDocumentos({ pacienteId }: TabDocumentosProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Descricao (opcional)
                 </label>
                 <textarea

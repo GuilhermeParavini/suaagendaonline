@@ -330,7 +330,7 @@ function AgendamentoModal({
               <div className="space-y-1">
                 <label
                   htmlFor="motivo-cancelamento"
-                  className="block text-[13px] font-medium text-slate-700"
+                  className="block text-[14px] font-medium text-slate-900"
                 >
                   Motivo (opcional)
                 </label>
@@ -389,7 +389,7 @@ function AgendamentoModal({
                   type="button"
                   onClick={() => setReagendamentoOpen(true)}
                   disabled={isPending}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded border border-primary bg-transparent px-5 py-2.5 text-sm font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded border border-primary bg-transparent px-5 py-2.5 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <Calendar size={14} strokeWidth={1.5} aria-hidden="true" />
                   Reagendar

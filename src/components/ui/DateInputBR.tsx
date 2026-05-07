@@ -59,7 +59,7 @@ function DateInputBR({
       {label ? (
         <label
           htmlFor={id}
-          className="block text-[13px] font-medium text-slate-700"
+          className="block text-[14px] font-medium text-slate-900"
         >
           {label}
           {required ? <span className="ml-0.5 text-red-500">*</span> : null}

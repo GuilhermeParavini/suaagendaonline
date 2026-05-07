@@ -205,12 +205,12 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                   type="checkbox"
                   checked={d.ativo}
                   onChange={() => toggleAtivo(dia)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                  className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 />
                 <span
                   className={cn(
                     "text-sm font-medium",
-                    d.ativo ? "text-slate-900" : "text-slate-400",
+                    d.ativo ? "text-slate-900" : "text-slate-500",
                   )}
                 >
                   {DIAS[dia]}
@@ -221,7 +221,7 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                 <button
                   type="button"
                   onClick={() => adicionarBloco(dia)}
-                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                  className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                 >
                   <Plus size={13} strokeWidth={1.5} aria-hidden="true" />
                   Adicionar horário
@@ -252,7 +252,7 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                       }
                       className="w-20 rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-primary focus:outline-none"
                     />
-                    <span className="text-xs text-slate-400">às</span>
+                    <span className="text-xs text-slate-500">às</span>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -273,7 +273,7 @@ function TabHorarios({ horarios, onSaved }: TabHorariosProps) {
                       type="button"
                       onClick={() => removerBloco(dia, idx)}
                       aria-label="Remover horário"
-                      className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                     >
                       <X size={14} strokeWidth={1.5} aria-hidden="true" />
                     </button>

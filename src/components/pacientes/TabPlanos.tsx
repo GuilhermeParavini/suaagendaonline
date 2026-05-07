@@ -288,7 +288,7 @@ function PlanoCard({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-600">
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
             Valor
           </p>
           <p>
@@ -299,7 +299,7 @@ function PlanoCard({
           </p>
         </div>
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
             Periodo
           </p>
           <p>
@@ -313,7 +313,7 @@ function PlanoCard({
         <button
           type="button"
           onClick={onToggleExpand}
-          className="inline-flex items-center gap-1 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+          className="inline-flex items-center gap-1 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
         >
           {expandido ? (
             <ChevronUp size={13} strokeWidth={1.5} aria-hidden="true" />
@@ -461,7 +461,7 @@ function SessoesLista({
                   <button
                     type="button"
                     onClick={() => setAgendarTarget(s)}
-                    className="inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary-surface transition-colors"
+                    className="inline-flex items-center gap-1 rounded border border-primary px-2 py-1 text-[10px] font-medium text-primary-text hover:bg-primary-surface transition-colors"
                   >
                     <Calendar
                       size={11}
@@ -562,7 +562,7 @@ function ModalAgendarSessao({
 
           <div className="mt-4 space-y-3">
             <div className="space-y-1">
-              <label className="block text-[13px] font-medium text-slate-700">
+              <label className="block text-[14px] font-medium text-slate-900">
                 Data *
               </label>
               <input
@@ -573,7 +573,7 @@ function ModalAgendarSessao({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-[13px] font-medium text-slate-700">
+              <label className="block text-[14px] font-medium text-slate-900">
                 Horario *
               </label>
               <input

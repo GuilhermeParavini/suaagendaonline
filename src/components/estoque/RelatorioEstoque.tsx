@@ -95,7 +95,7 @@ function RelatorioEstoque({
     <div className="space-y-4">
       <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="block text-[13px] font-medium text-slate-700">
+          <label className="block text-[14px] font-medium text-slate-900">
             Periodo
           </label>
           <select
@@ -113,7 +113,7 @@ function RelatorioEstoque({
 
         {role === "admin" && profissionais.length > 1 ? (
           <div className="space-y-1">
-            <label className="block text-[13px] font-medium text-slate-700">
+            <label className="block text-[14px] font-medium text-slate-900">
               Profissional
             </label>
             <select

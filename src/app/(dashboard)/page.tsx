@@ -344,7 +344,7 @@ export default async function DashboardPage() {
               <Heart
                 size={18}
                 strokeWidth={1.5}
-                className="text-primary"
+                className="text-primary-text"
                 aria-hidden="true"
               />
               <h2 className="text-[18px] font-semibold text-slate-900">

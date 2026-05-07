@@ -1,4 +1,4 @@
-import { forwardRef, useId, type InputHTMLAttributes } from "react";
+﻿import { forwardRef, useId, type InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -42,7 +42,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         aria-invalid={hasError || undefined}
         aria-describedby={hasError ? errorId : undefined}
         className={cn(
-          "w-full rounded border bg-white px-3 py-2.5 text-base text-slate-900 placeholder:text-[#94A3B8] transition-shadow duration-150 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed",
+          "w-full rounded border bg-white px-3 py-2.5 text-base text-slate-900 placeholder:text-[#94A3B8] transition-shadow duration-150 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed",
           hasError
             ? "border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(239,68,68,0.1)]"
             : "border-slate-200 focus:border-primary focus:shadow-[0_0_0_3px_rgba(13,148,136,0.1)]",

@@ -175,7 +175,7 @@ function SecaoLogo({ profissional, onSaved }: SecaoLogoProps) {
               <label
                 htmlFor="logo-arquivo"
                 className={cn(
-                  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded border border-primary bg-transparent px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors",
+                  "inline-flex cursor-pointer items-center justify-center gap-1.5 rounded border border-primary bg-transparent px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors",
                   isPending && "opacity-50 cursor-not-allowed",
                 )}
               >
@@ -189,19 +189,19 @@ function SecaoLogo({ profissional, onSaved }: SecaoLogoProps) {
             <Upload
               size={28}
               strokeWidth={1.5}
-              className="mx-auto text-slate-400"
+              className="mx-auto text-slate-500"
               aria-hidden="true"
             />
             <p className="text-sm text-slate-600">
               Arraste uma imagem ou{" "}
               <label
                 htmlFor="logo-arquivo"
-                className="cursor-pointer font-medium text-primary hover:underline"
+                className="cursor-pointer font-medium text-primary-text hover:underline"
               >
                 clique para selecionar
               </label>
             </p>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-500">
               PNG, JPG ou SVG, até 1MB
             </p>
           </div>

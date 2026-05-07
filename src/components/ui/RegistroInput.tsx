@@ -43,7 +43,7 @@ function RegistroInput({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <label htmlFor={id} className="block text-[13px] font-medium text-slate-700">
+      <label htmlFor={id} className="block text-[14px] font-medium text-slate-900">
         {sug.label}
         {required ? <span className="ml-0.5 text-red-500">*</span> : null}
       </label>

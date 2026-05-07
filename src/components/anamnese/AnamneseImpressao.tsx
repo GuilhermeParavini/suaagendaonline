@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect } from "react";
 import { Printer } from "lucide-react";
@@ -28,7 +28,7 @@ function CampoValor({
 
   if (vazio) {
     return (
-      <p className="text-sm italic text-slate-400">Não informado</p>
+      <p className="text-sm italic text-slate-500">Não informado</p>
     );
   }
 
@@ -258,7 +258,7 @@ function AnamneseImpressao({ data, autoPrint }: AnamneseImpressaoProps) {
 
           {/* Conteudo */}
           <section className="space-y-4">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
               Anamnese
             </p>
             <div className="space-y-4">
@@ -309,7 +309,7 @@ function AnamneseImpressao({ data, autoPrint }: AnamneseImpressaoProps) {
                   : ""}
               </p>
             </div>
-            <p className="mt-6 text-[11px] text-slate-400">
+            <p className="mt-6 text-[11px] text-slate-500">
               Documento gerado em {data.geradoEm} pelo sistema Sua Agenda Online
             </p>
           </footer>

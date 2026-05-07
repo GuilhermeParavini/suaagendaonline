@@ -113,7 +113,7 @@ function AcompanhamentoLista({
                   onClick={() => handleAcompanhar(p.agendamentoId)}
                   disabled={isPending}
                   aria-label={`Marcar ${p.nome} como acompanhado`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50"
                 >
                   <Check size={13} strokeWidth={1.5} aria-hidden="true" />
                   Acompanhado

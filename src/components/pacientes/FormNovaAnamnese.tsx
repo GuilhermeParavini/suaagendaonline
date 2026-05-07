@@ -645,7 +645,7 @@ function FormNovaAnamnese({
             <>
               {ativos.length > 1 ? (
                 <div className="mt-4 space-y-1 shrink-0">
-                  <label className="block text-[13px] font-medium text-slate-700">
+                  <label className="block text-[14px] font-medium text-slate-900">
                     Template
                   </label>
                   <select
@@ -708,7 +708,7 @@ function FormNovaAnamnese({
                     </p>
 
                     <div className="rounded-lg border border-slate-200 bg-white p-3">
-                      <p className="text-[13px] font-medium text-slate-700 mb-2">
+                      <p className="text-[14px] font-medium text-slate-900 mb-2">
                         Itens deste template
                       </p>
                       <ul className="space-y-1 text-sm text-slate-700 list-disc pl-5">
@@ -724,7 +724,7 @@ function FormNovaAnamnese({
                           size={16}
                           strokeWidth={1.5}
                           aria-hidden="true"
-                          className="mt-0.5 shrink-0 text-slate-400"
+                          className="mt-0.5 shrink-0 text-slate-500"
                         />
                         <p className="min-w-0 flex-1">
                           {transcricaoBloqueio.mensagem}
@@ -772,7 +772,7 @@ function FormNovaAnamnese({
                         <Loader2
                           size={16}
                           strokeWidth={1.5}
-                          className="animate-spin text-primary"
+                          className="animate-spin text-primary-text"
                           aria-hidden="true"
                         />
                         Processando áudio...
@@ -792,7 +792,7 @@ function FormNovaAnamnese({
                         <button
                           type="button"
                           onClick={() => trocarModo("manual")}
-                          className="text-xs font-medium text-primary hover:underline"
+                          className="text-xs font-medium text-primary-text hover:underline"
                         >
                           Preencher manualmente
                         </button>
@@ -806,13 +806,13 @@ function FormNovaAnamnese({
                     {audioBlobUrl || audioUrl ? (
                       <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[13px] font-medium text-slate-700">
+                          <p className="text-[14px] font-medium text-slate-900">
                             Áudio gravado
                           </p>
                           <button
                             type="button"
                             onClick={handleRegravar}
-                            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                           >
                             <RefreshCw
                               size={12}
@@ -937,7 +937,7 @@ function CampoRender({
   );
   return (
     <div className="space-y-1.5">
-      <label className="flex items-center gap-2 text-[13px] font-medium text-slate-700">
+      <label className="flex items-center gap-2 text-[14px] font-medium text-slate-900">
         <span>
           {campo.label}
           {campo.obrigatorio ? (
@@ -976,7 +976,7 @@ function CampoRender({
                   type="checkbox"
                   checked={checked}
                   onChange={() => onToggleOpcao(opt)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                  className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 />
                 <span className="text-slate-700">{opt}</span>
               </label>
@@ -1071,7 +1071,7 @@ function CampoRender({
           <label
             htmlFor={`anamnese-${campo.id}`}
             className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors",
+              "inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors",
               uploading && "opacity-50 cursor-not-allowed",
             )}
           >

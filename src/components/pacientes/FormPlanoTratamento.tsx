@@ -31,7 +31,7 @@ interface FormPlanoTratamentoProps {
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 const MENSAGEM_DEFAULT =
   "Voce esta conseguindo cuidar dos seus pes em casa?";
@@ -366,7 +366,7 @@ function FormPlanoTratamento({
                 type="checkbox"
                 checked={agendarAutomatico}
                 onChange={(e) => setAgendarAutomatico(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 disabled={!procedimentoId}
               />
               <div className="min-w-0">
@@ -388,7 +388,7 @@ function FormPlanoTratamento({
                 type="checkbox"
                 checked={mensagemAutomatica}
                 onChange={(e) => setMensagemAutomatica(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
               />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-900">

@@ -218,7 +218,7 @@ function FinanceiroClient({
   };
 
   const saldoColor =
-    resumo.saldo >= 0 ? "text-primary" : "text-danger";
+    resumo.saldo >= 0 ? "text-primary-text" : "text-danger";
 
   const anos = Array.from({ length: 5 }, (_, i) => ano - 2 + i);
 
@@ -391,7 +391,7 @@ function FinanceiroClient({
           {filtrosAbertos ? (
             <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Mês
                 </label>
                 <select
@@ -408,7 +408,7 @@ function FinanceiroClient({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Ano
                 </label>
                 <select
@@ -425,7 +425,7 @@ function FinanceiroClient({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Forma de pagamento
                 </label>
                 <select
@@ -446,7 +446,7 @@ function FinanceiroClient({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Status
                 </label>
                 <select
@@ -547,9 +547,9 @@ function FechamentoMesAnteriorCard({
           {isPago ? "Pago" : "Pendente"}
         </span>
         {expandido ? (
-          <ChevronUp size={16} strokeWidth={1.5} className="text-slate-400" />
+          <ChevronUp size={16} strokeWidth={1.5} className="text-slate-500" />
         ) : (
-          <ChevronDown size={16} strokeWidth={1.5} className="text-slate-400" />
+          <ChevronDown size={16} strokeWidth={1.5} className="text-slate-500" />
         )}
       </button>
       {expandido ? (
@@ -591,7 +591,7 @@ function Linha({
 }) {
   return (
     <div className="space-y-0.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
         {label}
       </p>
       <p className={cn("text-sm font-semibold", cor)}>{value}</p>

@@ -106,7 +106,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -137,7 +137,7 @@ export default function LoginPage() {
       <div className="text-center">
         <Link
           href="/esqueci-senha"
-          className="text-sm text-teal-600 hover:text-teal-700"
+          className="text-sm text-teal-700 hover:text-teal-700"
         >
           Esqueci minha senha
         </Link>
@@ -156,7 +156,7 @@ export default function LoginPage() {
       {/* Sign Up Link */}
       <Link
         href="/cadastro"
-        className="block w-full text-center bg-white border border-teal-600 text-teal-600 py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-50 transition"
+        className="block w-full text-center bg-white border border-teal-600 text-teal-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-50 transition"
       >
         Criar conta - 14 dias grátis
       </Link>

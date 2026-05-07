@@ -48,7 +48,7 @@ interface PreConsultaFlowProps {
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const errorClass = "text-xs text-red-500";
 
 const cadastroSchema = z
@@ -492,7 +492,7 @@ function PreConsultaFlow({
             className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
           />
         ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           Pré-consulta
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -817,7 +817,7 @@ function PreConsultaFlow({
                 <input
                   type="checkbox"
                   {...cadastroForm.register("aceite_lgpd")}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 />
                 <span className="text-xs text-slate-600 leading-relaxed">
                   Autorizo o armazenamento dos meus dados conforme a LGPD para
@@ -868,7 +868,7 @@ function PreConsultaFlow({
             Escolha o modelo de anamnese
           </h2>
           {carregandoTpls ? (
-            <p className="text-xs text-slate-400">Carregando...</p>
+            <p className="text-xs text-slate-500">Carregando...</p>
           ) : templates.length === 0 ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               O profissional ainda não cadastrou modelos de anamnese.
@@ -1002,7 +1002,7 @@ function CampoRender({
 }: CampoRenderProps) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[13px] font-medium text-slate-700">
+      <label className="block text-[14px] font-medium text-slate-900">
         {campo.label}
         {campo.obrigatorio ? (
           <span className="ml-0.5 text-red-500">*</span>
@@ -1031,7 +1031,7 @@ function CampoRender({
                   type="checkbox"
                   checked={checked}
                   onChange={() => onToggleOpcao(opt)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                  className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 />
                 <span className="text-slate-700">{opt}</span>
               </label>
@@ -1114,7 +1114,7 @@ function CampoRender({
           <label
             htmlFor={`pre-anamnese-${campo.id}`}
             className={cn(
-              "inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors",
+              "inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors",
               uploading && "opacity-50 cursor-not-allowed",
             )}
           >

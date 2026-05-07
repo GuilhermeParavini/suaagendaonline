@@ -45,7 +45,7 @@ const UF = [
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10 disabled:bg-slate-50 disabled:text-slate-500";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const errorClass = "text-xs text-danger";
 
 const profSchema = z
@@ -255,7 +255,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
             <button
               type="button"
               onClick={() => setEditandoProf(true)}
-              className="rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+              className="rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
             >
               Editar
             </button>
@@ -466,7 +466,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
             <button
               type="button"
               onClick={() => setEditandoTenant(true)}
-              className="rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+              className="rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
             >
               Editar
             </button>

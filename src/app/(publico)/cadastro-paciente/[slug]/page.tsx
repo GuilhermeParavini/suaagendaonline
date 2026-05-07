@@ -25,7 +25,7 @@ export default async function CadastroPacientePage({ params }: PageProps) {
             className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
           />
         ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           {ctx.data.profissional.especialidade}
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">

@@ -33,7 +33,7 @@ function SeletorHorario({ slots, selected, onSelect }: SeletorHorarioProps) {
               className={cn(
                 "w-full rounded-lg border px-2 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                 slot.available && !isSelected &&
-                  "border-primary text-primary hover:bg-primary-surface",
+                  "border-primary text-primary-text hover:bg-primary-surface",
                 slot.available && isSelected &&
                   "border-primary bg-primary text-white",
                 !slot.available &&

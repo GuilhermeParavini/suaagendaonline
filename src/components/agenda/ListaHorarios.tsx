@@ -1,4 +1,4 @@
-import CardAgendamento from "./CardAgendamento";
+﻿import CardAgendamento from "./CardAgendamento";
 import type { AgendamentoDia } from "@/actions/agendamentos";
 
 interface ListaHorariosProps {
@@ -64,7 +64,7 @@ function ListaHorarios({
     <ol className="flex flex-col">
       {slots.map((slot) => (
         <li key={slot.key} className="flex items-stretch gap-3 py-1.5">
-          <span className="w-12 shrink-0 pt-2 text-right text-[11px] font-medium text-slate-400 leading-none">
+          <span className="w-12 shrink-0 pt-2 text-right text-[11px] font-medium text-slate-500 leading-none">
             {slot.label}
           </span>
           <div className="flex-1 min-w-0">

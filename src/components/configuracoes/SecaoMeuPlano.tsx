@@ -185,7 +185,7 @@ function SecaoMeuPlano({ plano: planoSlug, trialExpiraEm }: SecaoMeuPlanoProps) 
                 <Check
                   size={14}
                   strokeWidth={2}
-                  className="text-primary"
+                  className="text-primary-text"
                   aria-hidden="true"
                 />
                 {FUNC_NOMES[f] ?? f}
@@ -201,7 +201,7 @@ function SecaoMeuPlano({ plano: planoSlug, trialExpiraEm }: SecaoMeuPlanoProps) 
           <MessageSquare
             size={14}
             strokeWidth={1.5}
-            className="text-primary"
+            className="text-primary-text"
             aria-hidden="true"
           />
         }
@@ -215,7 +215,7 @@ function SecaoMeuPlano({ plano: planoSlug, trialExpiraEm }: SecaoMeuPlanoProps) 
           <Mic
             size={14}
             strokeWidth={1.5}
-            className="text-primary"
+            className="text-primary-text"
             aria-hidden="true"
           />
         }
@@ -366,7 +366,7 @@ function ModalAddons({
               <button
                 type="button"
                 aria-label="Fechar"
-                className="rounded p-1 text-slate-500 hover:bg-slate-100 no-touch-min"
+                className="inline-flex items-center justify-center rounded text-slate-500 hover:bg-slate-100"
               >
                 <X size={18} strokeWidth={1.5} />
               </button>

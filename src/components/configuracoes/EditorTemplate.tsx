@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 const TIPOS: { value: CampoTipo; label: string }[] = [
   { value: "texto_livre", label: "Texto livre" },
@@ -285,7 +285,7 @@ function EditorTemplate({
                 <button
                   type="button"
                   onClick={handleAdicionarCampo}
-                  className="inline-flex items-center gap-1 rounded border border-primary px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                  className="inline-flex items-center gap-1 rounded border border-primary px-2.5 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                 >
                   <Plus size={13} strokeWidth={1.5} aria-hidden="true" />
                   Adicionar campo
@@ -305,7 +305,7 @@ function EditorTemplate({
                           onClick={() => moverCampo(idx, -1)}
                           disabled={idx === 0}
                           aria-label="Mover para cima"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <ArrowUp size={13} strokeWidth={1.5} aria-hidden="true" />
                         </button>
@@ -314,7 +314,7 @@ function EditorTemplate({
                           onClick={() => moverCampo(idx, 1)}
                           disabled={idx === campos.length - 1}
                           aria-label="Mover para baixo"
-                          className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           <ArrowDown size={13} strokeWidth={1.5} aria-hidden="true" />
                         </button>
@@ -369,7 +369,7 @@ function EditorTemplate({
                                   obrigatorio: e.target.checked,
                                 })
                               }
-                              className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                              className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                             />
                             <span className="text-xs text-slate-700">
                               Obrigatório
@@ -398,7 +398,7 @@ function EditorTemplate({
                                     type="button"
                                     onClick={() => removerOpcao(c.id, j)}
                                     aria-label="Remover opção"
-                                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                                   >
                                     <X size={13} strokeWidth={1.5} aria-hidden="true" />
                                   </button>
@@ -408,7 +408,7 @@ function EditorTemplate({
                             <button
                               type="button"
                               onClick={() => adicionarOpcao(c.id)}
-                              className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                              className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                             >
                               <Plus size={12} strokeWidth={1.5} aria-hidden="true" />
                               Adicionar opção
@@ -456,7 +456,7 @@ function EditorTemplate({
                         type="button"
                         onClick={() => handleRemoverCampo(c.id)}
                         aria-label="Remover campo"
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                       >
                         <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
                       </button>

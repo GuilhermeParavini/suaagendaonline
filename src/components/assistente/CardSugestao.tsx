@@ -47,7 +47,7 @@ function CardSugestao({ card, onClick }: CardSugestaoProps) {
       <span
         className={cn(
           "mt-0.5 inline-flex shrink-0 items-center justify-center",
-          destaque ? "text-amber-600" : "text-teal-600",
+          destaque ? "text-amber-600" : "text-teal-700",
         )}
       >
         <Icone size={20} strokeWidth={1.75} aria-hidden="true" />

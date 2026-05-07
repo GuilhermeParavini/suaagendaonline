@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -104,7 +104,7 @@ function CalendarioSemanal({
                     : "border border-transparent hover:bg-slate-100",
                 )}
               >
-                <span className="text-[11px] font-medium text-slate-400 leading-none">
+                <span className="text-[11px] font-medium text-slate-500 leading-none">
                   {labelDiaCapital}
                 </span>
                 <span

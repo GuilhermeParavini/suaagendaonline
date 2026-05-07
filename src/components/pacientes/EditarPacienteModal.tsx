@@ -190,7 +190,7 @@ interface EditarPacienteModalProps {
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const errorClass = "text-xs text-danger";
 
 function EditarPacienteModal({
@@ -528,7 +528,7 @@ function EditarPacienteModal({
                       size={16}
                       strokeWidth={1.5}
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                     />
                     <input
                       {...register("altura")}
@@ -550,7 +550,7 @@ function EditarPacienteModal({
                       size={16}
                       strokeWidth={1.5}
                       aria-hidden="true"
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                     />
                     <input
                       {...register("peso")}

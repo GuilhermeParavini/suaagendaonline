@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 import SeloLGPD from "@/components/ui/SeloLGPD";
 
 export default function PublicoLayout({ children }: { children: ReactNode }) {
@@ -18,7 +18,7 @@ export default function PublicoLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
       <footer className="border-t border-slate-200 py-4">
-        <p className="text-center text-[11px] text-slate-400">
+        <p className="text-center text-[11px] text-slate-500">
           Sua Agenda Online
         </p>
       </footer>

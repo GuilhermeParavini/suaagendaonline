@@ -253,7 +253,7 @@ function ReciboPrint({
 
           <div className="flex items-center gap-3 py-1" aria-hidden="true">
             <span className="h-px flex-1 bg-slate-200" />
-            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
               ou
             </span>
             <span className="h-px flex-1 bg-slate-200" />
@@ -297,7 +297,7 @@ function ReciboPrint({
           <button
             type="button"
             onClick={handleEmail}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent px-5 py-3 text-sm font-medium text-primary hover:bg-primary-surface transition-colors active:scale-[0.99]"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-primary bg-transparent px-5 py-3 text-sm font-medium text-primary-text hover:bg-primary-surface transition-colors active:scale-[0.99]"
           >
             <Mail size={16} strokeWidth={1.5} aria-hidden="true" />
             Enviar por e-mail

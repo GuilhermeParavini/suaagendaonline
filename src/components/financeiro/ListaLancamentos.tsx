@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useTransition } from "react";
 import Link from "next/link";
@@ -177,7 +177,7 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
                     onClick={() => handleExcluir(l.id)}
                     disabled={isPending}
                     aria-label="Excluir lançamento"
-                    className="inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
                   >
                     <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
                   </button>

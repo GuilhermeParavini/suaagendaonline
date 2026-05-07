@@ -103,7 +103,7 @@ function TabProcedimentos({
                   checked={p.ativo}
                   onChange={() => handleToggle(p)}
                   disabled={isPending}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                  className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                 />
                 <span className="text-xs text-slate-600">Ativo</span>
               </label>
@@ -112,7 +112,7 @@ function TabProcedimentos({
                 type="button"
                 onClick={() => abrirEditar(p)}
                 aria-label={`Editar ${p.nome}`}
-                className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
                 <Pencil size={14} strokeWidth={1.5} aria-hidden="true" />
               </button>

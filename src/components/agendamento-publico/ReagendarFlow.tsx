@@ -159,7 +159,7 @@ function ReagendarFlow({
           <Check
             size={32}
             strokeWidth={2.5}
-            className="text-primary"
+            className="text-primary-text"
             aria-hidden="true"
           />
         </div>
@@ -191,7 +191,7 @@ function ReagendarFlow({
             className="mx-auto mb-2 max-h-[60px] w-auto object-contain"
           />
         ) : null}
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
           Reagendar consulta
         </p>
         <h1 className="text-xl font-semibold text-slate-900 leading-tight">
@@ -220,7 +220,7 @@ function ReagendarFlow({
       {step === "confirmar" ? (
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
               Agendamento atual
             </p>
             <p className="text-sm font-semibold text-slate-900">

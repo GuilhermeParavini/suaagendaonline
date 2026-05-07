@@ -222,7 +222,7 @@ function ModalMovimentacao({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   {tipo === "ajuste" ? "Nova quantidade *" : "Quantidade *"}
                 </label>
                 <input
@@ -247,7 +247,7 @@ function ModalMovimentacao({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Motivo
                 </label>
                 <input
@@ -326,7 +326,7 @@ function ModalMovimentacao({
                                 {m.motivo}
                               </p>
                             ) : null}
-                            <p className="text-[11px] text-slate-400">
+                            <p className="text-[11px] text-slate-500">
                               {fmtDateHora(m.created_at)}
                             </p>
                           </div>

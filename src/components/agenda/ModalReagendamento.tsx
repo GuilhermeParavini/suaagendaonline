@@ -31,7 +31,7 @@ interface ModalReagendamentoProps {
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 function isoDate(d: Date): string {
   return format(d, "yyyy-MM-dd");
@@ -233,7 +233,7 @@ function ModalReagendamento({
           <div className="mt-4 space-y-4 overflow-y-auto pb-2">
             {/* Dados atuais */}
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Agendamento atual
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900">
@@ -241,7 +241,7 @@ function ModalReagendamento({
               </p>
               <p className="text-xs text-slate-600">
                 {agendamento.procedimento?.nome ?? "Procedimento"}
-                <span className="mx-1 text-slate-400">·</span>
+                <span className="mx-1 text-slate-500">·</span>
                 {dataAtualLabel} às {horarioAtual}
               </p>
             </div>
@@ -249,7 +249,7 @@ function ModalReagendamento({
             <div className="space-y-1">
               <label className={labelClass}>Procedimento</label>
               {carregandoProcs ? (
-                <p className="text-xs text-slate-400">Carregando...</p>
+                <p className="text-xs text-slate-500">Carregando...</p>
               ) : (
                 <select
                   value={procedimentoId}
@@ -291,7 +291,7 @@ function ModalReagendamento({
                       </span>
                     </label>
                     {carregandoSlots ? (
-                      <p className="text-xs text-slate-400">Carregando...</p>
+                      <p className="text-xs text-slate-500">Carregando...</p>
                     ) : slotsErro ? (
                       <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
                         {slotsErro}
@@ -319,7 +319,7 @@ function ModalReagendamento({
                                 className={cn(
                                   "w-full rounded-lg border px-2 py-2 text-sm font-medium transition-colors",
                                   s.available && !isSelected &&
-                                    "border-primary text-primary hover:bg-primary-surface",
+                                    "border-primary text-primary-text hover:bg-primary-surface",
                                   s.available && isSelected &&
                                     "border-primary bg-primary text-white",
                                   !s.available &&
@@ -349,7 +349,7 @@ function ModalReagendamento({
                     size={14}
                     strokeWidth={1.5}
                     aria-hidden="true"
-                    className="text-primary"
+                    className="text-primary-text"
                   />
                   <span className="font-semibold text-primary-dark">
                     {format(selectedDate, "dd/MM/yyyy", { locale: ptBR })} às{" "}

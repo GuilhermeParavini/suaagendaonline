@@ -47,7 +47,7 @@ const parentescoOptions: { value: GrauParentesco; label: string }[] = [
 
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/10 transition";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const errorClass = "text-xs text-red-500";
 
 const schema = z
@@ -286,7 +286,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
           <Check
             size={32}
             strokeWidth={2.5}
-            className="text-primary"
+            className="text-primary-text"
             aria-hidden="true"
           />
         </div>
@@ -545,7 +545,7 @@ function FormCadastroAvulso({ slug, profissionalNome }: FormCadastroAvulsoProps)
         <input
           type="checkbox"
           {...register("aceite_lgpd")}
-          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
         />
         <span className="text-xs text-slate-600 leading-relaxed">
           Autorizo o armazenamento dos meus dados conforme a LGPD para fins de

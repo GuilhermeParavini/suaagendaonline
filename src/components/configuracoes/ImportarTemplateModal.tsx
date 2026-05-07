@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 
 const TIPOS: { value: CampoTipo; label: string }[] = [
   { value: "texto_livre", label: "Texto livre" },
@@ -417,7 +417,7 @@ function ImportarTemplateModal({
                     size={28}
                     strokeWidth={1.5}
                     aria-hidden="true"
-                    className="mx-auto text-slate-400"
+                    className="mx-auto text-slate-500"
                   />
                   <p className="mt-2 text-sm text-slate-600">
                     Arraste seu arquivo aqui ou
@@ -425,11 +425,11 @@ function ImportarTemplateModal({
                   <button
                     type="button"
                     onClick={() => inputFileRef.current?.click()}
-                    className="mt-2 inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                    className="mt-2 inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                   >
                     Selecionar arquivo
                   </button>
-                  <p className="mt-2 text-[11px] text-slate-400">
+                  <p className="mt-2 text-[11px] text-slate-500">
                     TXT, PDF ou DOCX · até 2MB
                   </p>
                   <input
@@ -449,7 +449,7 @@ function ImportarTemplateModal({
                       size={20}
                       strokeWidth={1.5}
                       aria-hidden="true"
-                      className="text-primary shrink-0"
+                      className="text-primary-text shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-900 truncate">
@@ -463,7 +463,7 @@ function ImportarTemplateModal({
                       type="button"
                       onClick={() => setArquivo(null)}
                       aria-label="Remover arquivo"
-                      className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                      className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                     >
                       <X size={14} strokeWidth={1.5} aria-hidden="true" />
                     </button>
@@ -501,7 +501,7 @@ function ImportarTemplateModal({
                     <button
                       type="button"
                       onClick={criarManualmente}
-                      className="text-xs font-medium text-primary hover:underline"
+                      className="text-xs font-medium text-primary-text hover:underline"
                     >
                       Criar manualmente
                     </button>
@@ -574,7 +574,7 @@ function ImportarTemplateModal({
                     <button
                       type="button"
                       onClick={adicionarCampo}
-                      className="inline-flex items-center gap-1 rounded border border-primary px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                      className="inline-flex items-center gap-1 rounded border border-primary px-2.5 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                     >
                       <Plus size={13} strokeWidth={1.5} aria-hidden="true" />
                       Adicionar campo
@@ -594,7 +594,7 @@ function ImportarTemplateModal({
                               onClick={() => moverCampo(idx, -1)}
                               disabled={idx === 0}
                               aria-label="Mover para cima"
-                              className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowUp
                                 size={13}
@@ -607,7 +607,7 @@ function ImportarTemplateModal({
                               onClick={() => moverCampo(idx, 1)}
                               disabled={idx === campos.length - 1}
                               aria-label="Mover para baixo"
-                              className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <ArrowDown
                                 size={13}
@@ -668,7 +668,7 @@ function ImportarTemplateModal({
                                       obrigatorio: e.target.checked,
                                     })
                                   }
-                                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                                  className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                                 />
                                 <span className="text-xs text-slate-700">
                                   Obrigatório
@@ -700,7 +700,7 @@ function ImportarTemplateModal({
                                         type="button"
                                         onClick={() => removerOpcao(c.id, j)}
                                         aria-label="Remover opção"
-                                        className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                        className="inline-flex h-7 w-7 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-700"
                                       >
                                         <X
                                           size={13}
@@ -714,7 +714,7 @@ function ImportarTemplateModal({
                                 <button
                                   type="button"
                                   onClick={() => adicionarOpcao(c.id)}
-                                  className="text-xs font-medium text-primary hover:underline"
+                                  className="text-xs font-medium text-primary-text hover:underline"
                                 >
                                   + Adicionar opção
                                 </button>
@@ -761,7 +761,7 @@ function ImportarTemplateModal({
                             type="button"
                             onClick={() => removerCampo(c.id)}
                             aria-label="Remover campo"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-red-600"
                           >
                             <Trash2
                               size={14}

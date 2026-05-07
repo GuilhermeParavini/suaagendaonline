@@ -56,7 +56,7 @@ function AltaPacienteSection({
             type="button"
             onClick={handleReativar}
             disabled={isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors disabled:opacity-50"
           >
             <UserPlus size={13} strokeWidth={1.5} aria-hidden="true" />
             {isPending ? "Reativando..." : "Reativar paciente"}
@@ -165,7 +165,7 @@ function ModalDarAlta({
 
           <div className="mt-4 space-y-3">
             <div className="space-y-1">
-              <label className="block text-[13px] font-medium text-slate-700">
+              <label className="block text-[14px] font-medium text-slate-900">
                 Motivo da alta *
               </label>
               <textarea

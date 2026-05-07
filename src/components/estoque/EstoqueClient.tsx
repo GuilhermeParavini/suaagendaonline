@@ -235,7 +235,7 @@ function EstoqueClient({
               <Search
                 size={14}
                 strokeWidth={1.5}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
                 aria-hidden="true"
               />
               <input
@@ -265,7 +265,7 @@ function EstoqueClient({
           {filtrosAbertos ? (
             <div className="rounded-lg border border-slate-200 bg-white p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Categoria
                 </label>
                 <select
@@ -285,7 +285,7 @@ function EstoqueClient({
 
               {role === "admin" && profissionais.length > 1 ? (
                 <div className="space-y-1">
-                  <label className="block text-[13px] font-medium text-slate-700">
+                  <label className="block text-[14px] font-medium text-slate-900">
                     Profissional
                   </label>
                   <select
@@ -304,7 +304,7 @@ function EstoqueClient({
               ) : null}
 
               <div className="space-y-1">
-                <label className="block text-[13px] font-medium text-slate-700">
+                <label className="block text-[14px] font-medium text-slate-900">
                   Status
                 </label>
                 <label className="flex items-center gap-2 mt-2 cursor-pointer">
@@ -312,7 +312,7 @@ function EstoqueClient({
                     type="checkbox"
                     checked={apenasAlerta}
                     onChange={(e) => setApenasAlerta(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/40"
+                    className="h-4 w-4 rounded border-slate-300 text-primary-text focus:ring-primary/40"
                   />
                   <span className="text-sm text-slate-700">
                     Apenas em alerta
@@ -377,7 +377,7 @@ function EstoqueClient({
                             : ""}
                         </p>
                         {p.fornecedor_padrao ? (
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-[11px] text-slate-500">
                             Fornecedor: {p.fornecedor_padrao}
                           </p>
                         ) : null}
@@ -412,7 +412,7 @@ function EstoqueClient({
                           type="button"
                           onClick={() => handleExcluir(p)}
                           aria-label="Excluir produto"
-                          className="inline-flex items-center justify-center rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                          className="inline-flex items-center justify-center rounded p-1.5 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
                         >
                           <Trash2 size={16} strokeWidth={1.5} />
                         </button>

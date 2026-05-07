@@ -83,7 +83,7 @@ export default function EsqueciSenhaPage() {
         </div>
         <Link
           href="/login"
-          className="inline-block text-sm text-teal-600 hover:text-teal-700"
+          className="inline-block text-sm text-teal-700 hover:text-teal-700"
         >
           Voltar para o login
         </Link>
@@ -138,7 +138,7 @@ export default function EsqueciSenhaPage() {
       <div className="text-center">
         <Link
           href="/login"
-          className="text-sm text-teal-600 hover:text-teal-700"
+          className="text-sm text-teal-700 hover:text-teal-700"
         >
           Voltar para o login
         </Link>

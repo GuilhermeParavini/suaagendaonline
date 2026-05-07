@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef } from "react";
 import { format } from "date-fns";
@@ -125,7 +125,7 @@ function AtestadoPrint({ data }: AtestadoPrintProps) {
             assinaturaUrl={profissional.assinatura_url}
           />
 
-          <p className="mt-6 text-center text-[11px] text-slate-400">
+          <p className="mt-6 text-center text-[11px] text-slate-500">
             Emitido em {dataEmissao}
           </p>
         </article>

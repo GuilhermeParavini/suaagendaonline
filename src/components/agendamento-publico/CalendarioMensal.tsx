@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -91,7 +91,7 @@ function CalendarioMensal({
         {labels.map((l, i) => (
           <span
             key={`${l}-${i}`}
-            className="py-1 text-[11px] font-medium text-slate-400"
+            className="py-1 text-[11px] font-medium text-slate-500"
           >
             {l}
           </span>

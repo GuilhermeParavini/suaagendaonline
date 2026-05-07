@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -75,7 +75,7 @@ function CardPaciente({ paciente }: CardPacienteProps) {
               </span>
             ) : null}
             {telefoneFormatado ? (
-              <span aria-hidden="true" className="text-slate-400">
+              <span aria-hidden="true" className="text-slate-500">
                 •
               </span>
             ) : null}
@@ -89,7 +89,7 @@ function CardPaciente({ paciente }: CardPacienteProps) {
           size={18}
           strokeWidth={1.5}
           aria-hidden="true"
-          className="shrink-0 text-slate-400"
+          className="shrink-0 text-slate-500"
         />
       </Link>
     </li>

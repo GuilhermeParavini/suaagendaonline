@@ -17,7 +17,7 @@ interface SecaoAssinaturaProps {
   onSaved: () => void;
 }
 
-const labelClass = "block text-[13px] font-medium text-slate-700";
+const labelClass = "block text-[14px] font-medium text-slate-900";
 const inputClass =
   "w-full rounded border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-primary focus:outline-none focus:ring-[3px] focus:ring-primary/10";
 
@@ -156,7 +156,7 @@ function SecaoAssinatura({
             value="fonte"
             checked={tipo === "fonte"}
             onChange={() => setTipo("fonte")}
-            className="mt-0.5 h-4 w-4 border-slate-300 text-primary focus:ring-primary/40"
+            className="mt-0.5 h-4 w-4 border-slate-300 text-primary-text focus:ring-primary/40"
           />
           <div className="min-w-0 flex-1 space-y-3">
             <div>
@@ -186,7 +186,7 @@ function SecaoAssinatura({
                 </div>
 
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-center">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                     Pré-visualização
                   </p>
                   <p
@@ -217,7 +217,7 @@ function SecaoAssinatura({
             value="imagem"
             checked={tipo === "imagem"}
             onChange={() => setTipo("imagem")}
-            className="mt-0.5 h-4 w-4 border-slate-300 text-primary focus:ring-primary/40"
+            className="mt-0.5 h-4 w-4 border-slate-300 text-primary-text focus:ring-primary/40"
           />
           <div className="min-w-0 flex-1 space-y-3">
             <div>
@@ -242,7 +242,7 @@ function SecaoAssinatura({
                   />
                   <label
                     htmlFor="assinatura-arquivo"
-                    className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
                   >
                     <Upload size={13} strokeWidth={1.5} aria-hidden="true" />
                     Escolher arquivo
@@ -261,7 +261,7 @@ function SecaoAssinatura({
 
                 {previewUrl ? (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                       Pré-visualização
                     </p>
                     {/* eslint-disable-next-line @next/next/no-img-element */}

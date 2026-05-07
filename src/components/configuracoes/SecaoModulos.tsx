@@ -113,17 +113,24 @@ function SecaoModulos({ plano }: SecaoModulosProps) {
                 disabled={desabilitado}
                 onClick={() => alternar(mod, !ativo)}
                 className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors no-touch-min",
-                  ativo ? "bg-primary" : "bg-slate-300",
+                  "shrink-0 inline-flex h-11 w-12 items-center justify-center rounded-md",
                   desabilitado && "cursor-not-allowed opacity-50",
                 )}
               >
                 <span
+                  aria-hidden="true"
                   className={cn(
-                    "inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
-                    ativo ? "translate-x-[22px]" : "translate-x-0.5",
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    ativo ? "bg-primary" : "bg-slate-300",
                   )}
-                />
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform",
+                      ativo ? "translate-x-[22px]" : "translate-x-0.5",
+                    )}
+                  />
+                </span>
               </button>
             </li>
           );

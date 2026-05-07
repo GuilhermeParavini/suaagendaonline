@@ -26,7 +26,7 @@ function CampoValor({
   valor: unknown;
 }) {
   if (valorVazio(valor)) {
-    return <p className="text-sm italic text-slate-400">Não informado</p>;
+    return <p className="text-sm italic text-slate-500">Não informado</p>;
   }
 
   switch (campo.tipo) {
@@ -86,7 +86,7 @@ function CampoValor({
           <span className="inline-flex h-6 min-w-[34px] items-center justify-center rounded-full bg-primary-surface px-1.5 text-xs font-semibold text-primary-dark">
             {n}
           </span>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-slate-500">
             {min} – {max}
           </span>
         </div>
@@ -149,7 +149,7 @@ function AnamneseDetalhe({
           const valor = anamnese.dados[c.id];
           return (
             <li key={c.id} className="space-y-1">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 {c.label}
               </p>
               <CampoValor campo={c} valor={valor} />
@@ -164,7 +164,7 @@ function AnamneseDetalhe({
             href={`/anamnese/${anamnese.id}/print?auto=1`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary-surface transition-colors"
+            className="inline-flex items-center gap-1.5 rounded border border-primary px-3 py-1.5 text-xs font-medium text-primary-text hover:bg-primary-surface transition-colors"
           >
             <Download size={13} strokeWidth={1.5} aria-hidden="true" />
             Exportar PDF
