@@ -47,6 +47,15 @@ export type AgendamentoDia = {
   reagendado_de: string | null;
 };
 
+export type AgendaHojeData = {
+  hojeIso: string;
+  agendamentos: AgendamentoDia[];
+  proximo: AgendamentoDia | null;
+  /** Quando nao ha mais nada hoje, retorna o primeiro agendamento futuro. */
+  proximoFuturo: AgendamentoDia | null;
+  profissionalNome: string;
+};
+
 export type IndisponivelDia =
   | { tipo: 'feriado'; nome: string }
   | {
@@ -222,6 +231,164 @@ export async function getAgendamentosDia(
   }
 
   return { ok: true, agendamentos, indisponivel, datasIndisponiveisSemana };
+}
+
+/**
+ * Retorna a agenda do dia atual para a tela inicial.
+ * - `proximo`: primeiro agendado/confirmado/em_atendimento de hoje com hora >= agora
+ * - `proximoFuturo`: se nao ha mais nada hoje, primeiro do dia util seguinte
+ *
+ * Considera apenas o profissional logado (nao todos do tenant).
+ */
+export async function getAgendaHoje(): Promise<
+  { ok: true; data: AgendaHojeData } | { ok: false; error: string }
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sessao expirada.' };
+
+  const admin = createAdminClient();
+  const { data: prof, error: profErr } = await admin
+    .from('profissionais')
+    .select('id, tenant_id, nome')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (profErr) return { ok: false, error: profErr.message };
+  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+
+  const agora = new Date();
+  const hojeIso = `${agora.getUTCFullYear()}-${String(
+    agora.getUTCMonth() + 1,
+  ).padStart(2, '0')}-${String(agora.getUTCDate()).padStart(2, '0')}`;
+  const inicio = `${hojeIso}T00:00:00.000Z`;
+  const fim = `${hojeIso}T23:59:59.999Z`;
+
+  const { data: rows, error } = await admin
+    .from('agendamentos')
+    .select(
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome, telefone, email), procedimentos(id, nome), profissionais(id, nome)',
+    )
+    .eq('tenant_id', prof.tenant_id as string)
+    .eq('profissional_id', prof.id as string)
+    .gte('data_hora', inicio)
+    .lte('data_hora', fim)
+    .order('data_hora', { ascending: true });
+  if (error) return { ok: false, error: error.message };
+
+  const agendamentos: AgendamentoDia[] = (rows ?? []).map((r) => {
+    const paciente = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
+    const procedimento = Array.isArray(r.procedimentos)
+      ? r.procedimentos[0]
+      : r.procedimentos;
+    const profPrincipal = Array.isArray(r.profissionais)
+      ? r.profissionais[0]
+      : r.profissionais;
+    return {
+      id: r.id as string,
+      data_hora: r.data_hora as string,
+      duracao_min: r.duracao_min as number,
+      status: r.status as AgendamentoDia['status'],
+      paciente: paciente
+        ? {
+            id: paciente.id as string,
+            nome: paciente.nome as string,
+            telefone: (paciente.telefone as string | null) ?? null,
+            email: (paciente.email as string | null) ?? null,
+          }
+        : null,
+      procedimento: procedimento
+        ? {
+            id: procedimento.id as string,
+            nome: procedimento.nome as string,
+          }
+        : null,
+      profissional: profPrincipal
+        ? {
+            id: profPrincipal.id as string,
+            nome: profPrincipal.nome as string,
+          }
+        : null,
+      reagendado_de: (r.reagendado_de as string | null) ?? null,
+    };
+  });
+
+  const agoraIso = agora.toISOString();
+  const candidatosProximo = agendamentos.filter(
+    (a) =>
+      a.data_hora >= agoraIso &&
+      ['agendado', 'confirmado', 'em_atendimento'].includes(a.status),
+  );
+  const proximo = candidatosProximo[0] ?? null;
+
+  let proximoFuturo: AgendamentoDia | null = null;
+  if (!proximo) {
+    // Busca o primeiro agendado/confirmado nos proximos 60 dias.
+    const fimFuturo = new Date(agora.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const { data: futuros } = await admin
+      .from('agendamentos')
+      .select(
+        'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome, telefone, email), procedimentos(id, nome), profissionais(id, nome)',
+      )
+      .eq('tenant_id', prof.tenant_id as string)
+      .eq('profissional_id', prof.id as string)
+      .gt('data_hora', fim)
+      .lte('data_hora', fimFuturo.toISOString())
+      .in('status', ['agendado', 'confirmado'])
+      .order('data_hora', { ascending: true })
+      .limit(1);
+    const r = (futuros ?? [])[0];
+    if (r) {
+      const paciente = Array.isArray(r.pacientes)
+        ? r.pacientes[0]
+        : r.pacientes;
+      const procedimento = Array.isArray(r.procedimentos)
+        ? r.procedimentos[0]
+        : r.procedimentos;
+      const profPrincipal = Array.isArray(r.profissionais)
+        ? r.profissionais[0]
+        : r.profissionais;
+      proximoFuturo = {
+        id: r.id as string,
+        data_hora: r.data_hora as string,
+        duracao_min: r.duracao_min as number,
+        status: r.status as AgendamentoDia['status'],
+        paciente: paciente
+          ? {
+              id: paciente.id as string,
+              nome: paciente.nome as string,
+              telefone: (paciente.telefone as string | null) ?? null,
+              email: (paciente.email as string | null) ?? null,
+            }
+          : null,
+        procedimento: procedimento
+          ? {
+              id: procedimento.id as string,
+              nome: procedimento.nome as string,
+            }
+          : null,
+        profissional: profPrincipal
+          ? {
+              id: profPrincipal.id as string,
+              nome: profPrincipal.nome as string,
+            }
+          : null,
+        reagendado_de: (r.reagendado_de as string | null) ?? null,
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      hojeIso,
+      agendamentos,
+      proximo,
+      proximoFuturo,
+      profissionalNome: (prof.nome as string | null) ?? 'Profissional',
+    },
+  };
 }
 
 export async function atualizarStatusAgendamento(

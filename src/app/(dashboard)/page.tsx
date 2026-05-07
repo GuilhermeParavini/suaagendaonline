@@ -1,370 +1,285 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Heart, Star } from "lucide-react";
-import { startOfDay, endOfDay, startOfMonth, endOfMonth, format } from "date-fns";
+import { ArrowRight, Calendar, ChevronRight, PlayCircle } from "lucide-react";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
-import MetricCard from "@/components/ui/MetricCard";
+import { createClient } from "@/lib/supabase/server";
 import StatusPill, { type StatusVariant } from "@/components/ui/StatusPill";
-import Card from "@/components/ui/Card";
+import Avatar from "@/components/ui/Avatar";
 import NovoAgendamentoFab from "@/components/dashboard/NovoAgendamentoFab";
-import AcompanhamentoLista from "@/components/dashboard/AcompanhamentoLista";
-import CardUsoTranscricao from "@/components/dashboard/CardUsoTranscricao";
-import CardUsoAssistente from "@/components/dashboard/CardUsoAssistente";
-import BannerUsoTranscricao from "@/components/dashboard/BannerUsoTranscricao";
-import CardListaEspera from "@/components/dashboard/CardListaEspera";
-import CardEstoqueBaixo from "@/components/dashboard/CardEstoqueBaixo";
 import {
-  getPacientesParaAcompanhar,
-  type PacienteAcompanhamento,
-} from "@/actions/followup";
-import { getUsoTranscricao } from "@/actions/transcricao";
-import { getUsoAssistente } from "@/actions/assistente-uso";
-import { getContagemListaEspera } from "@/actions/lista-espera";
-import { getProdutosAlerta } from "@/actions/estoque";
+  getAgendaHoje,
+  type AgendamentoDia,
+} from "@/actions/agendamentos";
 import { cn } from "@/lib/utils";
 
-const currencyBRL = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const dynamic = "force-dynamic";
 
-const isStatusVariant = (s: string): s is StatusVariant =>
-  s === "agendado" ||
-  s === "confirmado" ||
-  s === "em_atendimento" ||
-  s === "concluido" ||
-  s === "faltou";
+const STATUS_VALIDOS: StatusVariant[] = [
+  "agendado",
+  "confirmado",
+  "em_atendimento",
+  "concluido",
+  "faltou",
+  "cancelado",
+];
 
-interface AgendamentoRow {
-  id: string;
-  data_hora: string;
-  status: string;
-  pacientes: { nome: string } | { nome: string }[] | null;
+function statusValido(s: string): s is StatusVariant {
+  return (STATUS_VALIDOS as string[]).includes(s);
 }
 
-export default async function DashboardPage() {
+function saudacao(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+function horarioUtc(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
+
+function dataExtensoUtc(iso: string): string {
+  const txt = format(new Date(iso), "EEEE, d 'de' MMMM", {
+    locale: ptBR,
+    timeZone: "UTC",
+  } as Parameters<typeof format>[2]);
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
+export default async function HomeAgendaHojePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const admin = createAdminClient();
-
-  const { data: prof } = await admin
-    .from("profissionais")
-    .select("id, tenant_id, nome, mostrar_acompanhamento")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!prof) {
+  const result = await getAgendaHoje();
+  if (!result.ok) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <Card>
-          <p className="text-sm text-slate-500">
-            Perfil profissional ainda não configurado.
-          </p>
-        </Card>
+        <h1 className="text-[22px] font-semibold text-slate-900">Agenda</h1>
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {result.error}
+        </div>
       </div>
     );
   }
 
-  const now = new Date();
-  const todayStart = startOfDay(now).toISOString();
-  const todayEnd = endOfDay(now).toISOString();
-  const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-
-  const [
-    { count: consultasHoje },
-    { count: confirmados },
-    { count: pendentes },
-    { data: receitas },
-    { data: proximos },
-  ] = await Promise.all([
-    admin
-      .from("agendamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("profissional_id", prof.id)
-      .gte("data_hora", todayStart)
-      .lte("data_hora", todayEnd),
-    admin
-      .from("agendamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("profissional_id", prof.id)
-      .eq("status", "confirmado")
-      .gte("data_hora", todayStart)
-      .lte("data_hora", todayEnd),
-    admin
-      .from("agendamentos")
-      .select("id", { count: "exact", head: true })
-      .eq("profissional_id", prof.id)
-      .eq("status", "agendado")
-      .gte("data_hora", todayStart)
-      .lte("data_hora", todayEnd),
-    admin
-      .from("financeiro")
-      .select("valor")
-      .eq("tenant_id", prof.tenant_id)
-      .eq("tipo", "receita")
-      .gte("data_lancamento", monthStart)
-      .lte("data_lancamento", monthEnd),
-    admin
-      .from("agendamentos")
-      .select("id, data_hora, status, pacientes(nome)")
-      .eq("profissional_id", prof.id)
-      .gte("data_hora", now.toISOString())
-      .order("data_hora", { ascending: true })
-      .limit(5),
-  ]);
-
-  const { data: avalRows } = await admin
-    .from("avaliacoes")
-    .select("id, nota, created_at, paciente_id, pacientes(nome)")
-    .eq("profissional_id", prof.id)
-    .order("created_at", { ascending: false });
-  const avalLista = (avalRows ?? []) as Array<{
-    id: string;
-    nota: number;
-    created_at: string;
-    pacientes: { nome: string } | { nome: string }[] | null;
-  }>;
-  const avalTotal = avalLista.length;
-  const avalMedia =
-    avalTotal > 0
-      ? avalLista.reduce((acc, r) => acc + (r.nota ?? 0), 0) / avalTotal
-      : 0;
-  const avalRecentes = avalLista.slice(0, 3).map((r) => {
-    const pac = Array.isArray(r.pacientes) ? r.pacientes[0] : r.pacientes;
-    return {
-      id: r.id,
-      nota: r.nota,
-      data: format(new Date(r.created_at), "dd MMM yyyy", { locale: ptBR }),
-      paciente: (pac?.nome as string | null) ?? "Paciente",
-    };
-  });
-
-  const usoRes = await getUsoTranscricao();
-  const uso = usoRes.ok ? usoRes.data : null;
-  const mostrarCardUso = uso
-    ? uso.limiteSegundos > 0 || uso.usadoSegundos > 0
-    : false;
-
-  const usoAssistente = await getUsoAssistente(
-    prof.tenant_id as string,
-    prof.id as string,
-  );
-  const mostrarCardAssistente =
-    usoAssistente.limite > 0 || usoAssistente.perguntasUsadas > 0;
-
-  const contagemEsperaRes = await getContagemListaEspera();
-  const contagemListaEspera = contagemEsperaRes.ok ? contagemEsperaRes.data : 0;
-
-  const alertaRes = await getProdutosAlerta();
-  const contagemEstoqueBaixo = alertaRes.ok ? alertaRes.data.length : 0;
-
-  const mostrarAcompanhamento =
-    (prof.mostrar_acompanhamento as boolean | null) === false ? false : true;
-
-  let acompanhamentoLista: PacienteAcompanhamento[] = [];
-  if (mostrarAcompanhamento) {
-    const r = await getPacientesParaAcompanhar();
-    if (r.ok) acompanhamentoLista = r.data;
-  }
-
-  const { data: tenantInfo } = await admin
-    .from("tenants")
-    .select("nome_empresa")
-    .eq("id", prof.tenant_id)
-    .maybeSingle();
-  const clinicaNome =
-    (tenantInfo?.nome_empresa as string | null) ?? "Sua clínica";
-  const profissionalNome = (prof.nome as string | null) ?? "Profissional";
-
-  const receitaMes = (receitas ?? []).reduce(
-    (sum, r: { valor: number | string }) => sum + Number(r.valor ?? 0),
-    0,
-  );
-
-  const proximosLista = (proximos as AgendamentoRow[] | null) ?? [];
+  const { agendamentos, proximo, proximoFuturo, profissionalNome } =
+    result.data;
 
   return (
-    <div className="space-y-6 relative">
-      {uso ? <BannerUsoTranscricao uso={uso} /> : null}
+    <div className="space-y-6 relative pb-12">
+      <header className="space-y-1">
+        <p className="text-[14px] text-slate-500">{saudacao()},</p>
+        <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
+          {profissionalNome}!
+        </h1>
+      </header>
 
-      {/* Metric Cards Grid 2x2 */}
-      <section className="grid grid-cols-2 gap-3">
-        <MetricCard label="Consultas hoje" value={consultasHoje ?? 0} />
-        <MetricCard label="Confirmados" value={confirmados ?? 0} />
-        <MetricCard label="Pendentes" value={pendentes ?? 0} />
-        <MetricCard label="Receita do mês" value={currencyBRL(receitaMes)} />
-      </section>
+      <ProximoCard proximo={proximo} proximoFuturo={proximoFuturo} />
 
-      {mostrarCardUso || mostrarCardAssistente ? (
-        <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {mostrarCardUso && uso ? <CardUsoTranscricao uso={uso} /> : null}
-          {mostrarCardAssistente ? (
-            <CardUsoAssistente uso={usoAssistente} />
-          ) : null}
-        </section>
-      ) : null}
-
-      <CardListaEspera contagem={contagemListaEspera} />
-
-      <CardEstoqueBaixo contagem={contagemEstoqueBaixo} />
-
-      {/* Próximos agendamentos */}
       <section className="space-y-3">
-        <h2 className="text-[18px] font-semibold text-slate-900">
-          Próximos agendamentos
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-[18px] font-semibold text-slate-900">
+            Hoje
+          </h2>
+          <span className="text-[13px] text-slate-500">
+            {agendamentos.length}{" "}
+            {agendamentos.length === 1 ? "agendamento" : "agendamentos"}
+          </span>
+        </div>
 
-        {proximosLista.length === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-500">Nenhum agendamento hoje.</p>
-          </Card>
+        {agendamentos.length === 0 ? (
+          <div className="rounded-lg border border-slate-200 bg-white p-6 text-center space-y-2">
+            <Calendar
+              size={24}
+              strokeWidth={1.5}
+              aria-hidden="true"
+              className="mx-auto text-slate-500"
+            />
+            <p className="text-sm text-slate-500">
+              Sem agendamentos para hoje.
+            </p>
+          </div>
         ) : (
           <ul className="space-y-2">
-            {proximosLista.map((ag) => {
-              const paciente = Array.isArray(ag.pacientes)
-                ? ag.pacientes[0]
-                : ag.pacientes;
-              const dt = new Date(ag.data_hora);
-              const horario = format(dt, "HH:mm");
-              const data = format(dt, "dd MMM", { locale: ptBR });
-              const status: StatusVariant = isStatusVariant(ag.status)
-                ? ag.status
-                : "agendado";
-
+            {agendamentos.map((ag) => {
+              const ehProximo = proximo?.id === ag.id;
+              const ehPassado = [
+                "concluido",
+                "faltou",
+                "cancelado",
+                "reagendado",
+              ].includes(ag.status);
               return (
                 <li key={ag.id}>
-                  <Card className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex flex-col items-center justify-center w-14 shrink-0">
-                        <span className="text-base font-semibold text-slate-900 leading-tight">
-                          {horario}
-                        </span>
-                        <span className="text-[11px] text-slate-500 leading-tight">
-                          {data}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">
-                          {paciente?.nome ?? "Paciente"}
-                        </p>
-                      </div>
-                    </div>
-                    <StatusPill status={status} />
-                  </Card>
+                  <ItemAgendamento
+                    agendamento={ag}
+                    destaque={ehProximo}
+                    passado={ehPassado}
+                  />
                 </li>
               );
             })}
           </ul>
         )}
+
+        <Link
+          href="/agenda"
+          className="inline-flex items-center gap-1 text-[14px] font-medium text-primary-text hover:underline"
+        >
+          Ver agenda completa
+          <ArrowRight size={14} strokeWidth={1.5} aria-hidden="true" />
+        </Link>
       </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-[18px] font-semibold text-slate-900">
-            Avaliações
-          </h2>
-          {avalTotal > 0 ? (
-            <span className="text-xs text-slate-500">
-              {avalTotal} {avalTotal === 1 ? "avaliação" : "avaliações"}
-            </span>
-          ) : null}
-        </div>
-
-        {avalTotal === 0 ? (
-          <Card>
-            <p className="text-sm text-slate-500">
-              Nenhuma avaliação recebida ainda.
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            <Card className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star
-                    key={n}
-                    size={18}
-                    strokeWidth={1.5}
-                    className={cn(
-                      n <= Math.round(avalMedia)
-                        ? "fill-[#F59E0B] text-[#F59E0B]"
-                        : "fill-transparent text-slate-300",
-                    )}
-                    aria-hidden="true"
-                  />
-                ))}
-              </div>
-              <p className="text-base font-semibold text-slate-900">
-                {avalMedia.toFixed(1)}
-              </p>
-              <p className="text-xs text-slate-500">
-                média de {avalTotal} {avalTotal === 1 ? "avaliação" : "avaliações"}
-              </p>
-            </Card>
-
-            <ul className="space-y-2">
-              {avalRecentes.map((a) => (
-                <li key={a.id}>
-                  <Card className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
-                        {a.paciente}
-                      </p>
-                      <p className="text-[11px] text-slate-500">{a.data}</p>
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {[1, 2, 3, 4, 5].map((n) => (
-                        <Star
-                          key={n}
-                          size={14}
-                          strokeWidth={1.5}
-                          className={cn(
-                            n <= a.nota
-                              ? "fill-[#F59E0B] text-[#F59E0B]"
-                              : "fill-transparent text-slate-300",
-                          )}
-                          aria-hidden="true"
-                        />
-                      ))}
-                    </div>
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      {mostrarAcompanhamento ? (
-        <section className="space-y-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Heart
-                size={18}
-                strokeWidth={1.5}
-                className="text-primary-text"
-                aria-hidden="true"
-              />
-              <h2 className="text-[18px] font-semibold text-slate-900">
-                Acompanhamento
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pacientes atendidos ontem
-            </p>
-          </div>
-
-          <AcompanhamentoLista
-            inicial={acompanhamentoLista}
-            profissionalNome={profissionalNome}
-            clinicaNome={clinicaNome}
-          />
-        </section>
-      ) : null}
 
       <NovoAgendamentoFab />
     </div>
+  );
+}
+
+function ProximoCard({
+  proximo,
+  proximoFuturo,
+}: {
+  proximo: AgendamentoDia | null;
+  proximoFuturo: AgendamentoDia | null;
+}) {
+  if (!proximo && !proximoFuturo) {
+    return (
+      <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-1 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-slate-500">
+          Proximo paciente
+        </p>
+        <p className="text-[15px] text-slate-700">
+          Nenhum agendamento restante hoje.
+        </p>
+      </section>
+    );
+  }
+
+  const ag = proximo ?? (proximoFuturo as AgendamentoDia);
+  const horario = horarioUtc(ag.data_hora);
+  const dia = proximo ? "Hoje" : dataExtensoUtc(ag.data_hora);
+  const status: StatusVariant = statusValido(ag.status) ? ag.status : "agendado";
+  const nome = ag.paciente?.nome ?? "Paciente";
+  const procedimento = ag.procedimento?.nome ?? null;
+
+  return (
+    <section
+      className={cn(
+        "rounded-xl border bg-white p-5 space-y-3 shadow-[0_1px_3px_rgba(0,0,0,0.08)]",
+        proximo ? "border-primary" : "border-slate-200",
+      )}
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-[12px] font-medium uppercase tracking-wide text-slate-500">
+          {proximo ? "Proximo paciente" : "Proximo agendamento futuro"}
+        </p>
+        <StatusPill status={status} />
+      </div>
+
+      <div className="flex items-start gap-3">
+        <Avatar name={nome} className="h-12 w-12 text-base shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-slate-900 break-words">
+            {nome}
+          </p>
+          <p className="text-[14px] text-slate-700 mt-0.5">
+            {dia} as {horario}
+            {ag.duracao_min ? (
+              <span className="text-slate-500"> ({ag.duracao_min} min)</span>
+            ) : null}
+          </p>
+          {procedimento ? (
+            <p className="text-[13px] text-slate-500 mt-0.5">{procedimento}</p>
+          ) : null}
+        </div>
+      </div>
+
+      {proximo ? (
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Link
+            href={`/agenda?ag=${ag.id}`}
+            className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-[14px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Ver detalhes
+          </Link>
+          <Link
+            href={`/atendimento/${ag.id}`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[14px] font-medium text-white hover:bg-primary-dark transition-colors"
+          >
+            <PlayCircle size={16} strokeWidth={1.5} aria-hidden="true" />
+            Iniciar atendimento
+          </Link>
+        </div>
+      ) : (
+        <Link
+          href={`/agenda?ag=${ag.id}`}
+          className="inline-flex items-center gap-1 text-[13px] font-medium text-primary-text hover:underline"
+        >
+          Ver detalhes
+          <ChevronRight size={14} strokeWidth={1.5} aria-hidden="true" />
+        </Link>
+      )}
+    </section>
+  );
+}
+
+function ItemAgendamento({
+  agendamento,
+  destaque,
+  passado,
+}: {
+  agendamento: AgendamentoDia;
+  destaque: boolean;
+  passado: boolean;
+}) {
+  const dt = new Date(agendamento.data_hora);
+  const horario = dt.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+  const status: StatusVariant = statusValido(agendamento.status)
+    ? agendamento.status
+    : "agendado";
+  const nome = agendamento.paciente?.nome ?? "Paciente";
+  const procedimento = agendamento.procedimento?.nome ?? null;
+
+  return (
+    <Link
+      href={`/agenda?ag=${agendamento.id}`}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border bg-white px-3 py-3 transition-colors hover:bg-slate-50",
+        destaque
+          ? "border-primary"
+          : "border-slate-200",
+        passado && "opacity-60",
+      )}
+    >
+      <div className="flex w-12 shrink-0 flex-col items-center text-center">
+        <span className="text-sm font-semibold text-slate-900 leading-tight">
+          {horario}
+        </span>
+        <span className="text-[11px] text-slate-500 leading-tight">
+          {agendamento.duracao_min} min
+        </span>
+      </div>
+      <Avatar name={nome} className="h-9 w-9 text-[13px]" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-slate-900 truncate">{nome}</p>
+        {procedimento ? (
+          <p className="text-xs text-slate-500 truncate">{procedimento}</p>
+        ) : null}
+      </div>
+      <StatusPill status={status} className="shrink-0" />
+    </Link>
   );
 }

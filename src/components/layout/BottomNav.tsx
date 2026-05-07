@@ -8,6 +8,8 @@ import {
   BarChart3,
   Calendar,
   ClipboardList,
+  Home,
+  LineChart,
   Menu,
   Package,
   Settings,
@@ -28,7 +30,9 @@ const itensFixos: {
   href: string;
   label: string;
   Icon: LucideIcon;
+  exact?: boolean;
 }[] = [
+  { href: "/", label: "Inicio", Icon: Home, exact: true },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
   { href: "/pacientes", label: "Pacientes", Icon: Users },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
@@ -43,6 +47,7 @@ type ItemMais = {
 };
 
 const itensMais: ItemMais[] = [
+  { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
   {
     href: "/lista-espera",
     label: "Lista de espera",
@@ -50,11 +55,16 @@ const itensMais: ItemMais[] = [
     badgeKey: "listaEspera",
   },
   { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
-  { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
+  { href: "/relatorios", label: "Relatórios", Icon: LineChart },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
-function isActive(pathname: string, href: string): boolean {
+function isActive(
+  pathname: string,
+  href: string,
+  exact?: boolean,
+): boolean {
+  if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -76,8 +86,8 @@ function BottomNav({
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="flex h-14">
-        {itensFixos.map(({ href, label, Icon }) => {
-          const active = isActive(pathname, href);
+        {itensFixos.map(({ href, label, Icon, exact }) => {
+          const active = isActive(pathname, href, exact);
           return (
             <li key={href} className="flex-1">
               <Link

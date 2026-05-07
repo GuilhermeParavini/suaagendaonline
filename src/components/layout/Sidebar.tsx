@@ -8,6 +8,7 @@ import {
   Users,
   Wallet,
   BarChart3,
+  LineChart,
   ClipboardList,
   Package,
   Settings,
@@ -32,7 +33,8 @@ type SidebarItem = {
 };
 
 const items: SidebarItem[] = [
-  { href: "/", label: "Dashboard", Icon: Home, exact: true },
+  { href: "/", label: "Inicio", Icon: Home, exact: true },
+  { href: "/dashboard", label: "Dashboard", Icon: BarChart3 },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
   { href: "/pacientes", label: "Pacientes", Icon: Users },
   {
@@ -43,7 +45,7 @@ const items: SidebarItem[] = [
   },
   { href: "/financeiro", label: "Financeiro", Icon: Wallet },
   { href: "/estoque", label: "Estoque", Icon: Package, modulo: "estoque" },
-  { href: "/relatorios", label: "Relatórios", Icon: BarChart3 },
+  { href: "/relatorios", label: "Relatórios", Icon: LineChart },
   { href: "/configuracoes", label: "Configurações", Icon: Settings },
 ];
 
