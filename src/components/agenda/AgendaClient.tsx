@@ -31,6 +31,7 @@ import CalendarioMensal from "./CalendarioMensal";
 import ListaHorarios from "./ListaHorarios";
 import AgendamentoModal from "./AgendamentoModal";
 import { LazyNovoAgendamentoModal } from "@/lib/dynamic-imports";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 
 interface AgendaClientProps {
   initialDate: string;
@@ -60,6 +61,7 @@ function AgendaClient({
   initialIndisponivel,
   initialDatasIndisponiveisSemana,
 }: AgendaClientProps) {
+  useScrollRestore("scroll-agenda");
   const [selectedDate, setSelectedDate] = useState<Date>(() =>
     parseIsoDateLocal(initialDate),
   );

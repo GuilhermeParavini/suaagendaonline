@@ -94,6 +94,8 @@ function HeaderProfissionalPublico({
           src={logoUrl}
           alt=""
           aria-hidden="true"
+          fetchPriority="high"
+          decoding="async"
           className="mx-auto mb-3 max-h-[48px] w-auto object-contain"
         />
       ) : null}
@@ -104,6 +106,8 @@ function HeaderProfissionalPublico({
           <img
             src={avatarUrl}
             alt={`Foto de ${nome}`}
+            fetchPriority="high"
+            decoding="async"
             className="h-20 w-20 rounded-full object-cover border border-slate-100"
           />
         ) : (

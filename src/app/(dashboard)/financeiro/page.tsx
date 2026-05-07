@@ -7,6 +7,7 @@ import {
 import { getComissoesTenant } from "@/actions/comissoes";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import FinanceiroClient from "@/components/financeiro/FinanceiroClient";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -75,14 +76,16 @@ export default async function FinanceiroPage() {
     : 0;
 
   return (
-    <FinanceiroClient
-      initialMes={mes}
-      initialAno={ano}
-      initialResumo={resumoRes.data}
-      initialLancamentos={lancamentosRes.data}
-      pacientes={pacientesRes.data}
-      role={role}
-      totalComissoesAtivas={totalComissoesAtivas}
-    />
+    <PullToRefresh>
+      <FinanceiroClient
+        initialMes={mes}
+        initialAno={ano}
+        initialResumo={resumoRes.data}
+        initialLancamentos={lancamentosRes.data}
+        pacientes={pacientesRes.data}
+        role={role}
+        totalComissoesAtivas={totalComissoesAtivas}
+      />
+    </PullToRefresh>
   );
 }

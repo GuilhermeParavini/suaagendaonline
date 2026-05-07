@@ -3,6 +3,7 @@ import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getEstoque } from "@/actions/estoque";
 import { listarProfissionaisAtivosTenant } from "@/actions/equipe";
 import EstoqueClient from "@/components/estoque/EstoqueClient";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -51,11 +52,13 @@ export default async function EstoquePage({ searchParams }: EstoquePageProps) {
     : [];
 
   return (
-    <EstoqueClient
-      initialProdutos={estoqueRes.data}
-      role={role}
-      profissionais={profissionais}
-      alertaInicial={alertaInicial}
-    />
+    <PullToRefresh>
+      <EstoqueClient
+        initialProdutos={estoqueRes.data}
+        role={role}
+        profissionais={profissionais}
+        alertaInicial={alertaInicial}
+      />
+    </PullToRefresh>
   );
 }

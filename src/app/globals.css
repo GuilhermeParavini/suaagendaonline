@@ -94,6 +94,9 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Bloqueia o pull-to-refresh nativo do Chrome para nao conflitar com o
+   * gesto custom de PullToRefresh. */
+  overscroll-behavior-y: contain;
 }
 
 /*

@@ -20,6 +20,7 @@ import {
   LazyFormProduto,
   LazyModalMovimentacao,
 } from "@/lib/dynamic-imports";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 import {
   excluirProduto,
   getEstoque,
@@ -76,6 +77,7 @@ function EstoqueClient({
   profissionais,
   alertaInicial = false,
 }: EstoqueClientProps) {
+  useScrollRestore("scroll-estoque");
   const [vista, setVista] = useState<"lista" | "relatorio">("lista");
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>(initialProdutos);
   const [busca, setBusca] = useState("");

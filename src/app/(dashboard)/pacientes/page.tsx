@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import ListaPacientes from "@/components/pacientes/ListaPacientes";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import type { PacienteListItem } from "@/actions/pacientes";
 
 export const dynamic = "force-dynamic";
@@ -79,5 +80,9 @@ export default async function PacientesPage() {
     });
   }
 
-  return <ListaPacientes initialPacientes={initialPacientes} />;
+  return (
+    <PullToRefresh>
+      <ListaPacientes initialPacientes={initialPacientes} />
+    </PullToRefresh>
+  );
 }

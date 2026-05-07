@@ -20,6 +20,7 @@ import {
 import MetricCard from "@/components/ui/MetricCard";
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 import ListaLancamentos from "./ListaLancamentos";
 import FormLancamento from "./FormLancamento";
 import FinanceiroAdmin from "./FinanceiroAdmin";
@@ -68,6 +69,7 @@ function FinanceiroClient({
   role,
   totalComissoesAtivas,
 }: FinanceiroClientProps) {
+  useScrollRestore("scroll-financeiro");
   const [mes, setMes] = useState(initialMes);
   const [ano, setAno] = useState(initialAno);
   const [tipo, setTipo] = useState<FinanceiroTipo>("receita");
@@ -130,6 +132,8 @@ function FinanceiroClient({
   // Carregar fechamento do mes anterior se ha comissao
   useEffect(() => {
     if (!resumo.temComissao) {
+      // Limpa estado anterior quando o mes nao tem comissao.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFechAnt(null);
       return;
     }

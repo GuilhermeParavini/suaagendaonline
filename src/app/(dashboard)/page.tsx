@@ -19,6 +19,7 @@ import {
 } from "@/actions/agendamentos";
 import { getProgressoOnboarding } from "@/actions/onboarding";
 import ChecklistOnboardingWrapper from "@/components/onboarding/ChecklistOnboardingWrapper";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -87,13 +88,14 @@ export default async function HomeAgendaHojePage() {
   const mostrarChecklist = progresso.totalConcluidos < progresso.total;
 
   return (
-    <div className="space-y-6 relative pb-12">
-      <header className="space-y-1">
-        <p className="text-[14px] text-slate-500">{saudacao()},</p>
-        <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
-          {profissionalNome}!
-        </h1>
-      </header>
+    <PullToRefresh>
+      <div className="space-y-6 relative pb-12">
+        <header className="space-y-1">
+          <p className="text-[14px] text-slate-500">{saudacao()},</p>
+          <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">
+            {profissionalNome}!
+          </h1>
+        </header>
 
       {mostrarChecklist ? (
         <ChecklistOnboardingWrapper progresso={progresso} />
@@ -151,8 +153,9 @@ export default async function HomeAgendaHojePage() {
         </Link>
       </section>
 
-      <NovoAgendamentoFab />
-    </div>
+        <NovoAgendamentoFab />
+      </div>
+    </PullToRefresh>
   );
 }
 

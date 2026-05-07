@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import EmptyState from "@/components/ui/EmptyState";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -49,6 +50,7 @@ function ListaEsperaClient({
   initialItens,
   profissionais,
 }: ListaEsperaClientProps) {
+  useScrollRestore("scroll-lista-espera");
   const [itens, setItens] = useState<ItemListaEspera[]>(initialItens);
   const [statusFiltro, setStatusFiltro] = useState<
     StatusListaEspera | "todos"

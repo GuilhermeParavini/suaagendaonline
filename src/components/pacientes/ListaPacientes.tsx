@@ -11,6 +11,7 @@ import {
 } from "@/actions/pacientes";
 import EmptyState from "@/components/ui/EmptyState";
 import CardPaciente from "./CardPaciente";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 
 interface ListaPacientesProps {
   initialPacientes: PacienteListItem[];
@@ -19,6 +20,7 @@ interface ListaPacientesProps {
 type StatusFiltro = StatusTratamento | "todos";
 
 function ListaPacientes({ initialPacientes }: ListaPacientesProps) {
+  useScrollRestore("scroll-pacientes");
   const [query, setQuery] = useState("");
   const [convenioFiltro, setConvenioFiltro] = useState("");
   const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");

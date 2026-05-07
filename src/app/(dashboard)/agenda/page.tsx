@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import AgendaClient from "@/components/agenda/AgendaClient";
+import PullToRefresh from "@/components/ui/PullToRefresh";
 import {
   getAgendamentosDia,
   type AgendamentoDia,
@@ -32,11 +33,13 @@ export default async function AgendaPage() {
   }
 
   return (
-    <AgendaClient
-      initialDate={dataIso}
-      initialAgendamentos={agendamentos}
-      initialIndisponivel={indisponivel}
-      initialDatasIndisponiveisSemana={datasIndisponiveisSemana}
-    />
+    <PullToRefresh>
+      <AgendaClient
+        initialDate={dataIso}
+        initialAgendamentos={agendamentos}
+        initialIndisponivel={indisponivel}
+        initialDatasIndisponiveisSemana={datasIndisponiveisSemana}
+      />
+    </PullToRefresh>
   );
 }
