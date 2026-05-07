@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Copy } from "lucide-react";
 import { temTemplatePadraoPreConsulta } from "@/actions/anamnese";
+import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
+import { mensagemPreConsulta } from "@/lib/whatsapp-templates";
 
 interface LinkPreConsultaProps {
   slug: string;
@@ -73,6 +75,14 @@ function LinkPreConsulta({ slug }: LinkPreConsultaProps) {
           )}
         </button>
       </div>
+
+      <BotaoWhatsApp
+        telefone={null}
+        mensagem={mensagemPreConsulta({ nome: "", linkPreConsulta: url })}
+        variant="pre_consulta"
+        size="sm"
+        className="w-full sm:w-auto"
+      />
 
       {temPadrao === false ? (
         <div className="flex items-start gap-2 rounded border border-amber-200 bg-amber-50 px-3 py-2">

@@ -475,6 +475,7 @@ export type ReciboProfissional = {
 type ReciboData = {
   lancamento: Lancamento;
   pacienteEmail: string | null;
+  pacienteTelefone: string | null;
   profissional: ReciboProfissional;
   tenant: {
     nome_empresa: string;
@@ -507,13 +508,15 @@ async function montarReciboData(
   const paciente = Array.isArray(row.pacientes) ? row.pacientes[0] : row.pacientes;
 
   let pacienteEmail: string | null = null;
+  let pacienteTelefone: string | null = null;
   if (row.paciente_id) {
     const { data: pac } = await admin
       .from('pacientes')
-      .select('email')
+      .select('email, telefone')
       .eq('id', row.paciente_id)
       .maybeSingle();
     pacienteEmail = (pac?.email as string | null) ?? null;
+    pacienteTelefone = (pac?.telefone as string | null) ?? null;
   }
 
   if (!row.profissional_id) {
@@ -565,6 +568,7 @@ async function montarReciboData(
     data: {
       lancamento,
       pacienteEmail,
+      pacienteTelefone,
       profissional: {
         nome: prof.nome as string,
         especialidade: prof.especialidade as string,

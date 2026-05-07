@@ -38,7 +38,8 @@ export default async function ReciboPage({ params }: ReciboPageProps) {
     );
   }
 
-  const { lancamento, profissional, tenant, pacienteEmail } = result.data;
+  const { lancamento, profissional, tenant, pacienteEmail, pacienteTelefone } =
+    result.data;
   const dataReferencia = lancamento.data_pagamento ?? lancamento.data_lancamento;
   const dataPagamento = isoToBrDate(dataReferencia);
   const valorFormatado = formatCurrency(lancamento.valor);
@@ -52,6 +53,7 @@ export default async function ReciboPage({ params }: ReciboPageProps) {
     <ReciboPrint
       id={lancamento.id}
       pacienteEmail={pacienteEmail}
+      pacienteTelefone={pacienteTelefone}
       tenant={{
         nome_empresa: tenant.nome_empresa,
         endereco: tenant.endereco,

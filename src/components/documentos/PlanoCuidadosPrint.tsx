@@ -116,6 +116,7 @@ function PlanoCuidadosPrint({ data }: PlanoCuidadosPrintProps) {
           prefixoArquivo="plano-cuidados"
           pacienteNome={paciente.nome}
           pacienteEmail={paciente.email}
+          pacienteTelefone={paciente.telefone}
           dataReferencia={dataReferencia}
           assuntoEmail={`Plano de cuidados - ${profissional.nome} - ${dataReferencia}`}
           mensagemBase={mensagem}

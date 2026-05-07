@@ -12,12 +12,14 @@ import {
   compartilharOuBaixarPng,
   nomeArquivoDocumento,
 } from "@/lib/documento-imagem";
+import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
 
 interface DocumentoAcoesProps {
   documentoRef: RefObject<HTMLElement | null>;
   prefixoArquivo: string;
   pacienteNome: string | null;
   pacienteEmail: string | null;
+  pacienteTelefone?: string | null;
   dataReferencia: string; // dd/mm/aaaa
   assuntoEmail: string;
   mensagemBase: string;
@@ -29,6 +31,7 @@ function DocumentoAcoes({
   prefixoArquivo,
   pacienteNome,
   pacienteEmail,
+  pacienteTelefone,
   dataReferencia,
   assuntoEmail,
   mensagemBase,
@@ -37,15 +40,6 @@ function DocumentoAcoes({
   const [feedbackImagem, setFeedbackImagem] = useState<string | null>(null);
   const [erroImagem, setErroImagem] = useState<string | null>(null);
   const [gerandoImagem, startGerar] = useTransition();
-
-  const handleWhatsApp = () => {
-    const texto = encodeURIComponent(mensagemBase);
-    window.open(
-      `https://wa.me/?text=${texto}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  };
 
   const handleEmail = () => {
     const assunto = encodeURIComponent(assuntoEmail);
@@ -88,14 +82,12 @@ function DocumentoAcoes({
 
   return (
     <div className="no-print mx-auto max-w-[680px] space-y-2 pt-2">
-      <button
-        type="button"
-        onClick={handleWhatsApp}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-medium text-white hover:bg-[#1ebe5a] transition-colors active:scale-[0.99]"
-      >
-        <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" />
-        Enviar por WhatsApp
-      </button>
+      <BotaoWhatsApp
+        telefone={pacienteTelefone ?? null}
+        mensagem={mensagemBase}
+        variant="documento"
+        className="w-full"
+      />
 
       <div className="flex items-center gap-3 py-1" aria-hidden="true">
         <span className="h-px flex-1 bg-slate-200" />
@@ -162,5 +154,8 @@ function DocumentoAcoes({
     </div>
   );
 }
+
+// Exportado para callers que precisarem do mesmo icone localmente.
+export { MessageCircle as IconeMensagem };
 
 export default DocumentoAcoes;

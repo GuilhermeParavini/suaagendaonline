@@ -193,6 +193,7 @@ function RelatorioClinicoPrint({ data }: RelatorioClinicoPrintProps) {
           prefixoArquivo="relatorio-clinico"
           pacienteNome={paciente.nome}
           pacienteEmail={paciente.email}
+          pacienteTelefone={paciente.telefone}
           dataReferencia={dataAtendimento}
           assuntoEmail={`Relatorio clinico - ${profissional.nome} - ${dataAtendimento}`}
           mensagemBase={mensagem}

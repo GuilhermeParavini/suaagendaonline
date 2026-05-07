@@ -206,6 +206,7 @@ export type AtestadoData = {
     id: string;
     nome: string;
     email: string | null;
+    telefone: string | null;
   };
   procedimento: {
     nome: string;
@@ -245,7 +246,7 @@ export async function getAtestadoData(
   const [{ data: pac }, { data: prof }, { data: tenant }] = await Promise.all([
     admin
       .from('pacientes')
-      .select('id, nome, email')
+      .select('id, nome, email, telefone')
       .eq('id', ag.paciente_id as string)
       .maybeSingle(),
     admin
@@ -289,6 +290,7 @@ export async function getAtestadoData(
         id: pac.id as string,
         nome: pac.nome as string,
         email: (pac.email as string | null) ?? null,
+        telefone: (pac.telefone as string | null) ?? null,
       },
       procedimento,
       profissional: {

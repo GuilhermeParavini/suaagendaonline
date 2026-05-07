@@ -43,6 +43,47 @@ export type TenantConfig = {
   trial_expira_em: string | null;
 };
 
+export type TenantContato = {
+  nome_empresa: string;
+  slug: string;
+  telefone: string | null;
+  endereco: string | null;
+  cidade: string | null;
+  estado: string | null;
+};
+
+/**
+ * Retorna apenas os dados de contato/endereco do tenant. Pensado para compor
+ * mensagens de WhatsApp (confirmacao, lembrete, pre-consulta, retorno) sem
+ * carregar o restante das configuracoes.
+ */
+export async function getTenantContato(): Promise<Result<TenantContato>> {
+  const ctx = await obterContexto();
+  if (!ctx.ok) return ctx;
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('tenants')
+    .select('nome_empresa, slug, telefone, endereco, cidade, estado')
+    .eq('id', ctx.tenantId)
+    .maybeSingle();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: 'Tenant nao encontrado.' };
+
+  return {
+    ok: true,
+    data: {
+      nome_empresa: data.nome_empresa as string,
+      slug: data.slug as string,
+      telefone: (data.telefone as string | null) ?? null,
+      endereco: (data.endereco as string | null) ?? null,
+      cidade: (data.cidade as string | null) ?? null,
+      estado: (data.estado as string | null) ?? null,
+    },
+  };
+}
+
 export type HorarioBloco = {
   dia_semana: number;
   hora_inicio: string;

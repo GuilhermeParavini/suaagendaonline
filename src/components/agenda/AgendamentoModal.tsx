@@ -13,9 +13,24 @@ import {
   buscarSugestoesListaEspera,
   type SugestaoListaEspera,
 } from "@/actions/lista-espera";
+import {
+  getTenantContato,
+  type TenantContato,
+} from "@/actions/configuracoes";
 import { cleanPhone, formatPhone } from "@/lib/masks";
+import {
+  gerarLinkMaps,
+  mensagemConfirmacao,
+  mensagemLembrete,
+} from "@/lib/whatsapp-templates";
+import {
+  carregarTemplates,
+  getTemplate,
+  renderTemplate,
+} from "@/lib/templates-mensagem";
 import StatusPill from "@/components/ui/StatusPill";
 import Button from "@/components/ui/Button";
+import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
 import { cn } from "@/lib/utils";
 import ModalReagendamento from "./ModalReagendamento";
 
@@ -93,6 +108,20 @@ function AgendamentoModal({
   const [reagendamentoOpen, setReagendamentoOpen] = useState(false);
   const [sugestaoEspera, setSugestaoEspera] =
     useState<SugestaoListaEspera | null>(null);
+  const [tenantContato, setTenantContato] = useState<TenantContato | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelado = false;
+    (async () => {
+      const r = await getTenantContato();
+      if (cancelado) return;
+      if (r.ok) setTenantContato(r.data);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [open]);
 
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,6 +163,66 @@ function AgendamentoModal({
     timeZone: "UTC",
   });
   const dataIsoAg = agendamento.data_hora.slice(0, 10);
+  const dataBr = dt.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+
+  const telefonePaciente = agendamento.paciente?.telefone ?? null;
+  const enderecoCompleto = tenantContato
+    ? [
+        tenantContato.endereco,
+        [tenantContato.cidade, tenantContato.estado].filter(Boolean).join(" - ") ||
+          null,
+      ]
+        .filter((s): s is string => Boolean(s && s.trim()))
+        .join(", ") || null
+    : null;
+  const linkMaps = tenantContato
+    ? gerarLinkMaps(
+        tenantContato.endereco,
+        tenantContato.cidade,
+        tenantContato.estado,
+      )
+    : null;
+  const nomePac = agendamento.paciente?.nome ?? "Paciente";
+  const procNome = agendamento.procedimento?.nome ?? null;
+  const profNome = agendamento.profissional?.nome ?? "Profissional";
+
+  // Templates podem ser personalizados via Configuracoes; caem para defaults.
+  const templates = carregarTemplates();
+  const tplConf = getTemplate("confirmacao", templates);
+  const tplLemb = getTemplate("lembrete", templates);
+  const variaveis = {
+    nome: nomePac.split(" ")[0],
+    data: dataBr,
+    hora: horario,
+    profissional: profNome,
+    procedimento: procNome ?? "",
+    endereco: enderecoCompleto ?? "",
+    linkMaps: linkMaps ?? "",
+  };
+  const msgConfirmacao = tplConf
+    ? renderTemplate(tplConf.conteudo, variaveis)
+    : mensagemConfirmacao({
+        nome: nomePac,
+        data: dataBr,
+        hora: horario,
+        profissional: profNome,
+        procedimento: procNome,
+        endereco: enderecoCompleto,
+        linkMaps,
+      });
+  const msgLembrete = tplLemb
+    ? renderTemplate(tplLemb.conteudo, variaveis)
+    : mensagemLembrete({
+        nome: nomePac,
+        data: dataBr,
+        hora: horario,
+        endereco: enderecoCompleto,
+        linkMaps,
+      });
+
+  // Lembrete fica visivel quando o agendamento e amanha ou depois.
+  const hojeIso = new Date().toISOString().slice(0, 10);
+  const ehFuturo = dataIsoAg > hojeIso;
 
   const checarSugestoesEspera = async () => {
     if (!agendamento.profissional?.id) return;
@@ -316,6 +405,27 @@ function AgendamentoModal({
             <p className="mt-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               {erro}
             </p>
+          ) : null}
+
+          {!confirmandoCancelamento && telefonePaciente ? (
+            <div className="mt-4 flex flex-col gap-2">
+              <BotaoWhatsApp
+                telefone={telefonePaciente}
+                mensagem={msgConfirmacao}
+                variant="confirmacao"
+                size="sm"
+                className="w-full"
+              />
+              {ehFuturo ? (
+                <BotaoWhatsApp
+                  telefone={telefonePaciente}
+                  mensagem={msgLembrete}
+                  variant="lembrete"
+                  size="sm"
+                  className="w-full"
+                />
+              ) : null}
+            </div>
           ) : null}
 
           {ehFinal ? (

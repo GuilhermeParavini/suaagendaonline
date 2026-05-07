@@ -36,7 +36,12 @@ export type AgendamentoDia = {
   data_hora: string;
   duracao_min: number;
   status: StatusAgendamento;
-  paciente: { id: string; nome: string } | null;
+  paciente: {
+    id: string;
+    nome: string;
+    telefone: string | null;
+    email: string | null;
+  } | null;
   procedimento: { id: string; nome: string } | null;
   profissional: { id: string; nome: string } | null;
   reagendado_de: string | null;
@@ -130,7 +135,7 @@ export async function getAgendamentosDia(
   let query = admin
     .from('agendamentos')
     .select(
-      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome), profissionais(id, nome)',
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome, telefone, email), procedimentos(id, nome), profissionais(id, nome)',
     )
     .eq('tenant_id', prof.tenant_id as string)
     .gte('data_hora', inicio)
@@ -159,7 +164,14 @@ export async function getAgendamentosDia(
       data_hora: r.data_hora as string,
       duracao_min: r.duracao_min as number,
       status: r.status as AgendamentoDia['status'],
-      paciente: paciente ? { id: paciente.id as string, nome: paciente.nome as string } : null,
+      paciente: paciente
+        ? {
+            id: paciente.id as string,
+            nome: paciente.nome as string,
+            telefone: (paciente.telefone as string | null) ?? null,
+            email: (paciente.email as string | null) ?? null,
+          }
+        : null,
       procedimento: procedimento
         ? { id: procedimento.id as string, nome: procedimento.nome as string }
         : null,
@@ -1237,7 +1249,7 @@ export async function getAgendamentosDoDia(
   let query = admin
     .from('agendamentos')
     .select(
-      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome), procedimentos(id, nome), profissionais(id, nome)',
+      'id, data_hora, duracao_min, status, reagendado_de, pacientes(id, nome, telefone, email), procedimentos(id, nome), profissionais(id, nome)',
     )
     .eq('tenant_id', prof.tenant_id as string)
     .gte('data_hora', inicio)
@@ -1265,7 +1277,12 @@ export async function getAgendamentosDoDia(
       duracao_min: r.duracao_min as number,
       status: r.status as AgendamentoDia['status'],
       paciente: paciente
-        ? { id: paciente.id as string, nome: paciente.nome as string }
+        ? {
+            id: paciente.id as string,
+            nome: paciente.nome as string,
+            telefone: (paciente.telefone as string | null) ?? null,
+            email: (paciente.email as string | null) ?? null,
+          }
         : null,
       procedimento: procedimento
         ? {

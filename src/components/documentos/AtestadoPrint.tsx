@@ -135,6 +135,7 @@ function AtestadoPrint({ data }: AtestadoPrintProps) {
           prefixoArquivo="atestado"
           pacienteNome={paciente.nome}
           pacienteEmail={paciente.email}
+          pacienteTelefone={paciente.telefone}
           dataReferencia={dataAgendamento}
           assuntoEmail={`Atestado de comparecimento - ${profissional.nome} - ${dataAgendamento}`}
           mensagemBase={mensagem}

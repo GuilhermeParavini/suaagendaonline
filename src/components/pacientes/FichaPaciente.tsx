@@ -35,6 +35,9 @@ import {
   PillContatoPreferencial,
   type ContatoCanal,
 } from "./ContatoPreferencial";
+import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
+import { mensagemRetorno } from "@/lib/whatsapp-templates";
+import { getTenantContato } from "@/actions/configuracoes";
 
 function formatarAlturaMetros(altura_cm: number): string {
   const m = altura_cm / 100;
@@ -150,10 +153,42 @@ function DadoLinha({
   );
 }
 
-function BotoesContato({ paciente }: { paciente: PacienteDetalhe }) {
+function BotoesContato({
+  paciente,
+  ultimaConsultaIso,
+  slugAgendamento,
+}: {
+  paciente: PacienteDetalhe;
+  ultimaConsultaIso: string | null;
+  slugAgendamento: string | null;
+}) {
   const tel = cleanPhone(paciente.telefone ?? "");
   const email = paciente.email ?? "";
   const preferido = paciente.contato_preferencial;
+
+  // Convite para retorno: paciente com alta OU sem consulta ha mais de 30 dias.
+  const diasDesdeUltima = ultimaConsultaIso
+    ? Math.floor(
+        // eslint-disable-next-line react-hooks/purity
+        (Date.now() - new Date(ultimaConsultaIso).getTime()) /
+          (1000 * 60 * 60 * 24),
+      )
+    : null;
+  const mostrarRetorno =
+    Boolean(tel) &&
+    Boolean(slugAgendamento) &&
+    (paciente.status_tratamento === "alta" ||
+      (diasDesdeUltima !== null && diasDesdeUltima > 30));
+  const linkAgendamento = slugAgendamento
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/agendar/${slugAgendamento}`
+    : "";
+  const msgRetorno = mostrarRetorno
+    ? mensagemRetorno({
+        nome: paciente.nome,
+        diasDesdeUltimaConsulta: diasDesdeUltima ?? 30,
+        linkAgendamento,
+      })
+    : "";
 
   type Botao = {
     canal: ContatoCanal;
@@ -185,7 +220,7 @@ function BotoesContato({ paciente }: { paciente: PacienteDetalhe }) {
   ];
 
   const algumDisponivel = botoes.some((b) => b.disponivel);
-  if (!algumDisponivel) return null;
+  if (!algumDisponivel && !mostrarRetorno) return null;
 
   return (
     <div className="space-y-2 border-t border-slate-100 pt-4">
@@ -225,6 +260,15 @@ function BotoesContato({ paciente }: { paciente: PacienteDetalhe }) {
             </a>
           );
         })}
+        {mostrarRetorno ? (
+          <BotaoWhatsApp
+            telefone={paciente.telefone}
+            mensagem={msgRetorno}
+            variant="retorno"
+            size="sm"
+            label="Convidar para retorno"
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -236,7 +280,20 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
   const [anamneses, setAnamneses] = useState<Anamnese[]>([]);
   const [evolucoes, setEvolucoes] = useState<Evolucao[]>([]);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [slugTenant, setSlugTenant] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      const r = await getTenantContato();
+      if (cancelado) return;
+      if (r.ok) setSlugTenant(r.data.slug);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const recarregarAnamneses = useCallback(() => {
     startTransition(async () => {
@@ -501,7 +558,11 @@ function FichaPaciente({ paciente, responsavel, historico }: FichaPacienteProps)
                 <DadoLinha label="Convênio" value={paciente.convenio} />
               </div>
 
-              <BotoesContato paciente={paciente} />
+              <BotoesContato
+                paciente={paciente}
+                ultimaConsultaIso={ultimaConsulta}
+                slugAgendamento={slugTenant}
+              />
               {paciente.altura !== null || paciente.peso !== null ? (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {paciente.altura !== null ? (

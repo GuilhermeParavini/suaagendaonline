@@ -1,16 +1,18 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Image as ImageIcon, Loader2, Mail, MessageCircle, Printer } from "lucide-react";
+import { Image as ImageIcon, Loader2, Mail, Printer } from "lucide-react";
 import AssinaturaRecibo from "./AssinaturaRecibo";
 import {
   compartilharOuBaixarPng,
   nomeArquivoRecibo,
 } from "@/lib/recibo-imagem";
+import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
 
 interface ReciboPrintProps {
   id: string;
   pacienteEmail: string | null;
+  pacienteTelefone?: string | null;
   tenant: {
     nome_empresa: string;
     endereco: string | null;
@@ -57,6 +59,7 @@ function montarMensagem(params: {
 function ReciboPrint({
   id,
   pacienteEmail,
+  pacienteTelefone,
   tenant,
   profissional,
   paciente,
@@ -85,11 +88,6 @@ function ReciboPrint({
       descricao,
       url: buildUrlPublica(),
     });
-  };
-
-  const handleWhatsApp = () => {
-    const texto = encodeURIComponent(buildMensagem());
-    window.open(`https://wa.me/?text=${texto}`, "_blank", "noopener,noreferrer");
   };
 
   const handleEmail = () => {
@@ -242,14 +240,13 @@ function ReciboPrint({
         </article>
 
         <div className="no-print mx-auto max-w-[680px] space-y-2 pt-2">
-          <button
-            type="button"
-            onClick={handleWhatsApp}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 text-sm font-medium text-white hover:bg-[#1ebe5a] transition-colors active:scale-[0.99]"
-          >
-            <MessageCircle size={16} strokeWidth={1.5} aria-hidden="true" />
-            Enviar por WhatsApp
-          </button>
+          <BotaoWhatsApp
+            telefone={pacienteTelefone ?? null}
+            mensagem={buildMensagem()}
+            variant="documento"
+            label="Enviar recibo por WhatsApp"
+            className="w-full"
+          />
 
           <div className="flex items-center gap-3 py-1" aria-hidden="true">
             <span className="h-px flex-1 bg-slate-200" />
