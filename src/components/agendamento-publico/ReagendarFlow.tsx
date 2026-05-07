@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Check, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { format, startOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,7 @@ import {
 } from "@/actions/agendamento-publico";
 import CalendarioMensal from "./CalendarioMensal";
 import SeletorHorario from "./SeletorHorario";
+import TelaConfirmacao from "./TelaConfirmacao";
 
 type Step = "confirmar" | "data" | "hora" | "sucesso";
 
@@ -78,6 +79,8 @@ function ReagendarFlow({
 
   useEffect(() => {
     if (step !== "hora" || !selectedDate || !procedimentoId) return;
+    // Limpeza de estado pre-fetch ao trocar dia.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedHora(null);
     setSlotsError(null);
     setDiaIndisponivel(null);
@@ -145,38 +148,25 @@ function ReagendarFlow({
   })();
 
   if (step === "sucesso" && novaData) {
-    const [y, m, d] = novaData.dataIso.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    const dataExtenso = format(dt, "EEEE, d 'de' MMMM 'de' yyyy", {
-      locale: ptBR,
-      timeZone: "UTC",
-    } as Parameters<typeof format>[2]);
-    const dataCapital =
-      dataExtenso.charAt(0).toUpperCase() + dataExtenso.slice(1);
     return (
-      <div className="space-y-6 text-center pt-4">
-        <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary-surface">
-          <Check
-            size={32}
-            strokeWidth={2.5}
-            className="text-primary-text"
-            aria-hidden="true"
-          />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Reagendamento confirmado
-          </h2>
-          <p className="text-sm text-slate-600">
-            Sua nova data:{" "}
-            <span className="font-medium text-slate-900">{dataCapital}</span>{" "}
-            as <span className="font-medium text-slate-900">{novaData.hora}</span>.
-          </p>
-          <p className="text-xs text-slate-500">
-            Voce recebera um e-mail de confirmacao se houver e-mail cadastrado.
-          </p>
-        </div>
-      </div>
+      <TelaConfirmacao
+        titulo="Reagendamento confirmado!"
+        subtitulo="Voce recebera um email de confirmacao se houver email cadastrado."
+        dataIso={novaData.dataIso}
+        hora={novaData.hora}
+        duracaoMin={
+          agendamento.procedimento?.duracaoMin ?? agendamento.duracaoMin
+        }
+        profissionalNome={agendamento.profissional.nome}
+        profissionalEspecialidade={agendamento.profissional.especialidade}
+        procedimentoNome={agendamento.procedimento?.nome ?? null}
+        endereco={agendamento.tenant.endereco}
+        cidade={agendamento.tenant.cidade}
+        estado={agendamento.tenant.estado}
+        telefoneClinica={
+          agendamento.profissional.telefone ?? agendamento.tenant.telefone
+        }
+      />
     );
   }
 

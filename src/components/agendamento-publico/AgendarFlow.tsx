@@ -28,6 +28,7 @@ import FormPacientePublico, {
 import ResumoAgendamento from "./ResumoAgendamento";
 import HeaderProfissionalPublico from "./HeaderProfissionalPublico";
 import BioProfissional from "./BioProfissional";
+import TelaConfirmacao from "./TelaConfirmacao";
 
 type Step = "procedimento" | "data" | "hora" | "paciente" | "resumo" | "sucesso";
 
@@ -144,31 +145,25 @@ function AgendarFlow({
       ? paciente.novoPaciente.nome
       : "";
 
-  if (step === "sucesso") {
+  if (step === "sucesso" && selectedDate && selectedHora && procedimento) {
     return (
-      <div className="space-y-6 text-center pt-4">
-        <div className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary-surface">
-          <Check size={32} strokeWidth={2.5} className="text-primary-text" aria-hidden="true" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Agendamento confirmado
-          </h2>
-          <p className="text-sm text-slate-600">
-            Você receberá um e-mail de confirmação.
-          </p>
-        </div>
-        {selectedDate && selectedHora && procedimento ? (
-          <ResumoAgendamento
-            profissionalNome={contexto.profissional.nome}
-            procedimentoNome={procedimento.nome}
-            data={selectedDate}
-            hora={selectedHora}
-            pacienteNome={pacienteNome}
-            valor={procedimento.valor}
-          />
-        ) : null}
-      </div>
+      <TelaConfirmacao
+        titulo="Agendamento confirmado!"
+        subtitulo="Voce recebera um email de confirmacao."
+        dataIso={isoDate(selectedDate)}
+        hora={selectedHora}
+        duracaoMin={procedimento.duracao_min}
+        profissionalNome={contexto.profissional.nome}
+        profissionalEspecialidade={contexto.profissional.especialidade}
+        procedimentoNome={procedimento.nome}
+        endereco={contexto.tenant.endereco}
+        cidade={contexto.tenant.cidade}
+        estado={contexto.tenant.estado}
+        telefoneClinica={
+          contexto.profissional.telefone ?? contexto.tenant.telefone
+        }
+        linkVoltar={{ href: `/agendar/${slug}`, label: "Voltar ao inicio" }}
+      />
     );
   }
 

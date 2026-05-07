@@ -87,7 +87,10 @@ export async function GET(req: Request) {
   ] = await Promise.all([
     admin.from("pacientes").select("id, nome, email").in("id", pacIds),
     admin.from("profissionais").select("id, nome, logo_url").in("id", profIds),
-    admin.from("tenants").select("id, slug").in("id", tenantIds),
+    admin
+      .from("tenants")
+      .select("id, slug, endereco, cidade, estado")
+      .in("id", tenantIds),
   ]);
 
   const pacMap = new Map<string, { nome: string; email: string | null }>();
@@ -104,9 +107,22 @@ export async function GET(req: Request) {
       logoUrl: (p.logo_url as string | null) ?? null,
     });
   }
-  const slugMap = new Map<string, string | null>();
+  const tenantMap = new Map<
+    string,
+    {
+      slug: string | null;
+      endereco: string | null;
+      cidade: string | null;
+      estado: string | null;
+    }
+  >();
   for (const t of tenants ?? []) {
-    slugMap.set(t.id as string, (t.slug as string | null) ?? null);
+    tenantMap.set(t.id as string, {
+      slug: (t.slug as string | null) ?? null,
+      endereco: (t.endereco as string | null) ?? null,
+      cidade: (t.cidade as string | null) ?? null,
+      estado: (t.estado as string | null) ?? null,
+    });
   }
 
   const appUrl =
@@ -120,7 +136,8 @@ export async function GET(req: Request) {
     const profInfo = profMap.get(ag.profissional_id as string);
     const profNome = profInfo?.nome ?? "Profissional";
     const dataHoraIso = ag.data_hora as string;
-    const slug = slugMap.get(ag.tenant_id as string) ?? null;
+    const tenantInfo = tenantMap.get(ag.tenant_id as string);
+    const slug = tenantInfo?.slug ?? null;
     const linkAgendamento = montarLinkAgendamento(appUrl, slug);
     const tpl = emailLembrete24h({
       pacienteNome: pac.nome,
@@ -128,6 +145,9 @@ export async function GET(req: Request) {
       horario: horarioFromIso(dataHoraIso),
       linkAgendamento,
       logoUrl: profInfo?.logoUrl ?? null,
+      endereco: tenantInfo?.endereco ?? null,
+      cidade: tenantInfo?.cidade ?? null,
+      estado: tenantInfo?.estado ?? null,
     });
     const result = await enviarNotificacaoEmail({
       tenantId: ag.tenant_id as string,

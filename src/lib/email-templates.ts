@@ -154,6 +154,34 @@ function linkReagendarBlock(linkReagendar: string | null | undefined): string {
   return `<p style="margin:16px 0 0 0;color:#0F172A;font-size:14px;">Precisa reagendar? <a href="${escapeHtml(linkReagendar)}" style="color:#0D9488;text-decoration:underline;font-weight:500;">Clique aqui para mudar o horario</a>.</p>`;
 }
 
+function comoChegarBlock(opts: {
+  endereco?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+}): string {
+  const partes = [opts.endereco, [opts.cidade, opts.estado]
+    .filter(Boolean)
+    .join(' - ') || null]
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter((s): s is string => s.length > 0);
+  if (partes.length === 0) return '';
+  const enderecoTxt = partes.join(', ');
+  const linkMaps = `https://maps.google.com/?q=${encodeURIComponent(enderecoTxt)}`;
+  return `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:16px 0 0 0;">
+      <tr>
+        <td style="padding:14px;border:1px solid #E2E8F0;border-radius:8px;background-color:#F8FAFC;">
+          <p style="margin:0 0 6px 0;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Como chegar</p>
+          <p style="margin:0 0 10px 0;color:#0F172A;font-size:14px;line-height:1.5;">${escapeHtml(enderecoTxt)}</p>
+          <p style="margin:0;">
+            <a href="${escapeHtml(linkMaps)}" style="display:inline-block;background-color:#3B82F6;color:#FFFFFF;text-decoration:none;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;">Abrir no Google Maps</a>
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
 export type DadosConfirmacao = {
   pacienteNome: string;
   profissionalNome: string;
@@ -162,6 +190,9 @@ export type DadosConfirmacao = {
   linkAgendamento: string | null;
   linkReagendar?: string | null;
   logoUrl?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 };
 
 export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
@@ -177,6 +208,7 @@ export function emailConfirmacaoAgendamento(d: DadosConfirmacao): {
     ${row("Profissional", profissional)}
     ${row("Data", dataPorExtenso(d.dataIso))}
     ${row("Horário", d.horario)}
+    ${comoChegarBlock({ endereco: d.endereco, cidade: d.cidade, estado: d.estado })}
     ${linkReagendarBlock(d.linkReagendar)}
     ${d.linkReagendar ? "" : linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
@@ -190,6 +222,9 @@ export type DadosLembrete = {
   horario: string;
   linkAgendamento: string | null;
   logoUrl?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 };
 
 export function emailLembrete24h(d: DadosLembrete): {
@@ -204,6 +239,7 @@ export function emailLembrete24h(d: DadosLembrete): {
     <p style="margin:0 0 16px 0;">Lembrete: você tem consulta amanhã.</p>
     ${row("Profissional", profissional)}
     ${row("Horário", d.horario)}
+    ${comoChegarBlock({ endereco: d.endereco, cidade: d.cidade, estado: d.estado })}
     ${linkBlock(d.linkAgendamento)}
     <p style="margin:16px 0 0 0;">Atenciosamente,<br>${escapeHtml(profissional)}</p>
   `;
@@ -361,6 +397,9 @@ export type DadosReagendamento = {
   linkAgendamento: string | null;
   linkReagendar?: string | null;
   logoUrl?: string | null;
+  endereco?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
 };
 
 export function emailReagendamento(d: DadosReagendamento): {
@@ -408,6 +447,7 @@ export function emailReagendamento(d: DadosReagendamento): {
     <p style="margin:0 0 8px 0;">Sua consulta com ${profissionalLabel} foi reagendada.</p>
     ${procedimento ? `<p style="margin:0 0 8px 0;color:#475569;">Procedimento: <strong>${escapeHtml(procedimento)}</strong></p>` : ''}
     ${blocoComparativo}
+    ${comoChegarBlock({ endereco: d.endereco, cidade: d.cidade, estado: d.estado })}
     ${botao}
     ${linkReagendarBlock(d.linkReagendar)}
     <p style="margin:20px 0 0 0;color:#475569;font-size:13px;">Caso precise de algo, entre em contato.</p>

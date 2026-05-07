@@ -896,7 +896,7 @@ export async function criarAgendamentoPainel(
     if (destino) {
       const { data: tenant } = await admin
         .from('tenants')
-        .select('slug')
+        .select('slug, endereco, cidade, estado')
         .eq('id', tenantId)
         .maybeSingle();
       const slug = (tenant?.slug as string | null) ?? null;
@@ -914,6 +914,9 @@ export async function criarAgendamentoPainel(
         linkAgendamento,
         linkReagendar,
         logoUrl: (prof.logo_url as string | null) ?? null,
+        endereco: (tenant?.endereco as string | null) ?? null,
+        cidade: (tenant?.cidade as string | null) ?? null,
+        estado: (tenant?.estado as string | null) ?? null,
       });
       await enviarNotificacaoEmail({
         tenantId,
@@ -1152,7 +1155,7 @@ export async function reagendarConsulta(
         .maybeSingle(),
       admin
         .from('tenants')
-        .select('slug')
+        .select('slug, endereco, cidade, estado')
         .eq('id', tenantId)
         .maybeSingle(),
     ]);
@@ -1188,6 +1191,9 @@ export async function reagendarConsulta(
         horarioNovo: horarioFromIso(novaDataHoraIso),
         linkAgendamento,
         logoUrl: (prof.logo_url as string | null) ?? null,
+        endereco: (tenant?.endereco as string | null) ?? null,
+        cidade: (tenant?.cidade as string | null) ?? null,
+        estado: (tenant?.estado as string | null) ?? null,
       });
       await enviarNotificacaoEmail({
         tenantId,
@@ -1697,7 +1703,7 @@ export async function agendarRetorno(
       if (destino) {
         const { data: tenant } = await admin
           .from('tenants')
-          .select('slug')
+          .select('slug, endereco, cidade, estado')
           .eq('id', tenantId)
           .maybeSingle();
         const slug = (tenant?.slug as string | null) ?? null;
@@ -1714,6 +1720,9 @@ export async function agendarRetorno(
           linkAgendamento,
           linkReagendar,
           logoUrl: (prof.logo_url as string | null) ?? null,
+          endereco: (tenant?.endereco as string | null) ?? null,
+          cidade: (tenant?.cidade as string | null) ?? null,
+          estado: (tenant?.estado as string | null) ?? null,
         });
         await enviarNotificacaoEmail({
           tenantId,

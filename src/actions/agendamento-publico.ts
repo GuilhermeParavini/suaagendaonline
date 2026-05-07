@@ -543,7 +543,7 @@ export async function criarAgendamentoPublico(
           .maybeSingle(),
         admin
           .from('tenants')
-          .select('slug')
+          .select('slug, endereco, cidade, estado')
           .eq('id', input.tenantId)
           .maybeSingle(),
       ]);
@@ -554,6 +554,9 @@ export async function criarAgendamentoPublico(
       (profissional?.nome as string | null) ?? 'Profissional';
     const logoUrl = (profissional?.logo_url as string | null) ?? null;
     const slug = (tenant?.slug as string | null) ?? null;
+    const enderecoTenant = (tenant?.endereco as string | null) ?? null;
+    const cidadeTenant = (tenant?.cidade as string | null) ?? null;
+    const estadoTenant = (tenant?.estado as string | null) ?? null;
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ??
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
@@ -569,6 +572,9 @@ export async function criarAgendamentoPublico(
         linkAgendamento,
         linkReagendar,
         logoUrl,
+        endereco: enderecoTenant,
+        cidade: cidadeTenant,
+        estado: estadoTenant,
       });
       await enviarNotificacaoEmail({
         tenantId: input.tenantId,
@@ -594,6 +600,12 @@ export type AgendamentoReagendar = {
   id: string;
   tenantId: string;
   tenantSlug: string | null;
+  tenant: {
+    telefone: string | null;
+    endereco: string | null;
+    cidade: string | null;
+    estado: string | null;
+  };
   dataHoraIso: string;
   duracaoMin: number;
   status: string;
@@ -605,6 +617,7 @@ export type AgendamentoReagendar = {
     nome: string;
     especialidade: string | null;
     logoUrl: string | null;
+    telefone: string | null;
     duracaoPadraoMin: number;
     intervaloEntreMin: number;
   };
@@ -652,11 +665,15 @@ export async function getAgendamentoPorToken(
     { data: proc },
     { data: filhos },
   ] = await Promise.all([
-    admin.from('tenants').select('slug').eq('id', tenantId).maybeSingle(),
+    admin
+      .from('tenants')
+      .select('slug, telefone, endereco, cidade, estado')
+      .eq('id', tenantId)
+      .maybeSingle(),
     admin
       .from('profissionais')
       .select(
-        'id, nome, especialidade, logo_url, duracao_padrao_min, intervalo_entre_consultas_min',
+        'id, nome, especialidade, logo_url, telefone, duracao_padrao_min, intervalo_entre_consultas_min',
       )
       .eq('id', profissionalId)
       .maybeSingle(),
@@ -693,6 +710,12 @@ export async function getAgendamentoPorToken(
       id: ag.id as string,
       tenantId,
       tenantSlug: (tenant?.slug as string | null) ?? null,
+      tenant: {
+        telefone: (tenant?.telefone as string | null) ?? null,
+        endereco: (tenant?.endereco as string | null) ?? null,
+        cidade: (tenant?.cidade as string | null) ?? null,
+        estado: (tenant?.estado as string | null) ?? null,
+      },
       dataHoraIso,
       duracaoMin: (ag.duracao_min as number) ?? 30,
       status,
@@ -708,6 +731,7 @@ export async function getAgendamentoPorToken(
         nome: prof.nome as string,
         especialidade: (prof.especialidade as string | null) ?? null,
         logoUrl: (prof.logo_url as string | null) ?? null,
+        telefone: (prof.telefone as string | null) ?? null,
         duracaoPadraoMin: (prof.duracao_padrao_min as number) ?? 30,
         intervaloEntreMin:
           (prof.intervalo_entre_consultas_min as number | null) ?? 0,
@@ -883,6 +907,12 @@ export async function reagendarPorPaciente(
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
     const linkAgendamento = montarLinkAgendamento(baseUrl, ag.tenantSlug);
 
+    const { data: tenantInfo } = await admin
+      .from('tenants')
+      .select('endereco, cidade, estado')
+      .eq('id', ag.tenantId)
+      .maybeSingle();
+
     const tplPaciente = emailReagendamento({
       pacienteNome: ag.paciente.nome,
       profissionalNome: ag.profissional.nome,
@@ -894,6 +924,9 @@ export async function reagendarPorPaciente(
       horarioNovo: horarioFromIso(novaDataHoraIso),
       linkAgendamento,
       logoUrl: ag.profissional.logoUrl,
+      endereco: (tenantInfo?.endereco as string | null) ?? null,
+      cidade: (tenantInfo?.cidade as string | null) ?? null,
+      estado: (tenantInfo?.estado as string | null) ?? null,
     });
 
     if (ag.paciente.email) {
