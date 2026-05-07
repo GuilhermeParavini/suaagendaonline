@@ -8,9 +8,31 @@ import type { ContatoPreferencial } from "@/actions/pacientes";
 // Tipos
 // ============================================================
 
-export type AftercareTipo = "como_esta" | "lembrete_cuidados" | "retorno";
+export type AftercareTipo =
+  | "como_esta"
+  | "lembrete_cuidados"
+  | "retorno"
+  | "personalizado";
 export type AftercareCanal = ContatoPreferencial;
 export type AftercareStatus = "pendente" | "enviado" | "pulado";
+
+/**
+ * Subtipo derivado da mensagem para tarefas com `tipo='personalizado'`.
+ * Permite que a UI escolha icone/cor sem precisar de coluna extra no banco.
+ */
+export type AftercareSubtipo = "aniversario" | "sentimos_falta" | "personalizado";
+
+function inferirSubtipo(
+  tipo: AftercareTipo,
+  mensagem: string,
+): AftercareSubtipo | null {
+  if (tipo !== "personalizado") return null;
+  const m = mensagem.toLowerCase();
+  if (m.includes("feliz aniversario")) return "aniversario";
+  if (m.includes("sentimos sua falta") || m.includes("nao nos vemos"))
+    return "sentimos_falta";
+  return "personalizado";
+}
 
 export interface AftercareTarefa {
   id: string;
@@ -30,9 +52,10 @@ export interface AftercareTarefa {
 
 export interface AftercarePendenteItem {
   id: string;
-  agendamento_id: string;
+  agendamento_id: string | null;
   dia_sequencia: number;
   tipo: AftercareTipo;
+  subtipo: AftercareSubtipo | null;
   mensagem: string;
   canal: AftercareCanal;
   status: AftercareStatus;
@@ -59,6 +82,7 @@ const TIPOS_VALIDOS: AftercareTipo[] = [
   "como_esta",
   "lembrete_cuidados",
   "retorno",
+  "personalizado",
 ];
 
 const STATUS_VALIDOS: AftercareStatus[] = [
@@ -296,19 +320,26 @@ export async function getAftercarePendente(
     new Set(lista.map((t) => t.paciente_id as string)),
   );
   const agIds = Array.from(
-    new Set(lista.map((t) => t.agendamento_id as string)),
+    new Set(
+      lista
+        .map((t) => t.agendamento_id as string | null)
+        .filter((v): v is string => Boolean(v)),
+    ),
   );
 
-  const [{ data: pacientes }, { data: agendamentos }] = await Promise.all([
+  const [{ data: pacientes }, agendamentosRes] = await Promise.all([
     admin
       .from("pacientes")
       .select("id, nome, telefone, email")
       .in("id", pacIds),
-    admin
-      .from("agendamentos")
-      .select("id, data_hora")
-      .in("id", agIds),
+    agIds.length > 0
+      ? admin
+          .from("agendamentos")
+          .select("id, data_hora")
+          .in("id", agIds)
+      : Promise.resolve({ data: [] as { id: string; data_hora: string }[] }),
   ]);
+  const agendamentos = agendamentosRes.data;
 
   const pacMap = new Map<
     string,
@@ -328,21 +359,24 @@ export async function getAftercarePendente(
 
   const hoje = hojeIsoUTC();
   const itens: AftercarePendenteItem[] = lista.map((t) => {
-    const dataConsultaIso = agMap.get(t.agendamento_id as string)
-      ? dataIsoFromTimestamp(agMap.get(t.agendamento_id as string)!)
-      : null;
+    const agId = (t.agendamento_id as string | null) ?? null;
+    const dhConsulta = agId ? agMap.get(agId) ?? null : null;
+    const dataConsultaIso = dhConsulta ? dataIsoFromTimestamp(dhConsulta) : null;
     const dias = dataConsultaIso ? diffDiasIso(hoje, dataConsultaIso) : null;
     const pac = pacMap.get(t.paciente_id as string) ?? {
       nome: "Paciente",
       telefone: null,
       email: null,
     };
+    const tipoTarefa = parseTipo(t.tipo);
+    const mensagem = (t.mensagem as string) ?? "";
     return {
       id: t.id as string,
-      agendamento_id: t.agendamento_id as string,
+      agendamento_id: agId,
       dia_sequencia: Number(t.dia_sequencia ?? 0),
-      tipo: parseTipo(t.tipo),
-      mensagem: (t.mensagem as string) ?? "",
+      tipo: tipoTarefa,
+      subtipo: inferirSubtipo(tipoTarefa, mensagem),
+      mensagem,
       canal: parseCanal(t.canal),
       status: parseStatus(t.status),
       data_prevista: t.data_prevista as string,

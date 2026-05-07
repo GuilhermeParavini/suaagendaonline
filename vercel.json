@@ -2,6 +2,7 @@
   "crons": [
     { "path": "/api/cron/lembrete", "schedule": "0 12 * * *" },
     { "path": "/api/cron/followup", "schedule": "0 13 * * *" },
-    { "path": "/api/cron/fechamento-comissoes", "schedule": "0 3 1 * *" }
+    { "path": "/api/cron/fechamento-comissoes", "schedule": "0 3 1 * *" },
+    { "path": "/api/cron/feature-discovery", "schedule": "0 14 1,15 * *" }
   ]
 }

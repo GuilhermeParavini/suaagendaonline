@@ -142,5 +142,27 @@ export function mensagemRetorno(d: DadosRetorno): string {
   ].join("\n");
 }
 
+export interface DadosAniversario {
+  nome: string;
+}
+
+export function mensagemAniversario(d: DadosAniversario): string {
+  return `Ola ${primeiroNome(d.nome)}! Feliz aniversario! Desejamos muita saude e bem-estar. Um abraco da equipe!`;
+}
+
+export interface DadosSentimosFalta {
+  nome: string;
+  diasInativo: number;
+  linkAgendamento?: string | null;
+}
+
+export function mensagemSentimosFalta(d: DadosSentimosFalta): string {
+  const partes: string[] = [
+    `Ola ${primeiroNome(d.nome)}! Faz ${d.diasInativo} dias que nao nos vemos. Sentimos sua falta! Que tal agendar uma consulta?`,
+  ];
+  if (d.linkAgendamento) partes.push(d.linkAgendamento);
+  return partes.join("\n");
+}
+
 // Re-export bloco/primeiroNome para uso em telas (compor mensagens custom).
 export const _internals = { bloco, primeiroNome };

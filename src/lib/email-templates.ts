@@ -575,6 +575,63 @@ export function emailNovaListaEspera(d: DadosNovaListaEspera): {
   return { assunto, html: layout(conteudo, d.logoUrl) };
 }
 
+// ============================================================
+// Dicas de funcionalidades nao usadas
+// ============================================================
+
+export type FuncionalidadeKey =
+  | "estoque"
+  | "relatorios"
+  | "plano_tratamento"
+  | "transcricao"
+  | "pre_consulta";
+
+export interface DadosFuncionalidadeNaoUsada {
+  nome: string;
+  funcionalidadeNome: string;
+  iconeEmoji: string;
+  descricao: string;
+  comoUsar: string;
+  linkCTA: string;
+  textoCTA: string;
+  funcionalidadeKey: FuncionalidadeKey;
+  configLink: string;
+  logoUrl?: string | null;
+}
+
+export function emailFuncionalidadeNaoUsada(
+  d: DadosFuncionalidadeNaoUsada,
+): { assunto: string; html: string } {
+  const nome = capitalizeNome(d.nome);
+  const assunto = `Voce sabia? ${d.funcionalidadeNome} pode te ajudar`;
+  const conteudo = `
+    <p style="margin:0 0 12px 0;font-size:16px;font-weight:600;">Olá, ${escapeHtml(nome)}!</p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px 0;">
+      <tr>
+        <td align="center" style="padding:24px 16px;background-color:#F0FDFA;border:1px solid #99F6E4;border-radius:12px;">
+          <div style="font-size:40px;line-height:1;margin-bottom:8px;" aria-hidden="true">${d.iconeEmoji}</div>
+          <p style="margin:0;color:#0F766E;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:700;">Dica de funcionalidade</p>
+          <h2 style="margin:6px 0 0 0;color:#0F172A;font-size:20px;font-weight:600;">${escapeHtml(d.funcionalidadeNome)}</h2>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 12px 0;color:#0F172A;font-size:14px;line-height:1.6;">${escapeHtml(d.descricao)}</p>
+    <p style="margin:0 0 20px 0;color:#475569;font-size:14px;line-height:1.6;">${escapeHtml(d.comoUsar)}</p>
+
+    <p style="margin:0 0 16px 0;text-align:center;">
+      <a href="${escapeHtml(d.linkCTA)}" style="display:inline-block;background-color:#0D9488;color:#FFFFFF;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;">${escapeHtml(d.textoCTA)}</a>
+    </p>
+
+    <p style="margin:24px 0 0 0;padding-top:16px;border-top:1px solid #E2E8F0;color:#64748B;font-size:12px;line-height:1.6;">
+      Enviamos esta dica porque notamos que voce ainda nao usa ${escapeHtml(d.funcionalidadeNome)}.
+      Para parar de receber dicas, acesse <a href="${escapeHtml(d.configLink)}" style="color:#0D9488;">configuracoes</a> e desative o aviso.
+    </p>
+  `;
+  return { assunto, html: layout(conteudo, d.logoUrl) };
+}
+
 export type DadosCancelamento = {
   pacienteNome: string;
   profissionalNome: string;

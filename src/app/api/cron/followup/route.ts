@@ -6,6 +6,15 @@ import {
   emailFollowupConsulta,
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
+import {
+  getAniversariantesHoje,
+  getPacientesInativos,
+} from "@/actions/comunicacao";
+import {
+  mensagemAniversario,
+  mensagemSentimosFalta,
+} from "@/lib/whatsapp-templates";
+import type { ContatoPreferencial } from "@/actions/pacientes";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -302,11 +311,151 @@ export async function GET(req: Request) {
     console.error("[cron/followup] erro planos:", e);
   }
 
+  // ============================================================
+  // Tarefas de aniversario + pacientes inativos por tenant
+  // ============================================================
+  let aniversarioCriadas = 0;
+  let inativosCriados = 0;
+
+  try {
+    const { data: tenants } = await admin
+      .from("tenants")
+      .select("id, slug");
+    const tenantsLista = (tenants ?? []) as Array<{
+      id: string;
+      slug: string | null;
+    }>;
+
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+    const hojeIso = hojeIsoUTC();
+    const limiteSentimosFaltaIso = (() => {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - 30);
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    })();
+
+    for (const tenant of tenantsLista) {
+      // Profissional principal do tenant para vincular as tarefas. Se houver
+      // mais de um, escolhemos o primeiro com user_id (criador). Tarefas
+      // ficam visiveis ao profissional dono.
+      const { data: profsTenant } = await admin
+        .from("profissionais")
+        .select("id, user_id")
+        .eq("tenant_id", tenant.id)
+        .order("created_at", { ascending: true });
+      const profDono = (profsTenant ?? []).find((p) => p.user_id) ??
+        (profsTenant ?? [])[0];
+      if (!profDono) continue;
+
+      const linkAgendamento =
+        appUrl && tenant.slug
+          ? `${appUrl.replace(/\/+$/, "")}/agendar/${tenant.slug}`
+          : null;
+
+      // ----- Aniversariantes -----
+      const aniversariantes = await getAniversariantesHoje(tenant.id);
+      if (aniversariantes.length > 0) {
+        const pacIdsAniv = aniversariantes.map((p) => p.id);
+        const { data: jaAniv } = await admin
+          .from("aftercare_tarefas")
+          .select("paciente_id")
+          .eq("tenant_id", tenant.id)
+          .eq("tipo", "personalizado")
+          .eq("data_prevista", hojeIso)
+          .in("paciente_id", pacIdsAniv)
+          .ilike("mensagem", "%feliz aniversario%");
+        const jaSetAniv = new Set(
+          (jaAniv ?? []).map((r) => r.paciente_id as string),
+        );
+        const novosAniv = aniversariantes.filter(
+          (p) => !jaSetAniv.has(p.id),
+        );
+        if (novosAniv.length > 0) {
+          const linhas = novosAniv.map((p) => ({
+            tenant_id: tenant.id,
+            profissional_id: profDono.id as string,
+            paciente_id: p.id,
+            agendamento_id: null,
+            dia_sequencia: 0,
+            tipo: "personalizado",
+            mensagem: mensagemAniversario({ nome: p.nome }),
+            canal: p.contato_preferencial as ContatoPreferencial,
+            status: "pendente",
+            data_prevista: hojeIso,
+          }));
+          const { error: insErr } = await admin
+            .from("aftercare_tarefas")
+            .insert(linhas);
+          if (insErr) {
+            console.error("[cron/followup] aniv insert:", insErr.message);
+          } else {
+            aniversarioCriadas += linhas.length;
+          }
+        }
+      }
+
+      // ----- Pacientes inativos (>90 dias) -----
+      const inativos = await getPacientesInativos(tenant.id, 90);
+      if (inativos.length > 0) {
+        const pacIdsInat = inativos.map((p) => p.id);
+        const { data: jaInat } = await admin
+          .from("aftercare_tarefas")
+          .select("paciente_id")
+          .eq("tenant_id", tenant.id)
+          .eq("tipo", "personalizado")
+          .gte("data_prevista", limiteSentimosFaltaIso)
+          .in("paciente_id", pacIdsInat)
+          .ilike("mensagem", "%sentimos sua falta%");
+        const jaSetInat = new Set(
+          (jaInat ?? []).map((r) => r.paciente_id as string),
+        );
+        const novosInat = inativos.filter((p) => !jaSetInat.has(p.id));
+        if (novosInat.length > 0) {
+          const linhas = novosInat.map((p) => {
+            const dias = p.ultimo_agendamento_data
+              ? diffDiasIso(hojeIso, p.ultimo_agendamento_data)
+              : 90;
+            return {
+              tenant_id: tenant.id,
+              profissional_id: profDono.id as string,
+              paciente_id: p.id,
+              agendamento_id: null,
+              dia_sequencia: 0,
+              tipo: "personalizado",
+              mensagem: mensagemSentimosFalta({
+                nome: p.nome,
+                diasInativo: dias,
+                linkAgendamento,
+              }),
+              canal: p.contato_preferencial as ContatoPreferencial,
+              status: "pendente",
+              data_prevista: hojeIso,
+            };
+          });
+          const { error: insErr } = await admin
+            .from("aftercare_tarefas")
+            .insert(linhas);
+          if (insErr) {
+            console.error("[cron/followup] inat insert:", insErr.message);
+          } else {
+            inativosCriados += linhas.length;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[cron/followup] erro aniv/inativos:", e);
+  }
+
   return NextResponse.json({
     ok: true,
     processados: pendentes.length,
     enviados,
     planos_processados: planosProcessados,
     planos_enviados: planosEnviados,
+    aniversario_criadas: aniversarioCriadas,
+    inativos_criados: inativosCriados,
   });
 }

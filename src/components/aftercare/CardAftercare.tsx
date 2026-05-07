@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Heart, Mail, MessageCircle, Phone, SkipForward } from "lucide-react";
+import { useState, useTransition, type ComponentType } from "react";
+import {
+  Cake,
+  Heart,
+  Mail,
+  MessageCircle,
+  Phone,
+  SkipForward,
+  UserX,
+  type LucideProps,
+} from "lucide-react";
 import {
   marcarAftercare,
   type AftercarePendenteItem,
+  type AftercareSubtipo,
   type AftercareTipo,
 } from "@/actions/aftercare";
 import BotaoWhatsApp from "@/components/ui/BotaoWhatsApp";
@@ -18,7 +28,57 @@ const LABEL_TIPO: Record<AftercareTipo, string> = {
   como_esta: "Como esta?",
   lembrete_cuidados: "Lembrete de cuidados",
   retorno: "Convite para retorno",
+  personalizado: "Mensagem personalizada",
 };
+
+const LABEL_SUBTIPO: Record<AftercareSubtipo, string> = {
+  aniversario: "Aniversario",
+  sentimos_falta: "Sentimos sua falta",
+  personalizado: "Mensagem personalizada",
+};
+
+type Visual = {
+  Icon: ComponentType<LucideProps>;
+  iconClass: string;
+  borderClass: string;
+  bgClass: string;
+  badgeClass: string;
+};
+
+const VISUAL_DEFAULT: Visual = {
+  Icon: Heart,
+  iconClass: "text-primary-text",
+  borderClass: "border-primary/30",
+  bgClass: "bg-primary-surface",
+  badgeClass: "bg-primary-surface text-primary-text",
+};
+
+const VISUAL_ANIVERSARIO: Visual = {
+  Icon: Cake,
+  iconClass: "text-[#92400E]",
+  borderClass: "border-[#FCD34D]",
+  bgClass: "bg-[#FFFBEB]",
+  badgeClass: "bg-[#FEF3C7] text-[#92400E]",
+};
+
+const VISUAL_SENTIMOS_FALTA: Visual = {
+  Icon: UserX,
+  iconClass: "text-slate-700",
+  borderClass: "border-slate-300",
+  bgClass: "bg-slate-100",
+  badgeClass: "bg-slate-200 text-slate-700",
+};
+
+function visualPara(item: AftercarePendenteItem): Visual {
+  if (item.subtipo === "aniversario") return VISUAL_ANIVERSARIO;
+  if (item.subtipo === "sentimos_falta") return VISUAL_SENTIMOS_FALTA;
+  return VISUAL_DEFAULT;
+}
+
+function labelTarefa(item: AftercarePendenteItem): string {
+  if (item.subtipo) return LABEL_SUBTIPO[item.subtipo];
+  return LABEL_TIPO[item.tipo];
+}
 
 function diasLabel(d: number | null): string {
   if (d === null) return "—";
@@ -127,16 +187,42 @@ function ItemAftercare({
   onEnviado: () => void;
   onPulado: () => void;
 }) {
-  const subtitulo = `${LABEL_TIPO[item.tipo]} · ${diasLabel(item.diasDesdeConsulta)}`;
+  const visual = visualPara(item);
+  const Icon = visual.Icon;
+  const subtitulo =
+    item.diasDesdeConsulta === null
+      ? labelTarefa(item)
+      : `${labelTarefa(item)} · ${diasLabel(item.diasDesdeConsulta)}`;
 
   return (
-    <li className="rounded-lg bg-white border border-slate-200 p-3 space-y-2">
+    <li
+      className={cn(
+        "rounded-lg bg-white p-3 space-y-2 border",
+        visual.borderClass,
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[14px] font-medium text-slate-900 truncate">
-            {item.paciente.nome}
-          </p>
-          <p className="text-[12px] text-slate-500">{subtitulo}</p>
+        <div className="flex items-start gap-2 min-w-0">
+          <span
+            aria-hidden="true"
+            className={cn(
+              "shrink-0 inline-flex h-8 w-8 items-center justify-center rounded-full",
+              visual.bgClass,
+            )}
+          >
+            <Icon
+              size={16}
+              strokeWidth={1.7}
+              className={visual.iconClass}
+              aria-hidden="true"
+            />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[14px] font-medium text-slate-900 truncate">
+              {item.paciente.nome}
+            </p>
+            <p className="text-[12px] text-slate-500">{subtitulo}</p>
+          </div>
         </div>
         <span
           className={cn(
