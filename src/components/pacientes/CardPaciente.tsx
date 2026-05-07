@@ -28,36 +28,38 @@ function CardPaciente({ paciente }: CardPacienteProps) {
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <p className="text-sm font-medium text-slate-900 truncate">
+            {/* Informacao primaria: nome do paciente — 16px semibold Slate 900 */}
+            <p className="text-[16px] font-semibold text-slate-900 truncate">
               {paciente.nome}
             </p>
             {paciente.status_tratamento === "alta" ? (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-[#D1FAE5] px-2 py-[2px] text-[11px] font-medium leading-none text-[#065F46]">
+              <span className="shrink-0 inline-flex items-center rounded-full bg-[#D1FAE5] px-2 py-[2px] text-[12px] font-medium leading-none text-[#065F46]">
                 Alta
               </span>
             ) : null}
             {paciente.status_tratamento === "inativo" ? (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200 px-2 py-[2px] text-[11px] font-medium leading-none text-slate-600">
+              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-200 px-2 py-[2px] text-[12px] font-medium leading-none text-slate-600">
                 Inativo
               </span>
             ) : null}
             {paciente.menor_idade ? (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-warning-surface px-2 py-[2px] text-[11px] font-medium leading-none text-[#92400E]">
+              <span className="shrink-0 inline-flex items-center rounded-full bg-warning-surface px-2 py-[2px] text-[12px] font-medium leading-none text-[#92400E]">
                 Menor
               </span>
             ) : null}
             {paciente.convenio ? (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-primary-surface px-2 py-[2px] text-[11px] font-medium leading-none text-primary-dark">
+              <span className="shrink-0 inline-flex items-center rounded-full bg-primary-surface px-2 py-[2px] text-[12px] font-medium leading-none text-primary-text">
                 {paciente.convenio}
               </span>
             ) : null}
             {!paciente.email ? (
-              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 px-2 py-[2px] text-[11px] font-medium leading-none text-slate-500">
+              <span className="shrink-0 inline-flex items-center rounded-full bg-slate-100 px-2 py-[2px] text-[12px] font-medium leading-none text-slate-500">
                 Sem e-mail
               </span>
             ) : null}
           </div>
-          <div className="mt-0.5 flex items-center gap-2 text-xs">
+          {/* Metadados: 14px Slate 500 */}
+          <div className="mt-1 flex items-center gap-2 text-[14px]">
             {telefoneFormatado ? (
               <span
                 className={cn(
@@ -69,7 +71,7 @@ function CardPaciente({ paciente }: CardPacienteProps) {
               >
                 <IconeContatoPreferencial
                   canal={paciente.contato_preferencial}
-                  size={12}
+                  size={14}
                 />
                 {telefoneFormatado}
               </span>

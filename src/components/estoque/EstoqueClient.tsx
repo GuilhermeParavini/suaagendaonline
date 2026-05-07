@@ -21,6 +21,7 @@ import {
   LazyModalMovimentacao,
 } from "@/lib/dynamic-imports";
 import { useScrollRestore } from "@/hooks/useScrollRestore";
+import { useToast } from "@/contexts/ToastContext";
 import {
   excluirProduto,
   getEstoque,
@@ -78,6 +79,7 @@ function EstoqueClient({
   alertaInicial = false,
 }: EstoqueClientProps) {
   useScrollRestore("scroll-estoque");
+  const toast = useToast();
   const [vista, setVista] = useState<"lista" | "relatorio">("lista");
   const [produtos, setProdutos] = useState<ProdutoEstoque[]>(initialProdutos);
   const [busca, setBusca] = useState("");
@@ -148,8 +150,10 @@ function EstoqueClient({
       const r = await excluirProduto(p.id);
       if (!r.ok) {
         setError(r.error);
+        toast.erro(r.error);
         return;
       }
+      toast.sucesso(`Produto "${p.nome}" excluido`);
       recarregar({
         busca,
         categoria,

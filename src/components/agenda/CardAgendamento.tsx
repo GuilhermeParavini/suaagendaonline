@@ -40,25 +40,29 @@ function CardAgendamento({
   const conteudo = (
     <>
       <div className="flex w-12 shrink-0 flex-col items-center text-center">
-        <span className="text-sm font-semibold text-slate-900 leading-tight">
+        <span className="text-[15px] font-semibold text-slate-900 leading-tight">
           {horario}
         </span>
-        <span className="text-[11px] text-slate-500 leading-tight">
+        <span className="text-[12px] text-slate-500 leading-tight">
           {agendamento.duracao_min} min
         </span>
       </div>
 
-      <Avatar name={nomePaciente} className="h-9 w-9 text-[13px]" />
+      <Avatar name={nomePaciente} className="h-10 w-10 text-[14px]" />
 
       <div className="min-w-0 flex-1 text-left">
-        <p className="text-sm font-medium text-slate-900 truncate">
+        {/* Informacao primaria: nome do paciente — 16px semibold Slate 900 */}
+        <p className="text-[16px] font-semibold text-slate-900 truncate">
           {nomePaciente}
         </p>
+        {/* Metadado: procedimento — 14px Slate 500 */}
         {nomeProcedimento ? (
-          <p className="text-xs text-slate-500 truncate">{nomeProcedimento}</p>
+          <p className="text-[14px] text-slate-500 truncate">
+            {nomeProcedimento}
+          </p>
         ) : null}
         {mostrarProfissional && agendamento.profissional?.nome ? (
-          <span className="mt-0.5 inline-flex items-center rounded-full bg-primary-surface px-2 py-0.5 text-[10px] font-medium text-primary-dark">
+          <span className="mt-0.5 inline-flex items-center rounded-full bg-primary-surface px-2 py-0.5 text-[12px] font-medium text-primary-text">
             {agendamento.profissional.nome}
           </span>
         ) : null}

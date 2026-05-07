@@ -28,6 +28,7 @@ import {
   type InfoAddon,
 } from "@/lib/planos";
 import Button from "@/components/ui/Button";
+import { useToast } from "@/contexts/ToastContext";
 import { cn } from "@/lib/utils";
 
 interface SecaoMeuPlanoProps {
@@ -306,16 +307,18 @@ function ItemAddon({
   onMudou: () => void;
 }) {
   const [carregando, setCarregando] = useState(false);
+  const toast = useToast();
 
   async function cancelar() {
-    if (!confirm("Cancelar este add-on?")) return;
+    if (!window.confirm("Cancelar este add-on?")) return;
     setCarregando(true);
     const r = await cancelarAddon(addon.id);
     setCarregando(false);
     if (!r.ok) {
-      alert(r.error);
+      toast.erro(r.error);
       return;
     }
+    toast.sucesso("Add-on cancelado");
     onMudou();
   }
 
@@ -431,15 +434,17 @@ function ItemPacote({
   onContratado: () => void;
 }) {
   const [carregando, setCarregando] = useState(false);
+  const toast = useToast();
 
   async function contratar() {
     setCarregando(true);
     const r = await contratarAddon(info.tipo, info.pacote as AddonPacote);
     setCarregando(false);
     if (!r.ok) {
-      alert(r.error);
+      toast.erro(r.error);
       return;
     }
+    toast.sucesso(`${info.nome} contratado`);
     onContratado();
   }
 

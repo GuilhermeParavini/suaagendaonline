@@ -12,6 +12,7 @@ import {
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import EmptyState from "@/components/ui/EmptyState";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ListaLancamentosProps {
   lancamentos: Lancamento[];
@@ -36,6 +37,7 @@ function ddmm(iso: string): string {
 
 function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   if (lancamentos.length === 0) {
     return (
@@ -58,7 +60,12 @@ function ListaLancamentos({ lancamentos, onChanged }: ListaLancamentosProps) {
     if (!window.confirm("Deseja excluir este lançamento?")) return;
     startTransition(async () => {
       const result = await excluirLancamento(id);
-      if (result.ok) onChanged();
+      if (result.ok) {
+        toast.sucesso("Lancamento excluido");
+        onChanged();
+      } else {
+        toast.erro(result.error);
+      }
     });
   };
 
