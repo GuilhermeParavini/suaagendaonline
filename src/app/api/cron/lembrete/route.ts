@@ -7,6 +7,8 @@ import {
 } from "@/lib/email-templates";
 import { enviarNotificacaoEmail } from "@/lib/notificacoes";
 import { getTenantEmailSignature } from "@/lib/tenant-email-signature";
+import { enviarSMS } from "@/lib/sms-server";
+import { templateSMSLembrete } from "@/lib/sms-templates";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,7 +88,10 @@ export async function GET(req: Request) {
     { data: profissionais },
     { data: tenants },
   ] = await Promise.all([
-    admin.from("pacientes").select("id, nome, email").in("id", pacIds),
+    admin
+      .from("pacientes")
+      .select("id, nome, email, telefone, contato_preferencial")
+      .in("id", pacIds),
     admin.from("profissionais").select("id, nome, logo_url").in("id", profIds),
     admin
       .from("tenants")
@@ -94,11 +99,22 @@ export async function GET(req: Request) {
       .in("id", tenantIds),
   ]);
 
-  const pacMap = new Map<string, { nome: string; email: string | null }>();
+  const pacMap = new Map<
+    string,
+    {
+      nome: string;
+      email: string | null;
+      telefone: string | null;
+      contatoPreferencial: string;
+    }
+  >();
   for (const p of pacientes ?? []) {
     pacMap.set(p.id as string, {
       nome: (p.nome as string) ?? "Paciente",
       email: (p.email as string | null) ?? null,
+      telefone: (p.telefone as string | null) ?? null,
+      contatoPreferencial:
+        (p.contato_preferencial as string | null) ?? "whatsapp",
     });
   }
   const profMap = new Map<string, { nome: string; logoUrl: string | null }>();
@@ -131,8 +147,40 @@ export async function GET(req: Request) {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
 
   let enviados = 0;
+  let smsEnviados = 0;
+  let smsBloqueadosLimite = 0;
   for (const ag of pendentes) {
     const pac = pacMap.get(ag.paciente_id as string);
+
+    // Envia SMS quando paciente prefere SMS (best-effort, isolado do email).
+    if (
+      pac?.telefone &&
+      pac.contatoPreferencial === "sms"
+    ) {
+      try {
+        const dataHoraSms = ag.data_hora as string;
+        const dt = new Date(dataHoraSms);
+        const dataBR = `${String(dt.getUTCDate()).padStart(2, "0")}/${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
+        const horaBR = horarioFromIso(dataHoraSms);
+        const r = await enviarSMS({
+          telefone: pac.telefone,
+          mensagem: templateSMSLembrete({
+            nome: pac.nome,
+            data: dataBR,
+            hora: horaBR,
+          }),
+          tipo: "lembrete",
+          pacienteId: ag.paciente_id as string,
+          profissionalId: ag.profissional_id as string,
+          tenantId: ag.tenant_id as string,
+        });
+        if (r.enviado) smsEnviados += 1;
+        else if (r.motivo === "limite_excedido") smsBloqueadosLimite += 1;
+      } catch (e) {
+        console.error("[cron/lembrete] sms throw:", e);
+      }
+    }
+
     if (!pac?.email) continue;
     const profInfo = profMap.get(ag.profissional_id as string);
     const profNome = profInfo?.nome ?? "Profissional";
@@ -170,5 +218,7 @@ export async function GET(req: Request) {
     ok: true,
     processados: pendentes.length,
     enviados,
+    sms_enviados: smsEnviados,
+    sms_bloqueados_limite: smsBloqueadosLimite,
   });
 }

@@ -23,6 +23,8 @@ import {
 import { enviarNotificacaoEmail } from '@/lib/notificacoes';
 import { getTenantEmailSignature } from '@/lib/tenant-email-signature';
 import { registrarConsentimento } from '@/lib/consentimento';
+import { enviarSMS } from '@/lib/sms-server';
+import { templateSMSConfirmacao } from '@/lib/sms-templates';
 
 export type Slot = { time: string; available: boolean };
 export type DiaIndisponivel =
@@ -547,7 +549,7 @@ export async function criarAgendamentoPublico(
       await Promise.all([
         admin
           .from('pacientes')
-          .select('nome, email')
+          .select('nome, email, telefone')
           .eq('id', pacienteId)
           .maybeSingle(),
         admin
@@ -563,6 +565,8 @@ export async function criarAgendamentoPublico(
       ]);
 
     const destino = (pacienteEmail?.email as string | null) ?? null;
+    const pacienteTelefone =
+      (pacienteEmail?.telefone as string | null) ?? null;
     const pacienteNome = (pacienteEmail?.nome as string | null) ?? 'Paciente';
     const profissionalNome =
       (profissional?.nome as string | null) ?? 'Profissional';
@@ -603,6 +607,29 @@ export async function criarAgendamentoPublico(
         assunto: tpl.assunto,
         html: tpl.html,
       });
+    }
+
+    // SMS de confirmacao (independente do email — best-effort).
+    if (pacienteTelefone) {
+      try {
+        const dt = new Date(dataHoraIso);
+        const dataBR = `${String(dt.getUTCDate()).padStart(2, '0')}/${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+        await enviarSMS({
+          telefone: pacienteTelefone,
+          mensagem: templateSMSConfirmacao({
+            nome: pacienteNome,
+            data: dataBR,
+            hora: horarioFromIso(dataHoraIso),
+            profissional: profissionalNome,
+          }),
+          tipo: 'confirmacao',
+          pacienteId,
+          profissionalId: input.profissionalId,
+          tenantId: input.tenantId,
+        });
+      } catch (e) {
+        console.error('[agendamento-publico] sms confirmacao:', e);
+      }
     }
   } catch (e) {
     console.error('[agendamento-publico] Erro ao enviar email de confirmacao:', e);

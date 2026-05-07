@@ -15,6 +15,11 @@ import {
   mensagemAniversario,
   mensagemSentimosFalta,
 } from "@/lib/whatsapp-templates";
+import {
+  templateSMSAniversario,
+  templateSMSRetorno,
+} from "@/lib/sms-templates";
+import { enviarSMS } from "@/lib/sms-server";
 import type { ContatoPreferencial } from "@/actions/pacientes";
 
 export const dynamic = "force-dynamic";
@@ -322,6 +327,7 @@ export async function GET(req: Request) {
   // ============================================================
   let aniversarioCriadas = 0;
   let inativosCriados = 0;
+  let smsEnviadosFollowup = 0;
 
   try {
     const { data: tenants } = await admin
@@ -379,18 +385,48 @@ export async function GET(req: Request) {
           (p) => !jaSetAniv.has(p.id),
         );
         if (novosAniv.length > 0) {
-          const linhas = novosAniv.map((p) => ({
-            tenant_id: tenant.id,
-            profissional_id: profDono.id as string,
-            paciente_id: p.id,
-            agendamento_id: null,
-            dia_sequencia: 0,
-            tipo: "personalizado",
-            mensagem: mensagemAniversario({ nome: p.nome }),
-            canal: p.contato_preferencial as ContatoPreferencial,
-            status: "pendente",
-            data_prevista: hojeIso,
-          }));
+          const linhas: Array<Record<string, unknown>> = [];
+          for (const p of novosAniv) {
+            const canal = p.contato_preferencial as ContatoPreferencial;
+            let status: "pendente" | "enviado" = "pendente";
+            let dataEnviado: string | null = null;
+
+            // Auto-envio quando canal = SMS. Em caso de falha (limite, etc.)
+            // a tarefa fica pendente para o profissional acionar via outro canal.
+            if (canal === "sms" && p.telefone) {
+              try {
+                const r = await enviarSMS({
+                  telefone: p.telefone,
+                  mensagem: templateSMSAniversario({ nome: p.nome }),
+                  tipo: "aniversario",
+                  pacienteId: p.id,
+                  profissionalId: profDono.id as string,
+                  tenantId: tenant.id,
+                });
+                if (r.enviado) {
+                  status = "enviado";
+                  dataEnviado = new Date().toISOString();
+                  smsEnviadosFollowup += 1;
+                }
+              } catch (e) {
+                console.error("[cron/followup] sms aniv:", e);
+              }
+            }
+
+            linhas.push({
+              tenant_id: tenant.id,
+              profissional_id: profDono.id as string,
+              paciente_id: p.id,
+              agendamento_id: null,
+              dia_sequencia: 0,
+              tipo: "personalizado",
+              mensagem: mensagemAniversario({ nome: p.nome }),
+              canal,
+              status,
+              data_prevista: hojeIso,
+              data_enviado: dataEnviado,
+            });
+          }
           const { error: insErr } = await admin
             .from("aftercare_tarefas")
             .insert(linhas);
@@ -419,11 +455,40 @@ export async function GET(req: Request) {
         );
         const novosInat = inativos.filter((p) => !jaSetInat.has(p.id));
         if (novosInat.length > 0) {
-          const linhas = novosInat.map((p) => {
+          const linhas: Array<Record<string, unknown>> = [];
+          for (const p of novosInat) {
             const dias = p.ultimo_agendamento_data
               ? diffDiasIso(hojeIso, p.ultimo_agendamento_data)
               : 90;
-            return {
+            const canal = p.contato_preferencial as ContatoPreferencial;
+            let status: "pendente" | "enviado" = "pendente";
+            let dataEnviado: string | null = null;
+
+            if (canal === "sms" && p.telefone) {
+              try {
+                const r = await enviarSMS({
+                  telefone: p.telefone,
+                  mensagem: templateSMSRetorno({
+                    nome: p.nome,
+                    diasDesdeUltimaConsulta: dias,
+                    linkAgendamento,
+                  }),
+                  tipo: "inativo",
+                  pacienteId: p.id,
+                  profissionalId: profDono.id as string,
+                  tenantId: tenant.id,
+                });
+                if (r.enviado) {
+                  status = "enviado";
+                  dataEnviado = new Date().toISOString();
+                  smsEnviadosFollowup += 1;
+                }
+              } catch (e) {
+                console.error("[cron/followup] sms inat:", e);
+              }
+            }
+
+            linhas.push({
               tenant_id: tenant.id,
               profissional_id: profDono.id as string,
               paciente_id: p.id,
@@ -435,11 +500,12 @@ export async function GET(req: Request) {
                 diasInativo: dias,
                 linkAgendamento,
               }),
-              canal: p.contato_preferencial as ContatoPreferencial,
-              status: "pendente",
+              canal,
+              status,
               data_prevista: hojeIso,
-            };
-          });
+              data_enviado: dataEnviado,
+            });
+          }
           const { error: insErr } = await admin
             .from("aftercare_tarefas")
             .insert(linhas);
@@ -463,5 +529,6 @@ export async function GET(req: Request) {
     planos_enviados: planosEnviados,
     aniversario_criadas: aniversarioCriadas,
     inativos_criados: inativosCriados,
+    sms_enviados: smsEnviadosFollowup,
   });
 }
