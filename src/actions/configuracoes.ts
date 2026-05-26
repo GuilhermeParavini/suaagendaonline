@@ -124,6 +124,36 @@ async function obterContexto(): Promise<
   };
 }
 
+// Colunas opcionais (adicionadas por migrations posteriores) sao buscadas
+// separadamente para que a ausencia em prod nao derrube toda a query.
+const COLUNAS_PROFISSIONAL_OPCIONAIS = [
+  'assinatura_tipo',
+  'assinatura_fonte',
+  'assinatura_url',
+  'logo_url',
+  'enviar_avaliacao',
+  'enviar_followup',
+  'mostrar_acompanhamento',
+  'followup_mensagem',
+] as const;
+
+function pickString(row: Record<string, unknown>, key: string): string | null {
+  const v = row[key];
+  return typeof v === 'string' ? v : null;
+}
+
+function pickBoolDefaultTrue(
+  row: Record<string, unknown>,
+  key: string,
+): boolean {
+  return row[key] === false ? false : true;
+}
+
+function toHHMM(v: unknown): string {
+  if (typeof v !== 'string' || v.length < 5) return '00:00';
+  return v.slice(0, 5);
+}
+
 export async function getConfiguracoes(): Promise<
   Result<{
     profissional: ProfissionalConfig;
@@ -132,107 +162,158 @@ export async function getConfiguracoes(): Promise<
     procedimentos: Procedimento[];
   }>
 > {
-  const ctx = await obterContexto();
-  if (!ctx.ok) return ctx;
+  try {
+    const ctx = await obterContexto();
+    if (!ctx.ok) return ctx;
 
-  const admin = createAdminClient();
+    const admin = createAdminClient();
 
-  const { data: prof, error: profErr } = await admin
-    .from('profissionais')
-    .select(
-      'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, assinatura_tipo, assinatura_fonte, assinatura_url, logo_url, enviar_avaliacao, enviar_followup, mostrar_acompanhamento, followup_mensagem, intervalo_entre_consultas_min',
-    )
-    .eq('id', ctx.profissionalId)
-    .maybeSingle();
-  if (profErr) return { ok: false, error: profErr.message };
-  if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
+    // Campos obrigatorios apenas. Os opcionais (assinatura_*, logo_url,
+    // enviar_*, mostrar_acompanhamento, followup_mensagem) sao tentados em
+    // uma segunda query com fallback silencioso, para nao quebrar caso a
+    // migration nao tenha sido aplicada em producao.
+    const { data: prof, error: profErr } = await admin
+      .from('profissionais')
+      .select(
+        'id, tenant_id, nome, especialidade, registro_profissional, email, telefone, bio, role, intervalo_entre_consultas_min',
+      )
+      .eq('id', ctx.profissionalId)
+      .maybeSingle();
+    if (profErr) {
+      console.error('[getConfiguracoes] profissionais base:', profErr.message);
+      return { ok: false, error: profErr.message };
+    }
+    if (!prof) return { ok: false, error: 'Profissional nao encontrado.' };
 
-  const { data: tenant, error: tenantErr } = await admin
-    .from('tenants')
-    .select(
-      'id, nome_empresa, slug, telefone, email, endereco, cidade, estado, plano, trial_expira_em',
-    )
-    .eq('id', ctx.tenantId)
-    .maybeSingle();
-  if (tenantErr) return { ok: false, error: tenantErr.message };
-  if (!tenant) return { ok: false, error: 'Tenant nao encontrado.' };
+    const colunasOpcionais: Record<string, unknown> = {};
+    const { data: profExtra, error: profExtraErr } = await admin
+      .from('profissionais')
+      .select(COLUNAS_PROFISSIONAL_OPCIONAIS.join(', '))
+      .eq('id', ctx.profissionalId)
+      .maybeSingle();
+    if (profExtraErr) {
+      console.warn(
+        '[getConfiguracoes] colunas opcionais indisponiveis:',
+        profExtraErr.message,
+      );
+    } else if (profExtra) {
+      Object.assign(
+        colunasOpcionais,
+        profExtra as unknown as Record<string, unknown>,
+      );
+    }
 
-  const { data: horariosRaw, error: horErr } = await admin
-    .from('horarios_disponiveis')
-    .select('dia_semana, hora_inicio, hora_fim')
-    .eq('profissional_id', ctx.profissionalId)
-    .eq('ativo', true)
-    .order('dia_semana', { ascending: true })
-    .order('hora_inicio', { ascending: true });
-  if (horErr) return { ok: false, error: horErr.message };
+    const { data: tenant, error: tenantErr } = await admin
+      .from('tenants')
+      .select(
+        'id, nome_empresa, slug, telefone, email, endereco, cidade, estado, plano, trial_expira_em',
+      )
+      .eq('id', ctx.tenantId)
+      .maybeSingle();
+    if (tenantErr) {
+      console.error('[getConfiguracoes] tenants:', tenantErr.message);
+      return { ok: false, error: tenantErr.message };
+    }
+    if (!tenant) return { ok: false, error: 'Tenant nao encontrado.' };
 
-  const { data: procsRaw, error: procErr } = await admin
-    .from('procedimentos')
-    .select('id, nome, duracao_min, valor, ativo')
-    .eq('tenant_id', ctx.tenantId)
-    .order('nome', { ascending: true });
-  if (procErr) return { ok: false, error: procErr.message };
+    const { data: horariosRaw, error: horErr } = await admin
+      .from('horarios_disponiveis')
+      .select('dia_semana, hora_inicio, hora_fim')
+      .eq('profissional_id', ctx.profissionalId)
+      .eq('ativo', true)
+      .order('dia_semana', { ascending: true })
+      .order('hora_inicio', { ascending: true });
+    if (horErr) {
+      console.error('[getConfiguracoes] horarios:', horErr.message);
+      return { ok: false, error: horErr.message };
+    }
 
-  const horarios: HorarioBloco[] = (horariosRaw ?? []).map((h) => ({
-    dia_semana: h.dia_semana as number,
-    hora_inicio: (h.hora_inicio as string).slice(0, 5),
-    hora_fim: (h.hora_fim as string).slice(0, 5),
-  }));
+    const { data: procsRaw, error: procErr } = await admin
+      .from('procedimentos')
+      .select('id, nome, duracao_min, valor, ativo')
+      .eq('tenant_id', ctx.tenantId)
+      .order('nome', { ascending: true });
+    if (procErr) {
+      console.error('[getConfiguracoes] procedimentos:', procErr.message);
+      return { ok: false, error: procErr.message };
+    }
 
-  const procedimentos: Procedimento[] = (procsRaw ?? []).map((p) => ({
-    id: p.id as string,
-    nome: p.nome as string,
-    duracao_min: p.duracao_min as number,
-    valor: p.valor === null || p.valor === undefined ? null : Number(p.valor),
-    ativo: Boolean(p.ativo),
-  }));
+    const horarios: HorarioBloco[] = (horariosRaw ?? []).map((h) => ({
+      dia_semana: (h.dia_semana as number | null) ?? 0,
+      hora_inicio: toHHMM(h.hora_inicio),
+      hora_fim: toHHMM(h.hora_fim),
+    }));
 
-  return {
-    ok: true,
-    data: {
-      profissional: {
-        id: prof.id as string,
-        tenant_id: prof.tenant_id as string,
-        nome: prof.nome as string,
-        especialidade: prof.especialidade as string,
-        registro_profissional: (prof.registro_profissional as string | null) ?? null,
-        email: prof.email as string,
-        telefone: (prof.telefone as string | null) ?? null,
-        bio: (prof.bio as string | null) ?? null,
-        role: prof.role as string,
-        assinatura_tipo: (prof.assinatura_tipo as AssinaturaTipo | null) ?? null,
-        assinatura_fonte: (prof.assinatura_fonte as string | null) ?? null,
-        assinatura_url: (prof.assinatura_url as string | null) ?? null,
-        logo_url: (prof.logo_url as string | null) ?? null,
-        enviar_avaliacao:
-          (prof.enviar_avaliacao as boolean | null) === false ? false : true,
-        enviar_followup:
-          (prof.enviar_followup as boolean | null) === false ? false : true,
-        mostrar_acompanhamento:
-          (prof.mostrar_acompanhamento as boolean | null) === false
-            ? false
-            : true,
-        followup_mensagem: (prof.followup_mensagem as string | null) ?? null,
-        intervalo_entre_consultas_min:
-          (prof.intervalo_entre_consultas_min as number | null) ?? 0,
+    const procedimentos: Procedimento[] = (procsRaw ?? []).map((p) => ({
+      id: (p.id as string | null) ?? '',
+      nome: (p.nome as string | null) ?? '',
+      duracao_min: (p.duracao_min as number | null) ?? 0,
+      valor: p.valor === null || p.valor === undefined ? null : Number(p.valor),
+      ativo: Boolean(p.ativo),
+    }));
+
+    const assinaturaTipoRaw = pickString(colunasOpcionais, 'assinatura_tipo');
+    const assinatura_tipo: AssinaturaTipo | null =
+      assinaturaTipoRaw === 'fonte' || assinaturaTipoRaw === 'imagem'
+        ? assinaturaTipoRaw
+        : null;
+
+    return {
+      ok: true,
+      data: {
+        profissional: {
+          id: (prof.id as string | null) ?? '',
+          tenant_id: (prof.tenant_id as string | null) ?? '',
+          nome: (prof.nome as string | null) ?? '',
+          especialidade: (prof.especialidade as string | null) ?? '',
+          registro_profissional:
+            (prof.registro_profissional as string | null) ?? null,
+          email: (prof.email as string | null) ?? '',
+          telefone: (prof.telefone as string | null) ?? null,
+          bio: (prof.bio as string | null) ?? null,
+          role: (prof.role as string | null) ?? 'profissional',
+          assinatura_tipo,
+          assinatura_fonte: pickString(colunasOpcionais, 'assinatura_fonte'),
+          assinatura_url: pickString(colunasOpcionais, 'assinatura_url'),
+          logo_url: pickString(colunasOpcionais, 'logo_url'),
+          enviar_avaliacao: pickBoolDefaultTrue(
+            colunasOpcionais,
+            'enviar_avaliacao',
+          ),
+          enviar_followup: pickBoolDefaultTrue(
+            colunasOpcionais,
+            'enviar_followup',
+          ),
+          mostrar_acompanhamento: pickBoolDefaultTrue(
+            colunasOpcionais,
+            'mostrar_acompanhamento',
+          ),
+          followup_mensagem: pickString(colunasOpcionais, 'followup_mensagem'),
+          intervalo_entre_consultas_min:
+            (prof.intervalo_entre_consultas_min as number | null) ?? 0,
+        },
+        tenant: {
+          id: (tenant.id as string | null) ?? '',
+          nome_empresa: (tenant.nome_empresa as string | null) ?? '',
+          slug: (tenant.slug as string | null) ?? '',
+          telefone: (tenant.telefone as string | null) ?? null,
+          email: (tenant.email as string | null) ?? null,
+          endereco: (tenant.endereco as string | null) ?? null,
+          cidade: (tenant.cidade as string | null) ?? null,
+          estado: (tenant.estado as string | null) ?? null,
+          plano: (tenant.plano as string | null) ?? 'trial',
+          trial_expira_em: (tenant.trial_expira_em as string | null) ?? null,
+        },
+        horarios,
+        procedimentos,
       },
-      tenant: {
-        id: tenant.id as string,
-        nome_empresa: tenant.nome_empresa as string,
-        slug: tenant.slug as string,
-        telefone: (tenant.telefone as string | null) ?? null,
-        email: (tenant.email as string | null) ?? null,
-        endereco: (tenant.endereco as string | null) ?? null,
-        cidade: (tenant.cidade as string | null) ?? null,
-        estado: (tenant.estado as string | null) ?? null,
-        plano: (tenant.plano as string | null) ?? 'trial',
-        trial_expira_em:
-          (tenant.trial_expira_em as string | null) ?? null,
-      },
-      horarios,
-      procedimentos,
-    },
-  };
+    };
+  } catch (error) {
+    console.error('[getConfiguracoes] excecao nao tratada:', error);
+    const msg =
+      error instanceof Error ? error.message : 'Erro desconhecido';
+    return { ok: false, error: msg };
+  }
 }
 
 export type AtualizarProfissionalInput = {
