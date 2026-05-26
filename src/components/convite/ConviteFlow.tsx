@@ -50,7 +50,7 @@ function ConviteFlow({ token, convite, userEmail }: ConviteFlowProps) {
       }
       setSucesso(true);
       window.setTimeout(() => {
-        router.push("/");
+        router.push("/inicio");
         router.refresh();
       }, 800);
     });

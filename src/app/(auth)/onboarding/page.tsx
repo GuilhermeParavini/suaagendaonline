@@ -190,7 +190,7 @@ export default function OnboardingPage() {
         return;
       }
 
-      router.push('/');
+      router.push('/inicio');
       router.refresh();
     } catch (error) {
       setApiError('Erro ao completar cadastro. Tente novamente.');

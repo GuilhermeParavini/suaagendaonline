@@ -39,7 +39,7 @@ type ItemFixo = {
 };
 
 const itensFixos: ItemFixo[] = [
-  { href: "/", label: "Inicio", Icon: Home, exact: true },
+  { href: "/inicio", label: "Inicio", Icon: Home, exact: true },
   { href: "/agenda", label: "Agenda", Icon: Calendar },
   {
     href: "/pacientes",

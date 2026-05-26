@@ -47,7 +47,7 @@ type SidebarItem = {
 };
 
 const items: SidebarItem[] = [
-  { href: "/", label: "Inicio", Icon: Home, exact: true, prefetch: true },
+  { href: "/inicio", label: "Inicio", Icon: Home, exact: true, prefetch: true },
   { href: "/dashboard", label: "Dashboard", Icon: BarChart3, prefetch: false },
   { href: "/agenda", label: "Agenda", Icon: Calendar, prefetch: true },
   {
@@ -134,7 +134,7 @@ function Sidebar({
     <aside className="hidden lg:flex lg:w-60 lg:shrink-0 lg:flex-col lg:sticky lg:top-0 lg:h-screen bg-white border-r border-slate-200">
       <div className="px-6 py-5 border-b border-slate-200">
         <Link
-          href="/"
+          href="/inicio"
           className="flex items-center gap-2 text-lg font-semibold text-primary-dark leading-tight"
         >
           {logoUrl ? (

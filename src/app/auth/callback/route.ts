@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get('code');
   const tokenHash = url.searchParams.get('token_hash');
   const typeParam = url.searchParams.get('type') as EmailOtpType | null;
-  const nextParam = url.searchParams.get('next') ?? '/';
+  const nextParam = url.searchParams.get('next') ?? '/inicio';
   const errorParam = url.searchParams.get('error');
   const errorDescription = url.searchParams.get('error_description');
 
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     todosParams: Object.keys(allParams),
   });
 
-  const nextSafe = nextParam.startsWith('/') ? nextParam : '/';
+  const nextSafe = nextParam.startsWith('/') ? nextParam : '/inicio';
   // Recovery sempre cai em /redefinir-senha, ignorando next se necessario.
   const isRecovery =
     typeParam === 'recovery' || nextSafe.startsWith('/redefinir-senha');

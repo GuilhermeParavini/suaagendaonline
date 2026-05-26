@@ -53,7 +53,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(conviteToken ? `/convite/${conviteToken}` : '/');
+      router.push(conviteToken ? `/convite/${conviteToken}` : '/inicio');
       router.refresh();
     } catch (error) {
       setApiError('Erro ao fazer login. Tente novamente.');
