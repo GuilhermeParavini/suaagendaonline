@@ -1,12 +1,26 @@
-// Sistema de planos v2 (3 planos + addons SMS + addons IA + degustacao mensal).
-// Tabelas relacionadas (ja criadas no Supabase): planos_sistema, addons_tenant,
-// uso_sms, sms_log, tenants.modulos_ativos jsonb, pacientes.contato_preferencial.
+// Sistema de planos v2.0 (26/05/2026).
+//
+// Mudanca estrategica documentada em suagendaonline-planos-precificacao-v2.md:
+//   - 4 planos (individual, equipe3, equipe5, clinica10) que variam apenas
+//     por quantidade de profissionais e limites de IA.
+//   - TODAS as funcionalidades e modulos estao inclusos em TODOS os planos
+//     (sem feature gating).
+//   - IA (transcricao + assistente) inclusa nos planos. Add-ons de IA foram
+//     descontinuados.
+//   - Add-ons SMS continuam (provedor: Zenvia) com novos pacotes.
+//
+// Compatibilidade: os IDs legacy (essencial/profissional/clinica) sao
+// aceitos como entrada e mapeados para os novos planos via mapearPlanoLegacy.
+// A migracao do banco e feita em suagendaonline-planos-v2.sql.
 
-export type PlanoId = "essencial" | "profissional" | "clinica";
+export type PlanoId = "individual" | "equipe3" | "equipe5" | "clinica10";
 
 // O id "trial" nao existe na tabela planos_sistema — durante o trial, o tenant
-// ganha as funcionalidades do Profissional gratuitamente por 14 dias.
+// ganha as funcionalidades do Clinica 10 gratuitamente por 14 dias.
 export type PlanoSlug = PlanoId | "trial";
+
+// IDs legacy (v1) — aceitos como entrada para o periodo de transicao.
+export type PlanoLegacyId = "essencial" | "profissional" | "clinica";
 
 export type ModuloId =
   | "estoque"
@@ -32,22 +46,47 @@ export type InfoPlano = {
   id: PlanoSlug;
   nome: string;
   preco: number;
-  // Limites legacy (mantidos para retrocompat com o restante do codigo).
+  // Limites em segundos (1 min = 60s) e numero de perguntas no mes.
   limiteTranscricaoSegundos: number;
   maxProfissionais: number;
   limiteAssistente: number;
-  // Novo modelo v2.
   funcionalidades: Funcionalidade[];
   modulos: ModuloId[];
   destaque?: boolean;
 };
 
-// Limites de degustacao gratuita mensal (recursos pagos com amostra gratis).
+// Degustacao mensal. Em v2 a IA esta inclusa nos planos pagos, mas mantemos
+// um pequeno "primeiro uso" gratis no trial — aqui zerado porque o trial ja
+// libera os limites do Clinica 10.
 export const DEGUSTACAO_SMS = 10;
-export const DEGUSTACAO_IA = 10;
+export const DEGUSTACAO_IA = 0;
 
-// Preco por SMS avulso (fora do pacote contratado).
-export const SMS_AVULSO_PRECO = 0.3;
+// Preco por SMS avulso (excedente fora do pacote).
+export const SMS_AVULSO_PRECO = 0.25;
+
+// ---------------- Funcionalidades inclusas em TODOS os planos pagos ----------------
+
+const TODAS_FUNCIONALIDADES: Funcionalidade[] = [
+  "agenda",
+  "pacientes",
+  "financeiro",
+  "relatorios",
+  "transcricao_audio",
+  "assistente_ia",
+  "planos_tratamento",
+  "estoque",
+  "comissoes",
+  "aftercare",
+  "multi_profissional",
+  "avaliacoes_publicas",
+];
+
+const TODOS_MODULOS: ModuloId[] = [
+  "estoque",
+  "comissoes",
+  "planos_tratamento",
+  "aftercare",
+];
 
 // ---------------- Planos ----------------
 
@@ -56,83 +95,75 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "trial",
     nome: "Trial (14 dias)",
     preco: 0,
-    limiteTranscricaoSegundos: 600,
-    maxProfissionais: 1,
-    limiteAssistente: 50,
-    funcionalidades: [
-      "agenda",
-      "pacientes",
-      "financeiro",
-      "relatorios",
-      "transcricao_audio",
-      "assistente_ia",
-      "planos_tratamento",
-      "avaliacoes_publicas",
-    ],
-    modulos: ["planos_tratamento"],
+    // Trial entrega a experiencia do Clinica 10.
+    limiteTranscricaoSegundos: 400 * 60,
+    maxProfissionais: 10,
+    limiteAssistente: 700,
+    funcionalidades: TODAS_FUNCIONALIDADES,
+    modulos: TODOS_MODULOS,
   },
-  essencial: {
-    id: "essencial",
-    nome: "Essencial",
-    preco: 59.9,
-    limiteTranscricaoSegundos: 0,
+  individual: {
+    id: "individual",
+    nome: "Individual",
+    preco: 29.9,
+    limiteTranscricaoSegundos: 60 * 60,
     maxProfissionais: 1,
-    limiteAssistente: 0,
-    funcionalidades: [
-      "agenda",
-      "pacientes",
-      "financeiro",
-      "relatorios",
-      "avaliacoes_publicas",
-    ],
-    modulos: [],
+    limiteAssistente: 100,
+    funcionalidades: TODAS_FUNCIONALIDADES,
+    modulos: TODOS_MODULOS,
   },
-  profissional: {
-    id: "profissional",
-    nome: "Profissional",
-    preco: 79.9,
-    limiteTranscricaoSegundos: 3600,
-    maxProfissionais: 1,
-    limiteAssistente: 300,
+  equipe3: {
+    id: "equipe3",
+    nome: "Equipe 3",
+    preco: 39.9,
+    limiteTranscricaoSegundos: 120 * 60,
+    maxProfissionais: 3,
+    limiteAssistente: 200,
     destaque: true,
-    funcionalidades: [
-      "agenda",
-      "pacientes",
-      "financeiro",
-      "relatorios",
-      "transcricao_audio",
-      "assistente_ia",
-      "planos_tratamento",
-      "avaliacoes_publicas",
-    ],
-    modulos: ["planos_tratamento"],
+    funcionalidades: TODAS_FUNCIONALIDADES,
+    modulos: TODOS_MODULOS,
   },
-  clinica: {
-    id: "clinica",
-    nome: "Clinica",
-    preco: 119.9,
-    limiteTranscricaoSegundos: 9000,
+  equipe5: {
+    id: "equipe5",
+    nome: "Equipe 5",
+    preco: 49.9,
+    limiteTranscricaoSegundos: 200 * 60,
     maxProfissionais: 5,
-    limiteAssistente: 1000,
-    funcionalidades: [
-      "agenda",
-      "pacientes",
-      "financeiro",
-      "relatorios",
-      "transcricao_audio",
-      "assistente_ia",
-      "planos_tratamento",
-      "estoque",
-      "comissoes",
-      "aftercare",
-      "multi_profissional",
-      "avaliacoes_publicas",
-    ],
-    modulos: ["estoque", "comissoes", "planos_tratamento", "aftercare"],
+    limiteAssistente: 350,
+    funcionalidades: TODAS_FUNCIONALIDADES,
+    modulos: TODOS_MODULOS,
+  },
+  clinica10: {
+    id: "clinica10",
+    nome: "Clinica 10",
+    preco: 69.9,
+    limiteTranscricaoSegundos: 400 * 60,
+    maxProfissionais: 10,
+    limiteAssistente: 700,
+    funcionalidades: TODAS_FUNCIONALIDADES,
+    modulos: TODOS_MODULOS,
   },
 };
 
-// ---------------- Add-ons ----------------
+// Mapeamento de IDs legacy (v1) -> v2. Usado em getPlano() para tolerar
+// tenants que ainda tenham o valor antigo na coluna `tenants.plano`.
+const MAPA_PLANO_LEGACY: Record<PlanoLegacyId, PlanoId> = {
+  essencial: "individual",
+  profissional: "equipe3",
+  clinica: "clinica10",
+};
+
+function mapearPlanoLegacy(id: string): string {
+  if (id in MAPA_PLANO_LEGACY) {
+    return MAPA_PLANO_LEGACY[id as PlanoLegacyId];
+  }
+  return id;
+}
+
+// ---------------- Add-ons SMS ----------------
+// Em v2 os pacotes seguem os tres tamanhos (basico/intermediario/avancado)
+// mas mantemos as chaves p1/p2/p3 para compat com a tabela addons_tenant
+// e com consumidores existentes.
 
 export type AddonTipo = "sms" | "ia";
 export type AddonPacote = "p1" | "p2" | "p3";
@@ -149,49 +180,33 @@ export const ADDONS_SMS: Record<AddonPacote, InfoAddon> = {
   p1: {
     tipo: "sms",
     pacote: "p1",
-    nome: "Pacote 50 SMS",
-    quantidade: 50,
-    preco: 9.9,
+    nome: "SMS Basico (100/mes)",
+    quantidade: 100,
+    preco: 19.9,
   },
   p2: {
     tipo: "sms",
     pacote: "p2",
-    nome: "Pacote 100 SMS",
-    quantidade: 100,
-    preco: 16.9,
+    nome: "SMS Intermediario (300/mes)",
+    quantidade: 300,
+    preco: 39.9,
   },
   p3: {
     tipo: "sms",
     pacote: "p3",
-    nome: "Pacote 500 SMS",
-    quantidade: 500,
-    preco: 64.9,
+    nome: "SMS Avancado (1.000/mes)",
+    quantidade: 1000,
+    preco: 89.9,
   },
 };
 
-export const ADDONS_IA: Record<AddonPacote, InfoAddon> = {
-  p1: {
-    tipo: "ia",
-    pacote: "p1",
-    nome: "Pacote 50 perguntas IA",
-    quantidade: 50,
-    preco: 14.9,
-  },
-  p2: {
-    tipo: "ia",
-    pacote: "p2",
-    nome: "Pacote 200 perguntas IA",
-    quantidade: 200,
-    preco: 49.9,
-  },
-  p3: {
-    tipo: "ia",
-    pacote: "p3",
-    nome: "Pacote 500 perguntas IA",
-    quantidade: 500,
-    preco: 99.9,
-  },
-};
+// IA passou a ser INCLUSA nos planos pagos a partir de v2. Tabela mantida
+// vazia para preservar a forma `Record<AddonPacote, InfoAddon>` esperada
+// pelo restante do codigo, ate que a UI de planos seja migrada.
+export const ADDONS_IA: Record<AddonPacote, InfoAddon> = {} as Record<
+  AddonPacote,
+  InfoAddon
+>;
 
 // ---------------- Modulos ----------------
 
@@ -202,22 +217,22 @@ export const MODULOS_INFO: Record<
   estoque: {
     nome: "Estoque",
     descricao: "Controle de produtos, movimentacoes e alertas de baixa.",
-    planosDisponiveis: ["clinica"],
+    planosDisponiveis: ["individual", "equipe3", "equipe5", "clinica10"],
   },
   comissoes: {
     nome: "Comissoes",
     descricao: "Calculo de comissoes por profissional e procedimento.",
-    planosDisponiveis: ["clinica"],
+    planosDisponiveis: ["individual", "equipe3", "equipe5", "clinica10"],
   },
   planos_tratamento: {
     nome: "Planos de Tratamento",
     descricao: "Sessoes encadeadas, evolucao e alta do paciente.",
-    planosDisponiveis: ["profissional", "clinica"],
+    planosDisponiveis: ["individual", "equipe3", "equipe5", "clinica10"],
   },
   aftercare: {
     nome: "Aftercare",
     descricao: "Acompanhamento pos-alta e retorno automatico.",
-    planosDisponiveis: ["clinica"],
+    planosDisponiveis: ["individual", "equipe3", "equipe5", "clinica10"],
   },
 };
 
@@ -257,7 +272,9 @@ export function normalizarModulosAtivos(
 // ---------------- Helpers v2 ----------------
 
 export function getPlano(planoId: string | null | undefined): InfoPlano {
-  if (planoId && planoId in PLANOS) return PLANOS[planoId as PlanoSlug];
+  if (!planoId) return PLANOS.trial;
+  const id = mapearPlanoLegacy(planoId);
+  if (id in PLANOS) return PLANOS[id as PlanoSlug];
   return PLANOS.trial;
 }
 

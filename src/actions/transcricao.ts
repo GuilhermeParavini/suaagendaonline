@@ -117,13 +117,15 @@ export async function verificarLimiteTranscricaoPorTenant(
 ): Promise<Result<LimiteTranscricaoResult>> {
   const uso = await calcularUso(admin, tenantId);
 
-  if (uso.plano === 'essencial' || uso.limiteSegundos === 0) {
+  // Em v2 a transcricao esta inclusa em todos os planos pagos. Esta branch
+  // so dispara para planos invalidos/sem limite (defensiva).
+  if (uso.limiteSegundos === 0) {
     return {
       ok: true,
       data: {
         permitido: false,
         mensagem:
-          'Transcrição de áudio não está disponível no plano Essencial. Faça upgrade para o plano Profissional.',
+          'Transcrição de áudio indisponível no plano atual. Verifique a configuração da sua assinatura.',
         uso,
       },
     };
