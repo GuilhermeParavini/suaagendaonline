@@ -17,13 +17,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title:
-    "Agenda4U - Sistema de Agendamento com IA para Profissionais da Saude",
+    "Agenda4U - Sistema de Agendamento com IA para Profissionais da Saúde",
   description:
-    "Agenda online, prontuario, anamnese e transcricao por IA. A partir de R$ 29,90/mes. 14 dias gratis.",
+    "Agenda online, prontuário, anamnese e transcrição por IA. A partir de R$ 29,90/mês. 14 dias grátis.",
   openGraph: {
-    title: "Agenda4U - Sistema de Agendamento com IA para Profissionais da Saude",
+    title:
+      "Agenda4U - Sistema de Agendamento com IA para Profissionais da Saúde",
     description:
-      "Agenda online, prontuario, anamnese e transcricao por IA. A partir de R$ 29,90/mes. 14 dias gratis.",
+      "Agenda online, prontuário, anamnese e transcrição por IA. A partir de R$ 29,90/mês. 14 dias grátis.",
     type: "website",
     url: "https://appagenda4u.com",
     siteName: "Agenda4U",
@@ -31,9 +32,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Agenda4U - IA inclusa para profissionais da saude",
+    title: "Agenda4U - IA inclusa para profissionais da saúde",
     description:
-      "Agenda, prontuario, transcricao por IA. A partir de R$ 29,90/mes. 14 dias gratis.",
+      "Agenda, prontuário, transcrição por IA. A partir de R$ 29,90/mês. 14 dias grátis.",
   },
 };
 

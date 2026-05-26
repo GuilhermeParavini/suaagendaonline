@@ -12,7 +12,7 @@ import {
 const ESPECIALIDADES = [
   { Icon: Footprints, nome: "Podologia" },
   { Icon: Activity, nome: "Fisioterapia" },
-  { Icon: Apple, nome: "Nutricao" },
+  { Icon: Apple, nome: "Nutrição" },
   { Icon: Brain, nome: "Psicologia" },
   { Icon: MessagesSquare, nome: "Fonoaudiologia" },
   { Icon: HeartPulse, nome: "Cardiologia" },
@@ -29,7 +29,7 @@ export default function Specialties() {
             Feito para a sua especialidade
           </h2>
           <p className="mt-4 text-base text-slate-600">
-            Templates de anamnese prontos para cada area. Personalize como
+            Templates de anamnese prontos para cada área. Personalize como
             quiser.
           </p>
         </div>

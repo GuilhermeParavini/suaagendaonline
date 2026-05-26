@@ -5,14 +5,14 @@ const PASSOS = [
     n: "1",
     Icon: UserPlus,
     titulo: "Crie sua conta",
-    descricao: "Preencha nome, email e especialidade. Sem cartao.",
+    descricao: "Preencha nome, e-mail e especialidade. Sem cartão.",
   },
   {
     n: "2",
     Icon: Settings2,
     titulo: "Configure sua agenda",
     descricao:
-      "Defina horarios, servicos e bloqueios. O sistema ja sugere templates da sua area.",
+      "Defina horários, serviços e bloqueios. O sistema já sugere templates da sua área.",
   },
   {
     n: "3",
@@ -32,7 +32,7 @@ export default function HowItWorks() {
             Comece em <span className="text-[#0D9488]">3 minutos</span>
           </h2>
           <p className="mt-4 text-base text-slate-600">
-            Sem instalacao. Sem treinamento. Funciona no celular e no
+            Sem instalação. Sem treinamento. Funciona no celular e no
             computador.
           </p>
         </div>

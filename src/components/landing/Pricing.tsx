@@ -17,40 +17,40 @@ const PLANOS: Plano[] = [
     nome: "Individual",
     preco: "29,90",
     profissionais: "1 profissional",
-    transcricao: "60 min/mes",
-    assistente: "100 perguntas/mes",
+    transcricao: "60 min/mês",
+    assistente: "100 perguntas/mês",
   },
   {
     id: "equipe3",
     nome: "Equipe 3",
     preco: "39,90",
-    profissionais: "Ate 3 profissionais",
-    transcricao: "120 min/mes",
-    assistente: "200 perguntas/mes",
+    profissionais: "Até 3 profissionais",
+    transcricao: "120 min/mês",
+    assistente: "200 perguntas/mês",
     popular: true,
   },
   {
     id: "equipe5",
     nome: "Equipe 5",
     preco: "49,90",
-    profissionais: "Ate 5 profissionais",
-    transcricao: "200 min/mes",
-    assistente: "350 perguntas/mes",
+    profissionais: "Até 5 profissionais",
+    transcricao: "200 min/mês",
+    assistente: "350 perguntas/mês",
   },
   {
     id: "clinica10",
-    nome: "Clinica 10",
+    nome: "Clínica 10",
     preco: "69,90",
-    profissionais: "Ate 10 profissionais",
-    transcricao: "400 min/mes",
-    assistente: "700 perguntas/mes",
+    profissionais: "Até 10 profissionais",
+    transcricao: "400 min/mês",
+    assistente: "700 perguntas/mês",
   },
 ];
 
 const INCLUSO = [
   "Todas as funcionalidades",
   "Agenda online",
-  "Anamnese personalizavel",
+  "Anamnese personalizável",
   "Financeiro completo",
   "Suporte por email",
 ];
@@ -64,8 +64,8 @@ export default function Pricing() {
             Planos simples. Sem surpresas.
           </h2>
           <p className="mt-4 text-base text-slate-600">
-            Todas as funcionalidades inclusas em todos os planos. A unica
-            diferenca e o numero de profissionais.
+            Todas as funcionalidades inclusas em todos os planos. A única
+            diferença é o número de profissionais.
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function Pricing() {
                 <span className="text-4xl font-semibold text-slate-900">
                   {plano.preco}
                 </span>
-                <span className="text-sm text-slate-500">/mes</span>
+                <span className="text-sm text-slate-500">/mês</span>
               </div>
 
               <ul className="mt-6 space-y-2.5 text-sm text-slate-700">
@@ -108,7 +108,7 @@ export default function Pricing() {
                     aria-hidden="true"
                   />
                   <span>
-                    Transcricao IA:{" "}
+                    Transcrição IA:{" "}
                     <strong className="text-slate-900">
                       {plano.transcricao}
                     </strong>
@@ -147,14 +147,14 @@ export default function Pricing() {
                     : "mt-7 inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-50"
                 }
               >
-                Experimentar gratis
+                Experimentar grátis
               </Link>
             </article>
           ))}
         </div>
 
         <p className="mt-10 text-center text-sm text-slate-500">
-          14 dias gratis. Sem cartao de credito. Cancele quando quiser.
+          14 dias grátis. Sem cartão de crédito. Cancele quando quiser.
         </p>
       </div>
     </section>

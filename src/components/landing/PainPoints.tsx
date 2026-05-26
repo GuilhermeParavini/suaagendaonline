@@ -5,19 +5,19 @@ const PAIN_POINTS = [
     Icon: CalendarX,
     titulo: "Agenda desorganizada",
     descricao:
-      "Pacientes ligam pra remarcar. Voce perde tempo anotando em papel ou WhatsApp.",
+      "Pacientes ligam pra remarcar. Você perde tempo anotando em papel ou WhatsApp.",
   },
   {
     Icon: Wallet,
     titulo: "Sistemas caros e complicados",
     descricao:
-      "Paga R$ 100, R$ 200 por mes por funcoes que nunca usa. TISS, telemedicina... voce so precisa agendar e atender.",
+      "Paga R$ 100, R$ 200 por mês por funções que nunca usa. TISS, telemedicina... você só precisa agendar e atender.",
   },
   {
     Icon: FileEdit,
-    titulo: "Evolucoes demoradas",
+    titulo: "Evoluções demoradas",
     descricao:
-      "Depois de cada atendimento, ainda precisa sentar e digitar tudo. Tempo que podia ser com o proximo paciente.",
+      "Depois de cada atendimento, ainda precisa sentar e digitar tudo. Tempo que podia ser com o próximo paciente.",
   },
 ];
 
@@ -27,11 +27,11 @@ export default function PainPoints() {
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-[28px] font-semibold leading-tight text-slate-900 sm:text-[32px]">
-            Voce ainda usa agenda de papel? Ou paga caro por um sistema que nao
+            Você ainda usa agenda de papel? Ou paga caro por um sistema que não
             usa metade?
           </h2>
           <p className="mt-4 text-base text-slate-600">
-            Os problemas que ouvimos de profissionais da saude todos os dias.
+            Os problemas que ouvimos de profissionais da saúde todos os dias.
           </p>
         </div>
 

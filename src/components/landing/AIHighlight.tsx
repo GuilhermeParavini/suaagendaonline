@@ -1,7 +1,7 @@
 import { Mic, Bot, Check, X } from "lucide-react";
 
 const COMPARATIVOS = [
-  { nome: "iClinic", ok: false, label: "IA nao inclusa" },
+  { nome: "iClinic", ok: false, label: "IA não inclusa" },
   { nome: "Simples Agenda", ok: false, label: "Sem IA" },
   { nome: "AgendaSmart", ok: false, label: "Sem IA" },
   {
@@ -27,13 +27,13 @@ export default function AIHighlight() {
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#CCFBF1]">
-            Diferencial unico
+            Diferencial único
           </span>
           <h2 className="mt-5 text-[28px] font-semibold leading-tight sm:text-[36px]">
             IA inclusa. Sem custo extra. Em todos os planos.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-[#CCFBF1]/90 sm:text-lg">
-            Somos o unico sistema abaixo de R$ 100/mes com inteligencia
+            Somos o único sistema abaixo de R$ 100/mês com inteligência
             artificial integrada de verdade.
           </p>
         </div>
@@ -43,10 +43,10 @@ export default function AIHighlight() {
             <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#0D9488] text-white">
               <Mic size={22} strokeWidth={1.75} aria-hidden="true" />
             </div>
-            <h3 className="text-xl font-semibold">Transcricao por voz</h3>
+            <h3 className="text-xl font-semibold">Transcrição por voz</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#CCFBF1]/90">
               Grave o atendimento com um toque. A IA transcreve e organiza
-              automaticamente na evolucao do paciente. Voce fala, o sistema
+              automaticamente na evolução do paciente. Você fala, o sistema
               escreve.
             </p>
           </article>
@@ -58,7 +58,7 @@ export default function AIHighlight() {
             <h3 className="text-xl font-semibold">Assistente inteligente</h3>
             <p className="mt-2 text-sm leading-relaxed text-[#CCFBF1]/90">
               Pergunte sobre protocolos, medicamentos, condutas. Seu assistente
-              clinico disponivel 24h, dentro do sistema.
+              clínico disponível 24h, dentro do sistema.
             </p>
           </article>
         </div>

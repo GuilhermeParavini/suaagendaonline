@@ -6,7 +6,7 @@ export default function Testimonials() {
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-[28px] font-semibold leading-tight text-slate-900 sm:text-[32px]">
-            Profissionais que ja usam
+            Profissionais que já usam
           </h2>
           <p className="mt-4 text-base text-slate-600">
             Estamos na fase beta com profissionais selecionados. Quer ser um dos
@@ -33,7 +33,7 @@ export default function Testimonials() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-900">
-                  Podologa parceira
+                  Podóloga parceira
                 </p>
                 <p className="text-xs text-slate-500">Em fase beta - 2026</p>
               </div>
@@ -45,16 +45,16 @@ export default function Testimonials() {
               <div className="flex items-center gap-2 text-[#115E59]">
                 <Users size={18} aria-hidden="true" />
                 <span className="text-xs font-semibold uppercase tracking-wide">
-                  Voce pode ser o proximo
+                  Você pode ser o próximo
                 </span>
               </div>
               <h3 className="mt-4 text-xl font-semibold text-slate-900">
-                Feito para podologos, fisioterapeutas e nutricionistas em todo o
-                Brasil.
+                Feito para podólogos, fisioterapeutas e nutricionistas em todo
+                o Brasil.
               </h3>
               <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                Estamos abrindo vagas em fase beta. Teste gratis por 14 dias e,
-                se gostar, escolha o plano que faz sentido pra voce.
+                Estamos abrindo vagas em fase beta. Teste grátis por 14 dias e,
+                se gostar, escolha o plano que faz sentido pra você.
               </p>
             </div>
           </article>

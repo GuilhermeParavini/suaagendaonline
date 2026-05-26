@@ -17,7 +17,7 @@ export default function LandingFooter() {
               Agenda4U
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-slate-500">
-              Sistema de gestao para profissionais da saude com inteligencia
+              Sistema de gestão para profissionais da saúde com inteligência
               artificial inclusa.
             </p>
           </div>
@@ -27,12 +27,12 @@ export default function LandingFooter() {
             <ul className="mt-4 space-y-2 text-sm text-slate-600">
               <li>
                 <Link href="#planos" className="hover:text-[#0D9488]">
-                  Planos e precos
+                  Planos e preços
                 </Link>
               </li>
               <li>
                 <Link href="/cadastro" className="hover:text-[#0D9488]">
-                  Comecar gratis
+                  Começar grátis
                 </Link>
               </li>
               <li>
@@ -53,7 +53,7 @@ export default function LandingFooter() {
               </li>
               <li>
                 <Link href="/privacidade" className="hover:text-[#0D9488]">
-                  Politica de privacidade
+                  Política de privacidade
                 </Link>
               </li>
               <li>
@@ -68,7 +68,7 @@ export default function LandingFooter() {
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-slate-900">Seguranca</p>
+            <p className="text-sm font-semibold text-slate-900">Segurança</p>
             <div className="mt-4 inline-flex items-center gap-2 rounded-lg border border-[#99F6E4] bg-[#F0FDFA] px-3 py-2">
               <ShieldCheck size={16} className="text-[#0D9488]" aria-hidden="true" />
               <span className="text-xs font-semibold text-[#115E59]">

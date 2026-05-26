@@ -20,14 +20,14 @@ export default function FinalCTA() {
               Pronto para simplificar sua rotina?
             </h2>
             <p className="mt-4 text-base leading-relaxed text-[#CCFBF1]/90 sm:text-lg">
-              14 dias gratis. Sem cartao. Todas as funcionalidades.
+              14 dias grátis. Sem cartão. Todas as funcionalidades.
             </p>
 
             <Link
               href="/cadastro"
               className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-7 text-base font-semibold text-[#115E59] shadow-sm transition-colors hover:bg-[#F0FDFA]"
             >
-              Criar minha conta gratis
+              Criar minha conta grátis
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
 

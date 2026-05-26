@@ -23,7 +23,7 @@ export default function HeroSection() {
             <div className="space-y-7 text-center lg:text-left">
               <span className="inline-flex items-center gap-2 rounded-full border border-[#99F6E4] bg-[#F0FDFA] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#115E59]">
                 <Sparkles size={14} aria-hidden="true" />
-                IA inclusa - a partir de R$ 29,90/mes
+                IA inclusa - a partir de R$ 29,90/mês
               </span>
 
               <h1 className="text-[36px] font-semibold leading-[1.1] text-slate-900 sm:text-[44px] lg:text-[52px]">
@@ -33,9 +33,9 @@ export default function HeroSection() {
               </h1>
 
               <p className="mx-auto max-w-[560px] text-base leading-relaxed text-slate-600 sm:text-lg lg:mx-0">
-                Sistema completo de agendamento e gestao clinica com
-                inteligencia artificial inclusa. Para podologos, fisioterapeutas,
-                nutricionistas e profissionais da saude.
+                Sistema completo de agendamento e gestão clínica com
+                inteligência artificial inclusa. Para podólogos, fisioterapeutas,
+                nutricionistas e profissionais da saúde.
               </p>
 
               <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center lg:items-start lg:justify-start">
@@ -43,7 +43,7 @@ export default function HeroSection() {
                   href="/cadastro"
                   className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-7 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#115E59] sm:w-auto"
                 >
-                  Experimentar gratis por 14 dias
+                  Experimentar grátis por 14 dias
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <Link
@@ -55,7 +55,7 @@ export default function HeroSection() {
               </div>
 
               <p className="text-xs text-slate-500">
-                Sem cartao de credito. Cancele quando quiser.
+                Sem cartão de crédito. Cancele quando quiser.
               </p>
             </div>
 
@@ -87,7 +87,7 @@ export default function HeroSection() {
                     },
                     {
                       h: "10:30",
-                      nome: "Joao Pedro",
+                      nome: "João Pedro",
                       proc: "Retorno",
                       status: "Em atendimento",
                       cor: "bg-[#FEF3C7] text-[#92400E]",
@@ -95,7 +95,7 @@ export default function HeroSection() {
                     {
                       h: "14:00",
                       nome: "Carla Lima",
-                      proc: "Avaliacao",
+                      proc: "Avaliação",
                       status: "Agendado",
                       cor: "bg-[#DBEAFE] text-[#1E40AF]",
                     },
@@ -128,7 +128,7 @@ export default function HeroSection() {
                   <div className="flex items-center gap-2 text-[#115E59]">
                     <Mic size={16} aria-hidden="true" />
                     <span className="text-xs font-semibold">
-                      Gravar evolucao por voz
+                      Gravar evolução por voz
                     </span>
                   </div>
                   <Bot size={16} className="text-[#0D9488]" aria-hidden="true" />
@@ -140,11 +140,11 @@ export default function HeroSection() {
                 <p className="text-[11px] font-semibold text-[#0D9488]">
                   IA inclusa
                 </p>
-                <p className="text-[10px] text-slate-500">100 perguntas/mes</p>
+                <p className="text-[10px] text-slate-500">100 perguntas/mês</p>
               </div>
               <div className="absolute -right-4 bottom-6 hidden rotate-[3deg] rounded-lg bg-white px-3 py-2 shadow-md sm:block">
                 <p className="text-[11px] font-semibold text-[#F97316]">
-                  R$ 29,90/mes
+                  R$ 29,90/mês
                 </p>
                 <p className="text-[10px] text-slate-500">Plano Individual</p>
               </div>

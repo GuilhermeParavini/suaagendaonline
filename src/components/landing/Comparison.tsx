@@ -10,20 +10,20 @@ type Row = {
 
 const ROWS: Row[] = [
   {
-    feature: "Preco individual",
+    feature: "Preço individual",
     agenda4u: "R$ 29,90",
     simples: "R$ 39,90",
     smart: "R$ 39,90",
     iclinic: "R$ 90+",
   },
-  { feature: "Transcricao por IA", agenda4u: true, simples: false, smart: false, iclinic: false },
+  { feature: "Transcrição por IA", agenda4u: true, simples: false, smart: false, iclinic: false },
   { feature: "Assistente IA", agenda4u: true, simples: false, smart: false, iclinic: false },
-  { feature: "Anamnese personalizavel", agenda4u: true, simples: false, smart: true, iclinic: true },
+  { feature: "Anamnese personalizável", agenda4u: true, simples: false, smart: true, iclinic: true },
   { feature: "Financeiro completo", agenda4u: true, simples: true, smart: true, iclinic: true },
   { feature: "Agenda online", agenda4u: true, simples: true, smart: true, iclinic: true },
-  { feature: "Comissoes", agenda4u: true, simples: false, smart: false, iclinic: true },
+  { feature: "Comissões", agenda4u: true, simples: false, smart: false, iclinic: true },
   { feature: "Estoque", agenda4u: true, simples: false, smart: false, iclinic: false },
-  { feature: "Foco em saude", agenda4u: true, simples: false, smart: true, iclinic: true },
+  { feature: "Foco em saúde", agenda4u: true, simples: false, smart: true, iclinic: true },
 ];
 
 function Cell({ value }: { value: boolean | string }) {
@@ -42,7 +42,7 @@ function Cell({ value }: { value: boolean | string }) {
       size={20}
       className="mx-auto text-rose-400"
       strokeWidth={2}
-      aria-label="Nao"
+      aria-label="Não"
     />
   );
 }
@@ -114,7 +114,7 @@ export default function Comparison() {
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          Precos consultados em maio/2026. Sujeitos a alteracao pelos
+          Preços consultados em maio/2026. Sujeitos a alteração pelos
           respectivos fornecedores.
         </p>
       </div>

@@ -26,7 +26,7 @@ export default function LandingHeader() {
             href="/cadastro"
             className="inline-flex h-10 items-center rounded-lg bg-[#0D9488] px-4 text-sm font-semibold text-white hover:bg-[#115E59] transition-colors"
           >
-            Comecar gratis
+            Começar grátis
           </Link>
         </nav>
       </div>

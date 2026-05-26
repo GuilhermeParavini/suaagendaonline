@@ -12,37 +12,37 @@ const FEATURES = [
     Icon: CalendarDays,
     titulo: "Agenda inteligente",
     descricao:
-      "Calendario visual, agendamento online pelo paciente, bloqueio de horarios, feriados e ferias.",
+      "Calendário visual, agendamento online pelo paciente, bloqueio de horários, feriados e férias.",
   },
   {
     Icon: Users,
     titulo: "Cadastro completo de pacientes",
     descricao:
-      "Ficha clinica, historico, documentos, menor de idade com responsavel legal automatico.",
+      "Ficha clínica, histórico, documentos, menor de idade com responsável legal automático.",
   },
   {
     Icon: FileText,
-    titulo: "Anamnese personalizavel",
+    titulo: "Anamnese personalizável",
     descricao:
-      "Templates prontos para sua especialidade. Crie seus proprios campos. Tudo digital.",
+      "Templates prontos para sua especialidade. Crie seus próprios campos. Tudo digital.",
   },
   {
     Icon: Mic,
-    titulo: "Transcricao por IA",
+    titulo: "Transcrição por IA",
     descricao:
-      "Grave o atendimento por voz e o sistema transcreve automaticamente. Chega de digitar evolucoes.",
+      "Grave o atendimento por voz e o sistema transcreve automaticamente. Chega de digitar evoluções.",
   },
   {
     Icon: Bot,
     titulo: "Assistente com IA",
     descricao:
-      "Tire duvidas clinicas, gere relatorios, consulte protocolos. Seu copiloto digital.",
+      "Tire dúvidas clínicas, gere relatórios, consulte protocolos. Seu copiloto digital.",
   },
   {
     Icon: DollarSign,
     titulo: "Financeiro completo",
     descricao:
-      "Receitas, despesas, comissoes, recibos em PDF. Tudo num lugar so.",
+      "Receitas, despesas, comissões, recibos em PDF. Tudo num lugar só.",
   },
 ];
 
@@ -52,11 +52,11 @@ export default function Features() {
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="text-[28px] font-semibold leading-tight text-slate-900 sm:text-[32px]">
-            Tudo o que voce precisa.{" "}
-            <span className="text-[#0D9488]">Nada que voce nao precisa.</span>
+            Tudo o que você precisa.{" "}
+            <span className="text-[#0D9488]">Nada que você não precisa.</span>
           </h2>
           <p className="mt-4 text-base text-slate-600">
-            Funcionalidades pensadas para profissionais da saude que querem
+            Funcionalidades pensadas para profissionais da saúde que querem
             simplicidade sem perder controle.
           </p>
         </div>
