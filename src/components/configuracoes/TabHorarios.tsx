@@ -2,10 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Plus, X } from "lucide-react";
-import {
-  salvarHorarios,
-  type HorarioBloco,
-} from "@/actions/configuracoes";
+import { salvarHorarios } from "@/actions/configuracoes";
+import type { HorarioBloco } from "@/lib/configuracoes-types";
 import { cn } from "@/lib/utils";
 
 const DIAS = [

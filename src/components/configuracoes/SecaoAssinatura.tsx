@@ -2,10 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Upload, X } from "lucide-react";
-import {
-  salvarAssinatura,
-  type ProfissionalConfig,
-} from "@/actions/configuracoes";
+import { salvarAssinatura } from "@/actions/configuracoes";
+import type { ProfissionalConfig } from "@/lib/configuracoes-types";
 import {
   SIGNATURE_FONTS,
   signatureFontClass,

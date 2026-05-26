@@ -9,8 +9,8 @@ import { X } from "lucide-react";
 import {
   atualizarProcedimento,
   criarProcedimento,
-  type Procedimento,
 } from "@/actions/configuracoes";
+import type { Procedimento } from "@/lib/configuracoes-types";
 import { formatCurrency, formatCurrencyInput, parseCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 

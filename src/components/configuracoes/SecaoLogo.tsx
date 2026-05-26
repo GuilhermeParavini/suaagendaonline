@@ -2,11 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Trash2, Upload } from "lucide-react";
-import {
-  removerLogo,
-  salvarLogo,
-  type ProfissionalConfig,
-} from "@/actions/configuracoes";
+import { removerLogo, salvarLogo } from "@/actions/configuracoes";
+import type { ProfissionalConfig } from "@/lib/configuracoes-types";
 import { cn } from "@/lib/utils";
 
 interface SecaoLogoProps {

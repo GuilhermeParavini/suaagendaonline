@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { atualizarPreferenciasFollowup } from "@/actions/followup";
-import type { ProfissionalConfig } from "@/actions/configuracoes";
+import type { ProfissionalConfig } from "@/lib/configuracoes-types";
 import { cn } from "@/lib/utils";
 
 interface SecaoAcompanhamentoProps {

@@ -7,9 +7,11 @@ import { z } from "zod";
 import {
   atualizarProfissional,
   atualizarTenant,
-  type ProfissionalConfig,
-  type TenantConfig,
 } from "@/actions/configuracoes";
+import type {
+  ProfissionalConfig,
+  TenantConfig,
+} from "@/lib/configuracoes-types";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import { getRegistroSugestao } from "@/lib/registro-profissional";
 import RegistroInput from "@/components/ui/RegistroInput";

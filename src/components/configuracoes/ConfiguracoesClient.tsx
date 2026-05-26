@@ -2,13 +2,13 @@
 
 import { useCallback, useState, useTransition } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
-import {
-  getConfiguracoes,
-  type HorarioBloco,
-  type Procedimento,
-  type ProfissionalConfig,
-  type TenantConfig,
-} from "@/actions/configuracoes";
+import { getConfiguracoes } from "@/actions/configuracoes";
+import type {
+  HorarioBloco,
+  Procedimento,
+  ProfissionalConfig,
+  TenantConfig,
+} from "@/lib/configuracoes-types";
 import { cn } from "@/lib/utils";
 import TabMeusDados from "./TabMeusDados";
 import TabHorarios from "./TabHorarios";

@@ -3,54 +3,20 @@
 import { revalidatePath } from 'next/cache';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { cleanPhone } from '@/lib/masks';
+import type {
+  AssinaturaFonte,
+  AssinaturaTipo,
+  AtualizarProfissionalInput,
+  AtualizarTenantInput,
+  HorarioBloco,
+  Procedimento,
+  ProcedimentoInput,
+  ProfissionalConfig,
+  TenantConfig,
+  TenantContato,
+} from '@/lib/configuracoes-types';
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string };
-
-export type AssinaturaTipo = 'fonte' | 'imagem';
-export type AssinaturaFonte = 'Dancing Script' | 'Great Vibes' | 'Pacifico';
-
-export type ProfissionalConfig = {
-  id: string;
-  tenant_id: string;
-  nome: string;
-  especialidade: string;
-  registro_profissional: string | null;
-  email: string;
-  telefone: string | null;
-  bio: string | null;
-  role: string;
-  assinatura_tipo: AssinaturaTipo | null;
-  assinatura_fonte: string | null;
-  assinatura_url: string | null;
-  logo_url: string | null;
-  enviar_avaliacao: boolean;
-  enviar_followup: boolean;
-  mostrar_acompanhamento: boolean;
-  followup_mensagem: string | null;
-  intervalo_entre_consultas_min: number;
-};
-
-export type TenantConfig = {
-  id: string;
-  nome_empresa: string;
-  slug: string;
-  telefone: string | null;
-  email: string | null;
-  endereco: string | null;
-  cidade: string | null;
-  estado: string | null;
-  plano: string;
-  trial_expira_em: string | null;
-};
-
-export type TenantContato = {
-  nome_empresa: string;
-  slug: string;
-  telefone: string | null;
-  endereco: string | null;
-  cidade: string | null;
-  estado: string | null;
-};
 
 /**
  * Retorna apenas os dados de contato/endereco do tenant. Pensado para compor
@@ -83,20 +49,6 @@ export async function getTenantContato(): Promise<Result<TenantContato>> {
     },
   };
 }
-
-export type HorarioBloco = {
-  dia_semana: number;
-  hora_inicio: string;
-  hora_fim: string;
-};
-
-export type Procedimento = {
-  id: string;
-  nome: string;
-  duracao_min: number;
-  valor: number | null;
-  ativo: boolean;
-};
 
 async function obterContexto(): Promise<
   | { ok: true; tenantId: string; profissionalId: string; role: string }
@@ -315,15 +267,6 @@ export async function getConfiguracoes(): Promise<
     return { ok: false, error: msg };
   }
 }
-
-export type AtualizarProfissionalInput = {
-  nome: string;
-  especialidade: string;
-  registro_profissional?: string;
-  telefone: string;
-  bio?: string;
-  intervalo_entre_consultas_min?: number;
-};
 
 const INTERVALOS_VALIDOS = [0, 5, 10, 15, 20, 30] as const;
 
@@ -665,13 +608,6 @@ export async function removerLogo(): Promise<Result<null>> {
   return { ok: true, data: null };
 }
 
-export type AtualizarTenantInput = {
-  nome_empresa: string;
-  telefone?: string;
-  cidade?: string;
-  estado?: string;
-};
-
 export async function atualizarTenant(
   input: AtualizarTenantInput,
 ): Promise<Result<null>> {
@@ -750,12 +686,6 @@ export async function salvarHorarios(
   revalidatePath('/configuracoes');
   return { ok: true, data: null };
 }
-
-export type ProcedimentoInput = {
-  nome: string;
-  duracao_min: number;
-  valor?: number | null;
-};
 
 export async function criarProcedimento(
   input: ProcedimentoInput,

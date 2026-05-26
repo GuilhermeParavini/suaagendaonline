@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { atualizarEnviarAvaliacao } from "@/actions/avaliacoes";
-import type { ProfissionalConfig } from "@/actions/configuracoes";
+import type { ProfissionalConfig } from "@/lib/configuracoes-types";
 import { cn } from "@/lib/utils";
 
 interface SecaoAvaliacoesProps {

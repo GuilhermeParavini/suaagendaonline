@@ -2,10 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Pencil, Plus } from "lucide-react";
-import {
-  toggleProcedimento,
-  type Procedimento,
-} from "@/actions/configuracoes";
+import { toggleProcedimento } from "@/actions/configuracoes";
+import type { Procedimento } from "@/lib/configuracoes-types";
 import { formatCurrency } from "@/lib/masks";
 import { cn } from "@/lib/utils";
 import FormProcedimento from "./FormProcedimento";

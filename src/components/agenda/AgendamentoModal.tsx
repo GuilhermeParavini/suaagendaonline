@@ -13,10 +13,8 @@ import {
   buscarSugestoesListaEspera,
   type SugestaoListaEspera,
 } from "@/actions/lista-espera";
-import {
-  getTenantContato,
-  type TenantContato,
-} from "@/actions/configuracoes";
+import { getTenantContato } from "@/actions/configuracoes";
+import type { TenantContato } from "@/lib/configuracoes-types";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import {
   gerarLinkMaps,
