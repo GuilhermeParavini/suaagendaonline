@@ -485,5 +485,7 @@ export async function toggleModulo(
   return { ok: true, data: novos };
 }
 
-// Util re-exports (clientes podem importar a info estatica via lib/planos).
-export { ADDONS_IA, ADDONS_SMS, DEGUSTACAO_IA, DEGUSTACAO_SMS, MODULOS_PADRAO };
+// Nao re-exportar constantes/objetos a partir deste arquivo: arquivos
+// 'use server' so podem exportar funcoes async. Clientes devem importar
+// ADDONS_IA, ADDONS_SMS, DEGUSTACAO_IA, DEGUSTACAO_SMS, MODULOS_PADRAO
+// diretamente de '@/lib/planos'.
