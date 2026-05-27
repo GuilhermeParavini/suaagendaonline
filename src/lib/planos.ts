@@ -42,10 +42,21 @@ export type Funcionalidade =
   | "multi_profissional"
   | "avaliacoes_publicas";
 
+export type PrecosPlano = {
+  // Cobrado por mes em assinatura mensal.
+  mensal: number;
+  // Valor equivalente por mes em assinatura anual (anualTotal / 12).
+  anual: number;
+  // Valor cobrado em parcela unica anual.
+  anualTotal: number;
+};
+
 export type InfoPlano = {
   id: PlanoSlug;
   nome: string;
+  // Preco legacy (manter para compat). Reflete o valor mensal.
   preco: number;
+  precos: PrecosPlano;
   // Limites em segundos (1 min = 60s) e numero de perguntas no mes.
   limiteTranscricaoSegundos: number;
   maxProfissionais: number;
@@ -95,6 +106,7 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "trial",
     nome: "Trial (14 dias)",
     preco: 0,
+    precos: { mensal: 0, anual: 0, anualTotal: 0 },
     // Trial entrega a experiencia do Clinica 10.
     limiteTranscricaoSegundos: 400 * 60,
     maxProfissionais: 10,
@@ -106,6 +118,7 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "individual",
     nome: "Individual",
     preco: 29.9,
+    precos: { mensal: 39.9, anual: 29.9, anualTotal: 358.8 },
     limiteTranscricaoSegundos: 60 * 60,
     maxProfissionais: 1,
     limiteAssistente: 100,
@@ -116,6 +129,7 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "equipe3",
     nome: "Equipe 3",
     preco: 39.9,
+    precos: { mensal: 49.9, anual: 39.9, anualTotal: 478.8 },
     limiteTranscricaoSegundos: 120 * 60,
     maxProfissionais: 3,
     limiteAssistente: 200,
@@ -127,6 +141,7 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "equipe5",
     nome: "Equipe 5",
     preco: 49.9,
+    precos: { mensal: 59.9, anual: 49.9, anualTotal: 598.8 },
     limiteTranscricaoSegundos: 200 * 60,
     maxProfissionais: 5,
     limiteAssistente: 350,
@@ -137,6 +152,7 @@ export const PLANOS: Record<PlanoSlug, InfoPlano> = {
     id: "clinica10",
     nome: "Clinica 10",
     preco: 69.9,
+    precos: { mensal: 79.9, anual: 69.9, anualTotal: 838.8 },
     limiteTranscricaoSegundos: 400 * 60,
     maxProfissionais: 10,
     limiteAssistente: 700,

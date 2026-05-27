@@ -25,7 +25,7 @@ import SecaoDicasFeatures from "./SecaoDicasFeatures";
 import SecaoLogAcessoLGPD from "./SecaoLogAcessoLGPD";
 import SecaoSMS from "./SecaoSMS";
 import SecaoLogo from "./SecaoLogo";
-import SecaoMeuPlano from "./SecaoMeuPlano";
+import SecaoPlano from "./SecaoPlano";
 import SecaoModulos from "./SecaoModulos";
 import SecaoPushNotifications from "./SecaoPushNotifications";
 import SecaoTemplatesMensagem from "./SecaoTemplatesMensagem";
@@ -246,10 +246,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
   return (
     <div className="space-y-6">
-      <SecaoMeuPlano
-        plano={tenant.plano}
-        trialExpiraEm={tenant.trial_expira_em}
-      />
+      <SecaoPlano />
       <SecaoModulos plano={tenant.plano} />
       <SecaoPushNotifications />
       <SecaoTemplatesMensagem />
