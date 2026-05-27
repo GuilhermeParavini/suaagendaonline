@@ -7,27 +7,33 @@ import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { ESPECIALIDADES, OUTRO_VALUE } from '@/lib/especialidades';
 
-const specialties = [
-  'Podologia',
-  'Fisioterapia',
-  'Nutrição',
-  'Psicologia',
-  'Fonoaudiologia',
-  'Cardiologia',
-  'Outra',
-];
-
-const signupSchema = z.object({
-  fullName: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
-  email: z.string().email('E-mail inválido'),
-  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  confirmPassword: z.string(),
-  specialty: z.string().min(1, 'Selecione uma especialidade'),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'As senhas não coincidem',
-  path: ['confirmPassword'],
-});
+const signupSchema = z
+  .object({
+    fullName: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
+    email: z.string().email('E-mail inválido'),
+    password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+    confirmPassword: z.string(),
+    specialty: z.string().min(1, 'Selecione uma especialidade'),
+    outroEspecialidade: z.string().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'As senhas não coincidem',
+    path: ['confirmPassword'],
+  })
+  .superRefine((data, ctx) => {
+    if (data.specialty === OUTRO_VALUE) {
+      const valor = (data.outroEspecialidade ?? '').trim();
+      if (valor.length < 2) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['outroEspecialidade'],
+          message: 'Informe sua especialidade ou profissão',
+        });
+      }
+    }
+  });
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
@@ -48,23 +54,40 @@ export default function SignupPage() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
+    defaultValues: {
+      fullName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      specialty: '',
+      outroEspecialidade: '',
+    },
   });
+
+  const selectedSpecialty = watch('specialty');
+  const isOutro = selectedSpecialty === OUTRO_VALUE;
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
     setApiError('');
 
     try {
+      const especialidadeFinal =
+        data.specialty === OUTRO_VALUE
+          ? (data.outroEspecialidade ?? '').trim()
+          : data.specialty;
+
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
           data: {
             full_name: data.fullName,
-            specialty: data.specialty,
+            specialty: especialidadeFinal,
           },
         },
       });
@@ -212,9 +235,9 @@ export default function SignupPage() {
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition bg-white"
           >
             <option value="">Selecione uma especialidade</option>
-            {specialties.map((specialty) => (
-              <option key={specialty} value={specialty}>
-                {specialty}
+            {ESPECIALIDADES.map((esp) => (
+              <option key={esp.value} value={esp.value}>
+                {esp.label}
               </option>
             ))}
           </select>
@@ -222,6 +245,26 @@ export default function SignupPage() {
             <p className="text-xs text-red-500">{errors.specialty.message}</p>
           )}
         </div>
+
+        {/* Outro - Qual? */}
+        {isOutro && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-slate-700">
+              Qual sua especialidade/profissão?
+            </label>
+            <input
+              {...register('outroEspecialidade')}
+              type="text"
+              placeholder="Ex: Acupuntura, Quiropraxia, Coaching..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+            />
+            {errors.outroEspecialidade && (
+              <p className="text-xs text-red-500">
+                {errors.outroEspecialidade.message}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* API Error */}
         {apiError && (

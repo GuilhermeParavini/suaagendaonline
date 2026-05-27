@@ -9,6 +9,11 @@ import { createClient } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
+import {
+  ESPECIALIDADES,
+  OUTRO_VALUE,
+  especialidadeTemConselho,
+} from '@/lib/especialidades';
 import RegistroInput from '@/components/ui/RegistroInput';
 import FormStepper, {
   type FormStepperItem,
@@ -18,20 +23,6 @@ const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
-];
-
-const specialties = [
-  'Podologia',
-  'Fisioterapia',
-  'Terapia Ocupacional',
-  'Nutrição',
-  'Psicologia',
-  'Odontologia',
-  'Fonoaudiologia',
-  'Medicina',
-  'Cardiologia',
-  'Enfermagem',
-  'Outra',
 ];
 
 const trimmedString = (min: number, msg: string) =>
@@ -57,6 +48,7 @@ const fullSchema = z
   .object({
     fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
     specialty: trimmedString(1, 'Selecione uma especialidade'),
+    outroEspecialidade: z.string().optional(),
     professionalRegistry: z.string(),
     phone: phoneSchema,
     companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
@@ -65,17 +57,32 @@ const fullSchema = z
     state: trimmedString(2, 'Selecione um estado'),
   })
   .superRefine((data, ctx) => {
-    const sug = getRegistroSugestao(data.specialty);
-    const valor = (data.professionalRegistry ?? '').trim();
-    const sufixo = valor.startsWith(sug.prefixo)
-      ? valor.slice(sug.prefixo.length).trim()
-      : valor;
-    if (sufixo.length < 2) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['professionalRegistry'],
-        message: 'Registro profissional obrigatório',
-      });
+    // Quando "Outro" e selecionado, exigir o texto livre
+    if (data.specialty === OUTRO_VALUE) {
+      const livre = (data.outroEspecialidade ?? '').trim();
+      if (livre.length < 2) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['outroEspecialidade'],
+          message: 'Informe sua especialidade ou profissão',
+        });
+      }
+    }
+
+    // Registro profissional so e obrigatorio quando a especialidade tem conselho
+    if (especialidadeTemConselho(data.specialty)) {
+      const sug = getRegistroSugestao(data.specialty);
+      const valor = (data.professionalRegistry ?? '').trim();
+      const sufixo = valor.startsWith(sug.prefixo)
+        ? valor.slice(sug.prefixo.length).trim()
+        : valor;
+      if (sufixo.length < 2) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['professionalRegistry'],
+          message: 'Registro profissional obrigatório',
+        });
+      }
     }
   });
 
@@ -110,6 +117,7 @@ export default function OnboardingPage() {
     defaultValues: {
       fullName: '',
       specialty: '',
+      outroEspecialidade: '',
       professionalRegistry: '',
       phone: '',
       companyName: '',
@@ -121,11 +129,14 @@ export default function OnboardingPage() {
 
   const selectedSpecialty = watch('specialty');
   const professionalRegistry = watch('professionalRegistry');
+  const isOutro = selectedSpecialty === OUTRO_VALUE;
+  const registroObrigatorio = especialidadeTemConselho(selectedSpecialty);
 
   const handleSpecialtyChange = (
     e: React.ChangeEvent<HTMLSelectElement>,
   ) => {
-    setValue('specialty', e.target.value, {
+    const nova = e.target.value;
+    setValue('specialty', nova, {
       shouldValidate: true,
       shouldDirty: true,
     });
@@ -134,6 +145,13 @@ export default function OnboardingPage() {
       shouldValidate: false,
       shouldDirty: true,
     });
+    // Limpa o campo livre quando sai de "Outro"
+    if (nova !== OUTRO_VALUE) {
+      setValue('outroEspecialidade', '', {
+        shouldValidate: false,
+        shouldDirty: true,
+      });
+    }
   };
 
   const handlePhoneChange = (
@@ -151,6 +169,7 @@ export default function OnboardingPage() {
     const fieldsToValidate = [
       'fullName',
       'specialty',
+      'outroEspecialidade',
       'professionalRegistry',
       'phone',
     ] as const;
@@ -172,11 +191,16 @@ export default function OnboardingPage() {
         return;
       }
 
+      const especialidadeFinal =
+        data.specialty === OUTRO_VALUE
+          ? (data.outroEspecialidade ?? '').trim()
+          : data.specialty;
+
       const result = await completeOnboarding({
         userId: user.user.id,
         email: user.user.email!,
         fullName: data.fullName,
-        specialty: data.specialty,
+        specialty: especialidadeFinal,
         professionalRegistry: data.professionalRegistry,
         phone: cleanPhone(data.phone),
         companyName: data.companyName,
@@ -257,9 +281,9 @@ export default function OnboardingPage() {
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition bg-white"
               >
                 <option value="">Selecione uma especialidade</option>
-                {specialties.map((spec) => (
-                  <option key={spec} value={spec}>
-                    {spec}
+                {ESPECIALIDADES.map((esp) => (
+                  <option key={esp.value} value={esp.value}>
+                    {esp.label}
                   </option>
                 ))}
               </select>
@@ -267,6 +291,27 @@ export default function OnboardingPage() {
                 <p className="text-xs text-red-500">{errors.specialty.message}</p>
               )}
             </div>
+
+            {/* Outro - Qual? */}
+            {isOutro && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Qual sua especialidade/profissão?
+                </label>
+                <input
+                  {...register('outroEspecialidade')}
+                  type="text"
+                  autoComplete="off"
+                  placeholder="Ex: Acupuntura, Quiropraxia, Coaching..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+                />
+                {errors.outroEspecialidade && (
+                  <p className="text-xs text-red-500">
+                    {errors.outroEspecialidade.message}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Professional Registry */}
             <div>
@@ -279,6 +324,7 @@ export default function OnboardingPage() {
                     shouldDirty: true,
                   })
                 }
+                required={registroObrigatorio}
               />
               {errors.professionalRegistry && (
                 <p className="mt-1 text-xs text-red-500">

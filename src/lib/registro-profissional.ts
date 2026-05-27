@@ -77,6 +77,27 @@ const MAPA: Record<string, RegistroSugestao> = {
     prefixo: '',
     exemploSufixo: 'RG-POD 12345',
   },
+  estetica: {
+    orgao: 'Registro profissional (opcional)',
+    label: 'Registro profissional (opcional)',
+    placeholder: 'Ex: certificação, curso ou registro',
+    prefixo: '',
+    exemploSufixo: '',
+  },
+  barbearia: {
+    orgao: 'Registro profissional (opcional)',
+    label: 'Registro profissional (opcional)',
+    placeholder: 'Ex: certificação ou curso',
+    prefixo: '',
+    exemploSufixo: '',
+  },
+  outro: {
+    orgao: 'Registro profissional (opcional)',
+    label: 'Registro profissional (opcional)',
+    placeholder: 'Número ou identificação do registro',
+    prefixo: '',
+    exemploSufixo: '',
+  },
 };
 
 const PADRAO: RegistroSugestao = {

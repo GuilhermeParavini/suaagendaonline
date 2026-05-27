@@ -16,6 +16,11 @@ import type {
 } from "@/lib/configuracoes-types";
 import { cleanPhone, formatPhone } from "@/lib/masks";
 import { getRegistroSugestao } from "@/lib/registro-profissional";
+import {
+  ESPECIALIDADES,
+  OUTRO_VALUE,
+  especialidadeTemConselho,
+} from "@/lib/especialidades";
 import RegistroInput from "@/components/ui/RegistroInput";
 import LinkAgendamento from "./LinkAgendamento";
 import LinkCadastroPaciente from "./LinkCadastroPaciente";
@@ -31,20 +36,6 @@ import SecaoPlano from "./SecaoPlano";
 import SecaoModulos from "./SecaoModulos";
 import SecaoPushNotifications from "./SecaoPushNotifications";
 import SecaoTemplatesMensagem from "./SecaoTemplatesMensagem";
-
-const ESPECIALIDADES = [
-  "Podologia",
-  "Fisioterapia",
-  "Terapia Ocupacional",
-  "Nutrição",
-  "Psicologia",
-  "Odontologia",
-  "Fonoaudiologia",
-  "Medicina",
-  "Cardiologia",
-  "Enfermagem",
-  "Outra",
-];
 
 const UF = [
   "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
@@ -67,6 +58,7 @@ const profSchema = z
       .string()
       .transform((s) => s.trim())
       .refine((s) => s.length >= 2, "Selecione uma especialidade"),
+    outroEspecialidade: z.string().optional(),
     registro_profissional: z.string(),
     telefone: z.string().refine((s) => {
       const d = cleanPhone(s);
@@ -82,17 +74,30 @@ const profSchema = z
       ),
   })
   .superRefine((data, ctx) => {
-    const sug = getRegistroSugestao(data.especialidade);
-    const valor = (data.registro_profissional ?? "").trim();
-    const sufixo = valor.startsWith(sug.prefixo)
-      ? valor.slice(sug.prefixo.length).trim()
-      : valor;
-    if (sufixo.length < 2) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["registro_profissional"],
-        message: "Registro profissional obrigatório",
-      });
+    if (data.especialidade === OUTRO_VALUE) {
+      const livre = (data.outroEspecialidade ?? "").trim();
+      if (livre.length < 2) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["outroEspecialidade"],
+          message: "Informe sua especialidade ou profissão",
+        });
+      }
+    }
+
+    if (especialidadeTemConselho(data.especialidade)) {
+      const sug = getRegistroSugestao(data.especialidade);
+      const valor = (data.registro_profissional ?? "").trim();
+      const sufixo = valor.startsWith(sug.prefixo)
+        ? valor.slice(sug.prefixo.length).trim()
+        : valor;
+      if (sufixo.length < 2) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["registro_profissional"],
+          message: "Registro profissional obrigatório",
+        });
+      }
     }
   });
 
@@ -134,12 +139,26 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
   const podeEditarTenant = profissional.role === "admin";
 
+  // Se a especialidade salva nao esta na lista padronizada, tratamos como "Outro"
+  // exibindo o valor original no campo livre.
+  const especialidadeSalva = profissional.especialidade ?? "";
+  const especialidadeNaLista = ESPECIALIDADES.some(
+    (e) => e.value === especialidadeSalva,
+  );
+  const especialidadeDefault = especialidadeNaLista
+    ? especialidadeSalva
+    : especialidadeSalva
+      ? OUTRO_VALUE
+      : "";
+  const outroDefault = especialidadeNaLista ? "" : especialidadeSalva;
+
   const profForm = useForm<ProfFormData>({
     resolver: zodResolver(profSchema),
     mode: "onBlur",
     defaultValues: {
       nome: profissional.nome,
-      especialidade: profissional.especialidade,
+      especialidade: especialidadeDefault,
+      outroEspecialidade: outroDefault,
       registro_profissional: profissional.registro_profissional ?? "",
       telefone: profissional.telefone ? formatPhone(profissional.telefone) : "",
       bio: profissional.bio ?? "",
@@ -150,6 +169,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
   const especialidadeAtual = profForm.watch("especialidade");
   const registroAtual = profForm.watch("registro_profissional") ?? "";
+  const isOutro = especialidadeAtual === OUTRO_VALUE;
+  const registroObrigatorio = especialidadeTemConselho(especialidadeAtual);
   // getRegistroSugestao usado para limpar campo ao trocar de especialidade
   void getRegistroSugestao;
 
@@ -166,6 +187,12 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
       shouldValidate: false,
       shouldDirty: true,
     });
+    if (nova !== OUTRO_VALUE) {
+      profForm.setValue("outroEspecialidade", "", {
+        shouldValidate: false,
+        shouldDirty: true,
+      });
+    }
   };
 
   const tenantForm = useForm<TenantFormData>({
@@ -182,7 +209,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
   const cancelarProf = () => {
     profForm.reset({
       nome: profissional.nome,
-      especialidade: profissional.especialidade,
+      especialidade: especialidadeDefault,
+      outroEspecialidade: outroDefault,
       registro_profissional: profissional.registro_profissional ?? "",
       telefone: profissional.telefone ? formatPhone(profissional.telefone) : "",
       bio: profissional.bio ?? "",
@@ -206,10 +234,14 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
 
   const onSubmitProf = (data: ProfFormData) => {
     setErroProf(null);
+    const especialidadeFinal =
+      data.especialidade === OUTRO_VALUE
+        ? (data.outroEspecialidade ?? "").trim()
+        : data.especialidade;
     startTransitionProf(async () => {
       const result = await atualizarProfissional({
         nome: data.nome,
-        especialidade: data.especialidade,
+        especialidade: especialidadeFinal,
         registro_profissional: data.registro_profissional?.trim() || undefined,
         telefone: data.telefone,
         bio: data.bio?.trim() || undefined,
@@ -327,8 +359,8 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
               >
                 <option value="">Selecione</option>
                 {ESPECIALIDADES.map((esp) => (
-                  <option key={esp} value={esp}>
-                    {esp}
+                  <option key={esp.value} value={esp.value}>
+                    {esp.label}
                   </option>
                 ))}
               </select>
@@ -339,6 +371,26 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
               ) : null}
             </div>
           </div>
+
+          {isOutro ? (
+            <div className="space-y-1">
+              <label className={labelClass}>
+                Qual sua especialidade/profissão?
+              </label>
+              <input
+                {...profForm.register("outroEspecialidade")}
+                type="text"
+                disabled={!editandoProf}
+                placeholder="Ex: Acupuntura, Quiropraxia, Coaching..."
+                className={inputClass}
+              />
+              {profForm.formState.errors.outroEspecialidade ? (
+                <p className={errorClass}>
+                  {profForm.formState.errors.outroEspecialidade.message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -353,7 +405,7 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
                 }
                 disabled={!editandoProf}
                 showHelper={editandoProf}
-                required
+                required={registroObrigatorio}
               />
               {profForm.formState.errors.registro_profissional ? (
                 <p className={`${errorClass} mt-1`}>
