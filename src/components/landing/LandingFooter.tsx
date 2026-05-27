@@ -58,7 +58,7 @@ export default function LandingFooter() {
               </li>
               <li>
                 <a
-                  href="mailto:contato@appagenda4u.com"
+                  href="mailto:info@appagenda4u.com"
                   className="hover:text-[#0D9488]"
                 >
                   Contato
