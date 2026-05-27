@@ -23,29 +23,36 @@ const PAIN_POINTS = [
 
 export default function PainPoints() {
   return (
-    <section className="bg-slate-50 py-20 sm:py-24">
+    <section className="bg-slate-50 py-12 sm:py-20">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-[28px] font-semibold leading-tight text-slate-900 sm:text-[32px]">
+          <h2 className="text-[22px] font-semibold leading-tight text-slate-900 sm:text-[28px]">
             Você ainda usa agenda de papel? Ou paga caro por um sistema que não
             usa metade?
           </h2>
-          <p className="mt-4 text-base text-slate-600">
+          <p className="mt-3 text-sm text-slate-600 sm:mt-4 sm:text-base">
             Os problemas que ouvimos de profissionais da saúde todos os dias.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-8 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
           {PAIN_POINTS.map(({ Icon, titulo, descricao }) => (
             <article
               key={titulo}
-              className="rounded-xl border border-slate-200 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]"
+              className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] sm:p-6"
             >
-              <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-[#FEF2F2] text-[#EF4444]">
-                <Icon size={22} strokeWidth={1.75} aria-hidden="true" />
+              <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#FEF2F2] text-[#EF4444] sm:mb-4 sm:h-11 sm:w-11">
+                <Icon
+                  size={18}
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                  className="sm:h-[22px] sm:w-[22px]"
+                />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">{titulo}</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
+                {titulo}
+              </h3>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-slate-600 sm:mt-2 sm:text-sm">
                 {descricao}
               </p>
             </article>

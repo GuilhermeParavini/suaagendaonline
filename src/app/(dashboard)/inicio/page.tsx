@@ -18,10 +18,9 @@ import {
   type AgendamentoDia,
 } from "@/actions/agendamentos";
 import { getAftercarePendente } from "@/actions/aftercare";
-import { getProgressoOnboarding } from "@/actions/onboarding";
 import { getUsoSMSAtual } from "@/actions/sms";
 import CardAftercare from "@/components/aftercare/CardAftercare";
-import ChecklistOnboardingWrapper from "@/components/onboarding/ChecklistOnboardingWrapper";
+import ChecklistPrimeiroUso from "@/components/onboarding/ChecklistPrimeiroUso";
 import PullToRefresh from "@/components/ui/PullToRefresh";
 import AlertaLimiteSMS from "@/components/ui/AlertaLimiteSMS";
 import { cn } from "@/lib/utils";
@@ -72,9 +71,8 @@ export default async function HomeAgendaHojePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [result, progresso, aftercareRes, smsRes] = await Promise.all([
+  const [result, aftercareRes, smsRes] = await Promise.all([
     getAgendaHoje(),
-    getProgressoOnboarding(),
     getAftercarePendente(),
     getUsoSMSAtual(),
   ]);
@@ -94,7 +92,6 @@ export default async function HomeAgendaHojePage() {
 
   const { agendamentos, proximo, proximoFuturo, profissionalNome } =
     result.data;
-  const mostrarChecklist = progresso.totalConcluidos < progresso.total;
 
   return (
     <PullToRefresh>
@@ -110,9 +107,7 @@ export default async function HomeAgendaHojePage() {
         <AlertaLimiteSMS usado={smsUso.usado} limite={smsUso.limite} />
       ) : null}
 
-      {mostrarChecklist ? (
-        <ChecklistOnboardingWrapper progresso={progresso} />
-      ) : null}
+      <ChecklistPrimeiroUso />
 
       <ProximoCard proximo={proximo} proximoFuturo={proximoFuturo} />
 

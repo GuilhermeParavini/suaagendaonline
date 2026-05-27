@@ -4,8 +4,8 @@ import { CalendarCheck, ShieldCheck } from "lucide-react";
 export default function LandingFooter() {
   return (
     <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-12">
+        <div className="grid gap-6 sm:grid-cols-2 sm:gap-10 lg:grid-cols-4">
           <div>
             <Link
               href="/"
@@ -78,7 +78,7 @@ export default function LandingFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-slate-100 pt-8 text-xs text-slate-500 sm:flex-row">
+        <div className="mt-8 flex flex-col items-center justify-between gap-2 border-t border-slate-100 pt-6 text-[11px] text-slate-500 sm:mt-12 sm:flex-row sm:gap-3 sm:pt-8 sm:text-xs">
           <p>AGPXL &copy; 2026. Todos os direitos reservados.</p>
           <p>appagenda4u.com</p>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import * as Tabs from "@radix-ui/react-tabs";
 import { getConfiguracoes } from "@/actions/configuracoes";
 import type {
@@ -24,6 +25,16 @@ interface ConfiguracoesClientProps {
   initialProcedimentos: Procedimento[];
 }
 
+const TABS_VALIDAS = [
+  "dados",
+  "horarios",
+  "procedimentos",
+  "anamnese",
+  "bloqueios",
+  "equipe",
+] as const;
+type TabValida = (typeof TABS_VALIDAS)[number];
+
 function ConfiguracoesClient({
   initialProfissional,
   initialTenant,
@@ -37,6 +48,17 @@ function ConfiguracoesClient({
   const [procedimentos, setProcedimentos] =
     useState<Procedimento[]>(initialProcedimentos);
   const [, startTransition] = useTransition();
+
+  // Aceita ?tab=<aba> vindo de links externos (ex.: checklist de primeiro
+  // uso). Aba inexistente ou indisponivel para o role cai em "dados".
+  const searchParams = useSearchParams();
+  const abaInicial = useMemo<TabValida>(() => {
+    const raw = searchParams?.get("tab");
+    if (!raw) return "dados";
+    if (!(TABS_VALIDAS as readonly string[]).includes(raw)) return "dados";
+    if (raw === "equipe" && profissional.role !== "admin") return "dados";
+    return raw as TabValida;
+  }, [searchParams, profissional.role]);
 
   const recarregar = useCallback(() => {
     startTransition(async () => {
@@ -60,7 +82,7 @@ function ConfiguracoesClient({
         </p>
       </header>
 
-      <Tabs.Root defaultValue="dados" className="space-y-5">
+      <Tabs.Root defaultValue={abaInicial} className="space-y-5">
         <Tabs.List
           aria-label="Configurações"
           className="flex gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-white p-1"

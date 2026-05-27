@@ -87,20 +87,20 @@ export default function Pricing() {
   const [periodo, setPeriodo] = useState<Periodo>("anual");
 
   return (
-    <section id="planos" className="scroll-mt-20 bg-slate-50 py-20 sm:py-24">
+    <section id="planos" className="scroll-mt-16 bg-slate-50 py-12 sm:py-20">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-[28px] font-semibold leading-tight text-slate-900 sm:text-[32px]">
+          <h2 className="text-[22px] font-semibold leading-tight text-slate-900 sm:text-[28px]">
             Planos simples. Sem surpresas.
           </h2>
-          <p className="mt-4 text-base text-slate-600">
+          <p className="mt-3 text-sm text-slate-600 sm:mt-4 sm:text-base">
             Todas as funcionalidades inclusas em todos os planos. A única
             diferença é o número de profissionais.
           </p>
         </div>
 
         {/* Toggle Mensal | Anual */}
-        <div className="mt-10 flex justify-center">
+        <div className="mt-6 flex justify-center sm:mt-10">
           <div
             role="tablist"
             aria-label="Período de cobrança"
@@ -147,7 +147,7 @@ export default function Pricing() {
           </div>
         </div>
 
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid gap-3 sm:mt-12 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
           {PLANOS.map((plano) => {
             const preco =
               periodo === "anual" ? plano.precoAnual : plano.precoMensal;
@@ -156,8 +156,8 @@ export default function Pricing() {
                 key={plano.id}
                 className={
                   plano.popular
-                    ? "relative flex flex-col rounded-2xl border-2 border-[#0D9488] bg-white p-6 shadow-[0_10px_30px_-10px_rgba(13,148,136,0.35)]"
-                    : "relative flex flex-col rounded-2xl border border-slate-200 bg-white p-6"
+                    ? "relative flex flex-col rounded-2xl border-2 border-[#0D9488] bg-white p-4 shadow-[0_10px_30px_-10px_rgba(13,148,136,0.35)] sm:p-6"
+                    : "relative flex flex-col rounded-2xl border border-slate-200 bg-white p-4 sm:p-6"
                 }
               >
                 {plano.popular ? (
@@ -166,21 +166,23 @@ export default function Pricing() {
                   </span>
                 ) : null}
 
-                <h3 className="text-lg font-semibold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900 sm:text-lg">
                   {plano.nome}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-0.5 text-xs text-slate-500 sm:mt-1 sm:text-sm">
                   {plano.profissionais}
                 </p>
 
-                <div className="mt-5 flex items-baseline gap-1">
-                  <span className="text-sm font-medium text-slate-500">
+                <div className="mt-3 flex items-baseline gap-1 sm:mt-5">
+                  <span className="text-xs font-medium text-slate-500 sm:text-sm">
                     R$
                   </span>
-                  <span className="text-4xl font-semibold text-slate-900">
+                  <span className="text-3xl font-semibold text-slate-900 sm:text-4xl">
                     {formatarPreco(preco)}
                   </span>
-                  <span className="text-sm text-slate-500">/mês</span>
+                  <span className="text-xs text-slate-500 sm:text-sm">
+                    /mês
+                  </span>
                 </div>
 
                 {periodo === "anual" ? (
@@ -194,7 +196,7 @@ export default function Pricing() {
                   </p>
                 )}
 
-                <ul className="mt-6 space-y-2.5 text-sm text-slate-700">
+                <ul className="mt-4 space-y-1.5 text-xs text-slate-700 sm:mt-6 sm:space-y-2.5 sm:text-sm">
                   <li className="flex items-start gap-2">
                     <Check
                       size={16}
@@ -237,8 +239,8 @@ export default function Pricing() {
                   href="/cadastro"
                   className={
                     plano.popular
-                      ? "mt-7 inline-flex h-11 items-center justify-center rounded-lg bg-[#0D9488] text-sm font-semibold text-white transition-colors hover:bg-[#115E59]"
-                      : "mt-7 inline-flex h-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-50"
+                      ? "mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-[#0D9488] text-sm font-semibold text-white transition-colors hover:bg-[#115E59] sm:mt-7 sm:h-11"
+                      : "mt-5 inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-50 sm:mt-7 sm:h-11"
                   }
                 >
                   Experimentar grátis
@@ -248,7 +250,7 @@ export default function Pricing() {
           })}
         </div>
 
-        <p className="mt-10 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-xs text-slate-500 sm:mt-10 sm:text-sm">
           14 dias grátis. Sem cartão de crédito. Cancele quando quiser.
         </p>
       </div>

@@ -14,7 +14,7 @@ const COMPARATIVOS = [
 
 export default function AIHighlight() {
   return (
-    <section className="relative overflow-hidden bg-[#115E59] py-20 text-white sm:py-24">
+    <section className="relative overflow-hidden bg-[#115E59] py-12 text-white sm:py-20">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -right-32 top-0 h-[420px] w-[420px] rounded-full bg-[#0D9488]/40 blur-3xl"
@@ -26,37 +26,51 @@ export default function AIHighlight() {
 
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#CCFBF1]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#CCFBF1] sm:px-4 sm:py-1.5 sm:text-xs">
             Diferencial único
           </span>
-          <h2 className="mt-5 text-[28px] font-semibold leading-tight sm:text-[36px]">
+          <h2 className="mt-4 text-[22px] font-semibold leading-tight sm:mt-5 sm:text-[32px]">
             IA inclusa. Sem custo extra. Em todos os planos.
           </h2>
-          <p className="mt-4 text-base leading-relaxed text-[#CCFBF1]/90 sm:text-lg">
+          <p className="mt-3 text-sm leading-relaxed text-[#CCFBF1]/90 sm:mt-4 sm:text-base lg:text-lg">
             Somos o único sistema abaixo de R$ 100/mês com inteligência
             artificial integrada de verdade.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-2">
-          <article className="rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur">
-            <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#0D9488] text-white">
-              <Mic size={22} strokeWidth={1.75} aria-hidden="true" />
+        <div className="mt-8 grid gap-3 sm:mt-12 sm:gap-6 lg:grid-cols-2">
+          <article className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur sm:p-7">
+            <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#0D9488] text-white sm:mb-5 sm:h-12 sm:w-12">
+              <Mic
+                size={18}
+                strokeWidth={1.75}
+                aria-hidden="true"
+                className="sm:h-[22px] sm:w-[22px]"
+              />
             </div>
-            <h3 className="text-xl font-semibold">Transcrição por voz</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#CCFBF1]/90">
+            <h3 className="text-base font-semibold sm:text-xl">
+              Transcrição por voz
+            </h3>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[#CCFBF1]/90 sm:mt-2 sm:text-sm">
               Grave o atendimento com um toque. A IA transcreve e organiza
               automaticamente na evolução do paciente. Você fala, o sistema
               escreve.
             </p>
           </article>
 
-          <article className="rounded-2xl border border-white/15 bg-white/5 p-7 backdrop-blur">
-            <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#F97316] text-white">
-              <Bot size={22} strokeWidth={1.75} aria-hidden="true" />
+          <article className="rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur sm:p-7">
+            <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#F97316] text-white sm:mb-5 sm:h-12 sm:w-12">
+              <Bot
+                size={18}
+                strokeWidth={1.75}
+                aria-hidden="true"
+                className="sm:h-[22px] sm:w-[22px]"
+              />
             </div>
-            <h3 className="text-xl font-semibold">Assistente inteligente</h3>
-            <p className="mt-2 text-sm leading-relaxed text-[#CCFBF1]/90">
+            <h3 className="text-base font-semibold sm:text-xl">
+              Assistente inteligente
+            </h3>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[#CCFBF1]/90 sm:mt-2 sm:text-sm">
               Pergunte sobre protocolos, medicamentos, condutas. Seu assistente
               clínico disponível 24h, dentro do sistema.
             </p>
@@ -64,11 +78,11 @@ export default function AIHighlight() {
         </div>
 
         {/* Comparativo */}
-        <div className="mt-14 rounded-2xl border border-white/15 bg-white/5 p-6 backdrop-blur sm:p-8">
-          <p className="text-center text-sm font-semibold uppercase tracking-wide text-[#CCFBF1]">
+        <div className="mt-8 rounded-2xl border border-white/15 bg-white/5 p-4 backdrop-blur sm:mt-12 sm:p-8">
+          <p className="text-center text-xs font-semibold uppercase tracking-wide text-[#CCFBF1] sm:text-sm">
             Compare com os concorrentes
           </p>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-4 grid gap-2 sm:mt-5 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {COMPARATIVOS.map((c) => (
               <li
                 key={c.nome}

@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Package,
   Settings,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,12 @@ const items: SidebarItem[] = [
     label: "Configurações",
     Icon: Settings,
     tour: "menu-configuracoes",
+    prefetch: false,
+  },
+  {
+    href: "/ajuda",
+    label: "Ajuda",
+    Icon: HelpCircle,
     prefetch: false,
   },
 ];

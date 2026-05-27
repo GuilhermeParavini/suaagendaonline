@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { marcarLinkCompartilhado } from "@/lib/onboarding-flags";
 
 interface LinkAgendamentoProps {
   slug: string;
@@ -18,6 +19,7 @@ function LinkAgendamento({ slug }: LinkAgendamentoProps) {
   const handleCopiar = async () => {
     try {
       await navigator.clipboard.writeText(url);
+      marcarLinkCompartilhado();
       setCopiado(true);
       window.setTimeout(() => setCopiado(false), 2000);
     } catch {

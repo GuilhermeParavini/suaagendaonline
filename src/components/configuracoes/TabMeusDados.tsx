@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { HelpCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -248,6 +250,27 @@ function TabMeusDados({ profissional, tenant, onSaved }: TabMeusDadosProps) {
     <div className="space-y-6">
       <SecaoPlano />
       <SecaoModulos plano={tenant.plano} />
+
+      <Link
+        href="/ajuda"
+        className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 transition-colors hover:border-[#99F6E4] hover:bg-[#F0FDFA]/40 sm:p-5"
+      >
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#F0FDFA] text-[#0D9488]">
+          <HelpCircle size={20} strokeWidth={1.75} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-slate-900">
+            Central de Ajuda
+          </span>
+          <span className="block text-xs text-slate-500">
+            Tire dúvidas, busque tutoriais e fale com o suporte.
+          </span>
+        </span>
+        <span aria-hidden="true" className="text-slate-400">
+          →
+        </span>
+      </Link>
+
       <SecaoPushNotifications />
       <SecaoTemplatesMensagem />
       <LinkAgendamento slug={tenant.slug} />

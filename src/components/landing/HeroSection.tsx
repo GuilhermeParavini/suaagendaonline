@@ -17,50 +17,50 @@ export default function HeroSection() {
           className="pointer-events-none absolute -left-24 top-40 h-[320px] w-[320px] rounded-full bg-[#F97316]/10 blur-3xl"
         />
 
-        <div className="relative mx-auto max-w-[1200px] px-4 py-20 sm:px-6 sm:py-24 lg:py-28">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="relative mx-auto max-w-[1200px] px-4 py-10 sm:px-6 sm:py-20 lg:py-28">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-12">
             {/* Coluna esquerda */}
-            <div className="space-y-7 text-center lg:text-left">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#99F6E4] bg-[#F0FDFA] px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-[#115E59]">
-                <Sparkles size={14} aria-hidden="true" />
+            <div className="space-y-5 text-center sm:space-y-7 lg:text-left">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#99F6E4] bg-[#F0FDFA] px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-[#115E59] sm:gap-2 sm:px-4 sm:py-1.5 sm:text-xs">
+                <Sparkles size={12} aria-hidden="true" />
                 IA inclusa - a partir de R$ 29,90/mês
               </span>
 
-              <h1 className="text-[36px] font-semibold leading-[1.1] text-slate-900 sm:text-[44px] lg:text-[52px]">
+              <h1 className="text-[28px] font-semibold leading-[1.1] text-slate-900 sm:text-[40px] lg:text-[52px]">
                 Sua agenda.{" "}
                 <span className="text-[#0D9488]">Seus pacientes.</span>{" "}
                 Sua IA.
               </h1>
 
-              <p className="mx-auto max-w-[560px] text-base leading-relaxed text-slate-600 sm:text-lg lg:mx-0">
+              <p className="mx-auto max-w-[560px] text-sm leading-relaxed text-slate-600 sm:text-base lg:mx-0 lg:text-lg">
                 Sistema completo de agendamento e gestão clínica com
                 inteligência artificial inclusa. Para podólogos, fisioterapeutas,
                 nutricionistas e profissionais da saúde.
               </p>
 
-              <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center lg:items-start lg:justify-start">
+              <div className="flex flex-col items-center gap-2.5 sm:flex-row sm:gap-3 lg:items-start lg:justify-start">
                 <Link
                   href="/cadastro"
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-7 text-base font-semibold text-white shadow-sm transition-colors hover:bg-[#115E59] sm:w-auto"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#115E59] sm:h-12 sm:w-auto sm:px-7 sm:text-base"
                 >
                   Experimentar grátis por 14 dias
-                  <ArrowRight size={18} aria-hidden="true" />
+                  <ArrowRight size={16} aria-hidden="true" />
                 </Link>
                 <Link
                   href="#planos"
-                  className="inline-flex h-12 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-6 text-base font-medium text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 sm:h-12 sm:w-auto sm:px-6 sm:text-base"
                 >
                   Ver planos
                 </Link>
               </div>
 
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500 sm:text-xs">
                 Sem cartão de crédito. Cancele quando quiser.
               </p>
             </div>
 
-            {/* Coluna direita - mockup ilustrativo */}
-            <div className="relative mx-auto w-full max-w-[480px]">
+            {/* Coluna direita - mockup ilustrativo (oculto em <sm) */}
+            <div className="relative mx-auto hidden w-full max-w-[480px] sm:block">
               <div className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_60px_-15px_rgba(13,148,136,0.25)]">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2">
