@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, RefreshCw, Search } from "lucide-react";
 import { SECOES_AJUDA, type ItemAjuda, type SecaoAjuda } from "./ajuda-content";
+import { limparCacheERecarregar } from "@/lib/pwa";
 import { cn } from "@/lib/utils";
 
 function normalizar(texto: string): string {
@@ -18,6 +19,12 @@ export default function AjudaClient() {
     SECOES_AJUDA[0]?.id ?? null,
   );
   const [itemAberto, setItemAberto] = useState<string | null>(null);
+  const [atualizando, setAtualizando] = useState(false);
+
+  const forcarAtualizacao = () => {
+    setAtualizando(true);
+    void limparCacheERecarregar();
+  };
 
   const buscaNormalizada = normalizar(busca.trim());
 
@@ -154,6 +161,39 @@ export default function AjudaClient() {
           })}
         </ul>
       )}
+
+      {/* Forcar atualizacao — saida de emergencia para SW preso em versao antiga. */}
+      <section className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#F0FDFA] text-[#0D9488]">
+            <RefreshCw size={18} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <h2 className="text-sm font-semibold text-slate-900">
+              App travado ou desatualizado?
+            </h2>
+            <p className="text-[13px] leading-relaxed text-slate-600">
+              Se a tela ficar em branco, travada ou mostrando uma versão
+              antiga, force a atualização. Isso limpa o cache do aplicativo e
+              recarrega a versão mais recente. Seus dados não são afetados.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={forcarAtualizacao}
+          disabled={atualizando}
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#0D9488] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#115E59] disabled:opacity-70"
+        >
+          <RefreshCw
+            size={16}
+            strokeWidth={2}
+            aria-hidden="true"
+            className={atualizando ? "animate-spin" : ""}
+          />
+          {atualizando ? "Atualizando…" : "Forçar atualização do app"}
+        </button>
+      </section>
 
       <footer className="rounded-xl border border-dashed border-[#99F6E4] bg-[#F0FDFA]/40 p-4 text-sm text-slate-700">
         Ainda com dúvida?{" "}
