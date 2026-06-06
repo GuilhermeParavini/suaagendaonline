@@ -5,7 +5,7 @@
 // IMPORTANTE: trocar este valor a cada deploy que altere o shell/HTML,
 // senao o `activate` nao limpa caches antigos (era a causa de tela branca
 // ao reabrir o app apos um novo deploy).
-const CACHE_VERSION = "sao-shell-v2";
+const CACHE_VERSION = "sao-shell-v3";
 const SHELL_FILES = [
   "/",
   "/manifest.json",

@@ -39,6 +39,12 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  console.log("[DashboardLayout] perfil", {
+    userId: user.id,
+    temPerfil: !!prof,
+    erro: error?.message ?? null,
+  });
+
   // Rede de seguranca: o proxy ja deveria barrar usuarios sem perfil, mas se
   // chegou aqui sem profissional (ou a query falhou), redirecionar para o
   // /onboarding em vez de renderizar o dashboard com "Profissional nao
@@ -119,7 +125,10 @@ export default async function DashboardLayout({
           plano={plano ?? "trial"}
         />
       ) : null}
-      <TourGuiado />
+      {/* Tour guiado so faz sentido com perfil profissional ja criado.
+          Sem perfil, o layout redireciona para /onboarding antes daqui — esta
+          condicao e uma protecao extra para nunca exibir o tour sobre o erro. */}
+      {profId ? <TourGuiado /> : null}
       <ServiceWorkerRegister />
       <BannerOffline />
     </div>

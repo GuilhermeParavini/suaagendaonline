@@ -149,20 +149,37 @@ export async function updateSession(request: NextRequest) {
   // registro (user_id = auth.uid()), entao o cliente anon resolve a checagem.
   // Fail-closed: se a query falhar, tratar como "sem perfil" e redirecionar.
   if (isDashboardRoute) {
-    const { data: prof, error: profError } = await supabase
-      .from('profissionais')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    const temPerfil = !profError && !!prof;
-    if (!temPerfil) {
+    // Fail-closed em TODOS os cenarios: erro de query OU excecao de rede
+    // contam como "sem perfil" e redirecionam (nunca deixa o 500 passar reto).
+    let temPerfil = false;
+    try {
+      const { data: prof, error: profError } = await supabase
+        .from('profissionais')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
       if (profError) {
         console.error(
-          '[proxy] Falha ao verificar perfil profissional — redirecionando para /onboarding:',
+          '[proxy] Falha ao verificar perfil profissional — tratando como sem perfil:',
           profError.message,
         );
       }
+      temPerfil = !profError && !!prof;
+    } catch (e) {
+      console.error(
+        '[proxy] Excecao ao verificar perfil profissional — tratando como sem perfil:',
+        e instanceof Error ? e.message : e,
+      );
+      temPerfil = false;
+    }
+
+    console.log('[proxy] gate dashboard', {
+      pathname,
+      userId: user.id,
+      temPerfil,
+    });
+
+    if (!temPerfil) {
       const onboardingUrl = new URL('/onboarding', request.url);
       const redirectResponse = NextResponse.redirect(onboardingUrl);
       // Preserva cookies de sessao eventualmente renovados pelo getUser(),
