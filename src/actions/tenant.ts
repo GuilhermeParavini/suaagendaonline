@@ -27,14 +27,23 @@ export async function hasProfessionalProfile(userId: string): Promise<boolean> {
       .from('profissionais')
       .select('id')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
+      // Fail-closed: qualquer falha na query conta como "sem perfil".
+      console.error(
+        '[hasProfessionalProfile] erro ao verificar perfil profissional:',
+        error.message,
+      );
       return false;
     }
 
     return !!data;
-  } catch {
+  } catch (err) {
+    console.error(
+      '[hasProfessionalProfile] excecao ao verificar perfil profissional:',
+      err instanceof Error ? err.message : err,
+    );
     return false;
   }
 }

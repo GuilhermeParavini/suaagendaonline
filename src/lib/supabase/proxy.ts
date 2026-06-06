@@ -82,14 +82,30 @@ export async function updateSession(request: NextRequest) {
   // colidir com rotas publicas como /agendar/[slug].
   // OBS: '/' (landing publica) NAO entra aqui — a page.tsx da landing faz
   // o redirect para /inicio quando o usuario esta logado.
-  const isDashboardRoute =
-    pathname === '/inicio' || pathname.startsWith('/inicio/') ||
-    pathname === '/dashboard' || pathname.startsWith('/dashboard/') ||
-    pathname === '/agenda' || pathname.startsWith('/agenda/') ||
-    pathname === '/pacientes' || pathname.startsWith('/pacientes/') ||
-    pathname === '/financeiro' || pathname.startsWith('/financeiro/') ||
-    pathname === '/configuracoes' || pathname.startsWith('/configuracoes/') ||
-    pathname === '/menu' || pathname.startsWith('/menu/');
+  // A lista cobre todos os segmentos do grupo (dashboard) — manter em dia
+  // ao criar novas rotas protegidas.
+  const dashboardSegments = [
+    'inicio',
+    'dashboard',
+    'agenda',
+    'pacientes',
+    'financeiro',
+    'configuracoes',
+    'relatorios',
+    'relatorio-clinico',
+    'estoque',
+    'plano-cuidados',
+    'planos-tratamento',
+    'comissoes',
+    'lista-espera',
+    'atendimento',
+    'atestado',
+    'ajuda',
+    'menu',
+  ];
+  const isDashboardRoute = dashboardSegments.some(
+    (seg) => pathname === `/${seg}` || pathname.startsWith(`/${seg}/`),
+  );
 
   // Usuario NAO autenticado
   if (!user) {
@@ -125,6 +141,37 @@ export async function updateSession(request: NextRequest) {
     }
     // /onboarding fica livre — a propria pagina decide.
     return supabaseResponse;
+  }
+
+  // GATE DE ONBOARDING: usuario logado SEM perfil profissional ainda nao
+  // concluiu o cadastro. Em QUALQUER rota protegida do dashboard, forcar
+  // /onboarding. O RLS de `profissionais` permite o proprio usuario ler seu
+  // registro (user_id = auth.uid()), entao o cliente anon resolve a checagem.
+  // Fail-closed: se a query falhar, tratar como "sem perfil" e redirecionar.
+  if (isDashboardRoute) {
+    const { data: prof, error: profError } = await supabase
+      .from('profissionais')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const temPerfil = !profError && !!prof;
+    if (!temPerfil) {
+      if (profError) {
+        console.error(
+          '[proxy] Falha ao verificar perfil profissional — redirecionando para /onboarding:',
+          profError.message,
+        );
+      }
+      const onboardingUrl = new URL('/onboarding', request.url);
+      const redirectResponse = NextResponse.redirect(onboardingUrl);
+      // Preserva cookies de sessao eventualmente renovados pelo getUser(),
+      // senao a sessao recem-refrescada se perde no redirect.
+      supabaseResponse.cookies
+        .getAll()
+        .forEach((cookie) => redirectResponse.cookies.set(cookie));
+      return redirectResponse;
+    }
   }
 
   // Em '/' (landing) ou em qualquer outra rota nao listada, deixar passar.

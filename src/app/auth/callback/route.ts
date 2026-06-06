@@ -89,6 +89,34 @@ export async function GET(request: Request) {
     });
   }
 
-  console.log('[auth/callback] redirecionando', { next });
-  return NextResponse.redirect(new URL(next, url.origin));
+  // Apos estabelecer a sessao, decidir o destino final:
+  // - recovery sempre vai para /redefinir-senha (ja refletido em `next`)
+  // - usuario SEM perfil profissional -> /onboarding (signup recem-confirmado)
+  // - usuario COM perfil -> next (/inicio por padrao)
+  // Fail-closed: se a query falhar, mandar para /onboarding.
+  let destino = next;
+  if (!isRecovery) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const { data: prof, error: profError } = await supabase
+        .from('profissionais')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (profError) {
+        console.error(
+          '[auth/callback] erro ao verificar perfil profissional:',
+          profError.message,
+        );
+      }
+      if (profError || !prof) {
+        destino = '/onboarding';
+      }
+    }
+  }
+
+  console.log('[auth/callback] redirecionando', { destino });
+  return NextResponse.redirect(new URL(destino, url.origin));
 }

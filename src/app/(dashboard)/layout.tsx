@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomNav from "@/components/layout/BottomNav";
@@ -38,14 +39,18 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // Rede de seguranca: o proxy ja deveria barrar usuarios sem perfil, mas se
+  // chegou aqui sem profissional (ou a query falhou), redirecionar para o
+  // /onboarding em vez de renderizar o dashboard com "Profissional nao
+  // encontrado". Fail-closed: erro tambem cai no onboarding.
   if (error) {
     console.error(
-      "[DashboardLayout] Erro ao buscar profissional:",
+      "[DashboardLayout] Erro ao buscar profissional — redirecionando para /onboarding:",
       error.message,
     );
-    return {};
+    redirect("/onboarding");
   }
-  if (!prof) return {};
+  if (!prof) redirect("/onboarding");
 
   const { data: tenant } = await admin
     .from("tenants")
