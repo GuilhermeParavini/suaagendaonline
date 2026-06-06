@@ -79,6 +79,39 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
+  // ============================================================
+  // GATE INFALIVEL — executa ANTES de qualquer Promise.all, children ou JSX.
+  // Sem usuario -> /login. Sem perfil profissional -> /onboarding.
+  // redirect() e chamado direto no corpo do Server Component (nao em helper
+  // nem dentro de Promise.all), sem try/catch e sem fallback, para o
+  // NEXT_REDIRECT propagar de forma garantida.
+  // getUser usa o client COM sessao (cookies); a query de perfil usa o admin
+  // client (service role) para NAO depender de RLS.
+  // ============================================================
+  const authClient = await createClient();
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+  if (!user) redirect("/login");
+
+  const adminGate = createAdminClient();
+  const { data: profissionalGate, error: erroGate } = await adminGate
+    .from("profissionais")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  console.log("[DashboardLayout] GATE", {
+    userId: user.id,
+    temPerfil: !!profissionalGate,
+    erro: erroGate?.message ?? null,
+  });
+
+  // Fail-closed: sem perfil OU query com erro -> onboarding.
+  if (!profissionalGate) redirect("/onboarding");
+  // A partir daqui o perfil profissional esta garantido.
+  // ============================================================
+
   const [
     { id: profId, nome: userName, logoUrl, plano, modulos },
     contagemRes,
