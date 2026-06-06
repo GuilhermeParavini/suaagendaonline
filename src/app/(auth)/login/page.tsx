@@ -8,6 +8,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/contexts/ToastContext';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -22,13 +23,31 @@ export default function LoginPage() {
   const [apiError, setApiError] = useState('');
   const router = useRouter();
   const supabase = createClient();
+  const { aviso, erro } = useToast();
   const [conviteToken, setConviteToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     setConviteToken(params.get('convite'));
-  }, []);
+
+    // Sessao expirada (redirecionado pela proxy) ou erro vindo do auth callback.
+    const expirou = params.get('expired') === 'true';
+    const erroParam = params.get('error');
+    if (expirou) {
+      aviso('Sessão expirada. Faça login novamente.');
+    } else if (erroParam) {
+      erro(erroParam);
+    }
+
+    // Limpa os parametros para nao reexibir o toast ao recarregar.
+    if (expirou || erroParam) {
+      const limpa = new URL(window.location.href);
+      limpa.searchParams.delete('expired');
+      limpa.searchParams.delete('error');
+      window.history.replaceState({}, '', limpa.toString());
+    }
+  }, [aviso, erro]);
 
   const {
     register,

@@ -2,7 +2,10 @@
 // Service Worker — Sua Agenda Online
 //
 // Versao do shell. Bump para invalidar cache antigo apos deploy.
-const CACHE_VERSION = "sao-shell-v1";
+// IMPORTANTE: trocar este valor a cada deploy que altere o shell/HTML,
+// senao o `activate` nao limpa caches antigos (era a causa de tela branca
+// ao reabrir o app apos um novo deploy).
+const CACHE_VERSION = "sao-shell-v2";
 const SHELL_FILES = [
   "/",
   "/manifest.json",
@@ -11,6 +14,46 @@ const SHELL_FILES = [
   "/icon-384.png",
   "/icon-512.png",
 ];
+
+// Rotas de autenticacao/fluxo de sessao: NUNCA podem ser servidas de cache.
+// Servir HTML stale dessas rotas conflita com o Supabase Auth e com os IDs
+// de Server Action do Next (build skew), travando login e onboarding.
+function ehRotaAuth(pathname) {
+  return (
+    pathname === "/login" ||
+    pathname === "/cadastro" ||
+    pathname === "/signup" ||
+    pathname === "/onboarding" ||
+    pathname === "/esqueci-senha" ||
+    pathname === "/redefinir-senha" ||
+    pathname.startsWith("/auth/")
+  );
+}
+
+function ehNavegacao(req) {
+  return (
+    req.mode === "navigate" ||
+    (req.headers.get("accept") ?? "").includes("text/html")
+  );
+}
+
+async function limparTodoCache() {
+  const nomes = await caches.keys();
+  await Promise.all(nomes.map((n) => caches.delete(n)));
+}
+
+function respostaOffline() {
+  return new Response(
+    "<!DOCTYPE html><meta charset='utf-8'><title>Offline</title>" +
+      "<body style='font-family:system-ui;padding:24px;color:#0F172A;background:#F8FAFC;'>" +
+      "<h1>Voce esta offline</h1>" +
+      "<p>Reconecte para acessar o sistema.</p></body>",
+    {
+      status: 503,
+      headers: { "content-type": "text/html; charset=utf-8" },
+    },
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -50,17 +93,40 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  // Apenas GET — POST/PUT/DELETE nao deve ser cacheado.
+  // Apenas GET — POST/PUT/DELETE (inclui Server Actions) sempre vao pra rede.
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
 
-  // 1) APIs nunca sao cacheadas — sempre rede.
+  // Apenas same-origin. Requisicoes a terceiros nao sao tocadas pelo SW.
+  if (url.origin !== self.location.origin) return;
+
+  // 1) APIs nunca sao cacheadas — sempre rede (NetworkOnly).
   if (url.pathname.startsWith("/api/")) {
     return;
   }
 
-  // 2) Assets estaticos do Next + icones: cache-first.
+  // 2) Rotas de autenticacao: NetworkOnly.
+  if (ehRotaAuth(url.pathname)) {
+    // Ao chegar em /login (logout ou sessao expirada), limpa TODO o cache
+    // para nao reexibir paginas autenticadas servidas de cache.
+    if (ehNavegacao(req) && url.pathname === "/login") {
+      event.respondWith(
+        (async () => {
+          await limparTodoCache().catch(() => undefined);
+          try {
+            return await fetch(req);
+          } catch {
+            return respostaOffline();
+          }
+        })(),
+      );
+    }
+    // Demais rotas de auth: deixa passar direto pra rede (sem respondWith).
+    return;
+  }
+
+  // 3) Assets estaticos do Next + icones: cache-first.
   const ehAssetEstatico =
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||
@@ -87,53 +153,35 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 3) Paginas HTML (navegacao): stale-while-revalidate.
-  const ehNavegacao =
-    req.mode === "navigate" ||
-    (req.headers.get("accept") ?? "").includes("text/html");
-
-  if (ehNavegacao) {
+  // 4) Paginas HTML (navegacao): network-first.
+  // Numa app SSR/App Router, servir HTML stale causa mismatch de buildId/RSC
+  // e Server Actions quebrados (tela branca ao reabrir). Por isso buscamos
+  // sempre da rede; o cache so e usado como fallback offline.
+  if (ehNavegacao(req)) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_VERSION);
-        const cached = await cache.match(req);
-        const networkPromise = fetch(req)
-          .then((resp) => {
-            if (resp.ok) {
-              cache.put(req, resp.clone()).catch(() => undefined);
-            }
-            return resp;
-          })
-          .catch(() => null);
-
-        if (cached) {
-          // Atualiza em background e devolve cache imediato.
-          networkPromise.catch(() => undefined);
-          return cached;
+        try {
+          const resp = await fetch(req);
+          // Nao cacheia respostas que pedem no-store (paginas dinamicas/auth).
+          const cc = resp.headers.get("cache-control") ?? "";
+          if (resp.ok && resp.type === "basic" && !cc.includes("no-store")) {
+            cache.put(req, resp.clone()).catch(() => undefined);
+          }
+          return resp;
+        } catch (err) {
+          const cached = await cache.match(req);
+          if (cached) return cached;
+          const fallback = await cache.match("/");
+          if (fallback) return fallback;
+          return respostaOffline();
         }
-
-        const fromNetwork = await networkPromise;
-        if (fromNetwork) return fromNetwork;
-
-        // Sem cache, sem rede: tenta servir a home como fallback.
-        const fallback = await cache.match("/");
-        if (fallback) return fallback;
-        return new Response(
-          "<!DOCTYPE html><meta charset='utf-8'><title>Offline</title>" +
-            "<body style='font-family:system-ui;padding:24px;color:#0F172A;background:#F8FAFC;'>" +
-            "<h1>Voce esta offline</h1>" +
-            "<p>Reconecte para acessar o sistema.</p></body>",
-          {
-            status: 503,
-            headers: { "content-type": "text/html; charset=utf-8" },
-          },
-        );
       })(),
     );
     return;
   }
 
-  // 4) Outras requisicoes: rede com fallback de cache.
+  // 5) Outras requisicoes: rede com fallback de cache.
   event.respondWith(
     (async () => {
       try {
@@ -145,6 +193,13 @@ self.addEventListener("fetch", (event) => {
       }
     })(),
   );
+});
+
+// Permite que o cliente solicite a limpeza total do cache (ex: ao deslogar).
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "LIMPAR_CACHE") {
+    event.waitUntil(limparTodoCache().catch(() => undefined));
+  }
 });
 
 // ---------------- Push notifications ----------------

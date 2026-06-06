@@ -23,7 +23,16 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/avaliacao/') ||
     pathname.startsWith('/recibo/');
   if (isRotaPublica) {
-    return NextResponse.next({ request });
+    const res = NextResponse.next({ request });
+    // Rotas ligadas a fluxo de sessao nunca devem ser cacheadas (browser/SW).
+    if (
+      pathname.startsWith('/auth/') ||
+      pathname === '/esqueci-senha' ||
+      pathname === '/redefinir-senha'
+    ) {
+      res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+    return res;
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -60,6 +69,15 @@ export async function updateSession(request: NextRequest) {
     pathname === '/signup' ||
     pathname === '/onboarding';
 
+  // Paginas de auth nunca devem ser cacheadas (browser/SW) — evita servir
+  // telas de login/onboarding stale apos deploy ou troca de sessao.
+  if (isAuthRoute) {
+    supabaseResponse.headers.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate',
+    );
+  }
+
   // Rotas protegidas (dashboard). Match exato OU prefixo com '/' para nao
   // colidir com rotas publicas como /agendar/[slug].
   // OBS: '/' (landing publica) NAO entra aqui — a page.tsx da landing faz
@@ -76,7 +94,20 @@ export async function updateSession(request: NextRequest) {
   // Usuario NAO autenticado
   if (!user) {
     if (isDashboardRoute) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      // Se havia cookie de sessao do Supabase, foi expiracao/refresh falho —
+      // sinaliza ?expired=true para o login exibir aviso e limpa os cookies
+      // corrompidos para nao ficar em loop de refresh.
+      const cookiesSb = request.cookies
+        .getAll()
+        .filter((c) => c.name.startsWith('sb-'));
+      const tinhaSessao = cookiesSb.length > 0;
+
+      const loginUrl = new URL('/login', request.url);
+      if (tinhaSessao) loginUrl.searchParams.set('expired', 'true');
+
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      cookiesSb.forEach((c) => redirectResponse.cookies.delete(c.name));
+      return redirectResponse;
     }
     // Landing ('/'), login, cadastro, onboarding e demais rotas: liberar.
     return supabaseResponse;
