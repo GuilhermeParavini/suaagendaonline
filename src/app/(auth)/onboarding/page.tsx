@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { completeOnboarding } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
@@ -93,7 +92,6 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -185,20 +183,15 @@ export default function OnboardingPage() {
     setApiError('');
 
     try {
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) {
-        setApiError('Usuário não autenticado');
-        return;
-      }
-
       const especialidadeFinal =
         data.specialty === OUTRO_VALUE
           ? (data.outroEspecialidade ?? '').trim()
           : data.specialty;
 
+      // A autenticacao e resolvida dentro da server action (le a sessao dos
+      // cookies). Nao dependemos mais do browser getUser, que estava retornando
+      // vazio no passo 2 e derrubava o cadastro.
       const result = await completeOnboarding({
-        userId: user.user.id,
-        email: user.user.email!,
         fullName: data.fullName,
         specialty: especialidadeFinal,
         professionalRegistry: data.professionalRegistry,

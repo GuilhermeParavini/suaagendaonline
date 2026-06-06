@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { seedFeriadosNacionais } from '@/actions/feriados';
 import { seedTemplatesAnamnese } from '@/actions/anamnese';
 
@@ -17,8 +17,6 @@ function generateSlug(text: string): string {
 }
 
 export async function completeOnboarding(data: {
-  userId: string;
-  email: string;
   fullName: string;
   specialty: string;
   professionalRegistry?: string;
@@ -30,9 +28,32 @@ export async function completeOnboarding(data: {
 }) {
   try {
     console.log('=== Iniciando completeOnboarding ===');
+
+    // Autenticacao: ler a sessao dos cookies AGORA (no momento da chamada da
+    // server action), via server client. Esta e a fonte de verdade confiavel —
+    // os mesmos cookies que o proxy ja valida. Nao confiar em userId vindo do
+    // cliente (browser getUser e fragil e estava retornando vazio no passo 2).
+    const authClient = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      console.error(
+        '[completeOnboarding] erro auth:',
+        authError?.message ?? 'sem usuario na sessao',
+      );
+      return { error: 'Sua sessão expirou. Faça login novamente.' };
+    }
+
+    const userId = user.id;
+    const email = user.email!;
+
+    console.log('[completeOnboarding] inicio', { temUser: true, userId });
     console.log('Dados recebidos:', {
-      userId: data.userId,
-      email: data.email,
+      userId,
+      email,
       fullName: data.fullName,
       specialty: data.specialty,
       phone: data.phone,
@@ -41,34 +62,21 @@ export async function completeOnboarding(data: {
       state: data.state,
     });
 
-    // Validar env vars
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // Validar env var necessaria ao admin client (service role).
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    console.log('SUPABASE_URL definida?', !!supabaseUrl);
-    console.log('SERVICE_ROLE_KEY definida?', !!serviceRoleKey);
-    console.log('SERVICE_ROLE_KEY prefixo:', serviceRoleKey?.substring(0, 12));
-    console.log('SERVICE_ROLE_KEY tamanho:', serviceRoleKey?.length);
-    console.log('SERVICE_ROLE_KEY é JWT?', serviceRoleKey?.startsWith('eyJ'));
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !serviceRoleKey) {
       console.error('❌ Variáveis de ambiente Supabase ausentes');
       return { error: 'Configuração do servidor inválida.' };
     }
 
-    // Usar service role key para bypass RLS
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    // Service role para bypass de RLS nas escritas de banco.
+    const supabase = createAdminClient();
 
     // Verificar se usuário já tem profissional/tenant
     const { data: existingProf } = await supabase
       .from('profissionais')
       .select('id, tenant_id')
-      .eq('user_id', data.userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (existingProf) {
@@ -148,10 +156,10 @@ export async function completeOnboarding(data: {
     // Criar profissional
     console.log('Criando profissional com dados:', {
       tenant_id: tenant.id,
-      user_id: data.userId,
+      user_id: userId,
       nome: data.fullName,
       especialidade: data.specialty,
-      email: data.email,
+      email,
       telefone: data.phone,
       role: 'admin',
     });
@@ -160,11 +168,11 @@ export async function completeOnboarding(data: {
       .from('profissionais')
       .insert({
         tenant_id: tenant.id,
-        user_id: data.userId,
+        user_id: userId,
         nome: data.fullName,
         especialidade: data.specialty,
         registro_profissional: data.professionalRegistry || null,
-        email: data.email,
+        email,
         telefone: data.phone,
         role: 'admin',
         ativo: true,
@@ -207,7 +215,7 @@ export async function completeOnboarding(data: {
     const { data: profCriado } = await supabase
       .from('profissionais')
       .select('id')
-      .eq('user_id', data.userId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     // Seed de template padrao de anamnese (nao bloqueia o onboarding em caso de falha).
