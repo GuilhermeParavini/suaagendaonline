@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { completeOnboarding } from '@/actions/auth';
@@ -43,17 +42,15 @@ const optionalPhoneSchema = z
     return digits.length === 0 || digits.length === 10 || digits.length === 11;
   }, { message: 'Telefone inválido' });
 
-const fullSchema = z
+// Schema do passo 1 (dados do profissional). E validado isoladamente ao clicar
+// "Próximo", para que o usuario nao consiga avançar com campos invalidos.
+const step1Schema = z
   .object({
     fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
     specialty: trimmedString(1, 'Selecione uma especialidade'),
     outroEspecialidade: z.string().optional(),
     professionalRegistry: z.string(),
     phone: phoneSchema,
-    companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
-    companyPhone: optionalPhoneSchema,
-    city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
-    state: trimmedString(2, 'Selecione um estado'),
   })
   .superRefine((data, ctx) => {
     // Quando "Outro" e selecionado, exigir o texto livre
@@ -85,7 +82,18 @@ const fullSchema = z
     }
   });
 
-type OnboardingFormData = z.infer<typeof fullSchema>;
+// Schema do passo 2 (dados da clinica). E validado isoladamente ao submeter,
+// sem revalidar os campos do passo 1 (que ja foram validados ao avançar).
+const step2Schema = z.object({
+  companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
+  companyPhone: optionalPhoneSchema,
+  city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
+  state: trimmedString(2, 'Selecione um estado'),
+});
+
+type Step1Data = z.infer<typeof step1Schema>;
+type Step2Data = z.infer<typeof step2Schema>;
+type OnboardingFormData = Step1Data & Step2Data;
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
@@ -108,10 +116,10 @@ export default function OnboardingPage() {
     formState: { errors },
     setValue,
     watch,
-    trigger,
+    getValues,
+    setError,
+    clearErrors,
   } = useForm<OnboardingFormData>({
-    resolver: zodResolver(fullSchema),
-    mode: 'onBlur',
     defaultValues: {
       fullName: '',
       specialty: '',
@@ -160,70 +168,68 @@ export default function OnboardingPage() {
     setValue(field, formatted, { shouldValidate: false, shouldDirty: true });
   };
 
-  const handleNextStep = async () => {
+  // Aplica as mensagens de um ZodError nos campos correspondentes, para que
+  // apareçam destacadas abaixo de cada input.
+  const applyZodErrors = (error: z.ZodError) => {
+    for (const issue of error.issues) {
+      const field = issue.path[0] as keyof OnboardingFormData | undefined;
+      if (field) {
+        setError(field, { type: 'manual', message: issue.message });
+      }
+    }
+  };
+
+  // Passo 1: valida APENAS os campos do passo 1. So avança se estiverem validos;
+  // caso contrario, exibe os erros ali mesmo e nao deixa ir pro passo 2.
+  const handleNextStep = () => {
     setApiError('');
+    clearErrors();
 
-    // Validar apenas os campos do passo 1
-    const fieldsToValidate = [
-      'fullName',
-      'specialty',
-      'outroEspecialidade',
-      'professionalRegistry',
-      'phone',
-    ] as const;
-    const isValid = await trigger(fieldsToValidate);
-
-    if (isValid) {
-      setStep(2);
+    const result = step1Schema.safeParse(getValues());
+    if (!result.success) {
+      applyZodErrors(result.error);
+      return;
     }
+
+    setStep(2);
   };
 
-  // Chamado pelo react-hook-form quando a validacao do schema FALHA. Sem este
-  // callback, um campo invalido do passo 1 (nao renderizado no passo 2) bloqueia
-  // o submit em silencio: nada acontece, sem erro, sem loading. Aqui trazemos o
-  // usuario de volta ao passo do campo invalido e exibimos uma mensagem.
-  const onInvalid = (formErrors: typeof errors) => {
-    console.error('[onboarding] validacao falhou:', formErrors);
-    const camposPasso1 = [
-      'fullName',
-      'specialty',
-      'outroEspecialidade',
-      'professionalRegistry',
-      'phone',
-    ] as const;
-    const temErroNoPasso1 = camposPasso1.some((campo) => formErrors[campo]);
-    if (temErroNoPasso1) {
-      setStep(1);
-      setApiError('Revise os dados do passo 1 antes de continuar.');
-    } else {
-      setApiError('Preencha os campos destacados para continuar.');
-    }
-  };
+  // Passo 2: valida APENAS os campos do passo 2 (os do passo 1 ja foram
+  // validados ao avançar). Junta os dados dos dois passos e envia.
+  const onSubmit = async () => {
+    setApiError('');
+    clearErrors();
 
-  const onSubmit = async (data: OnboardingFormData) => {
-    console.log('[onboarding] submit passo 2', data);
+    const raw = getValues();
+    const parsed = step2Schema.safeParse(raw);
+    if (!parsed.success) {
+      applyZodErrors(parsed.error);
+      return;
+    }
+
+    const step2Data = parsed.data;
+    console.log('[onboarding] submit passo 2', { ...raw, ...step2Data });
     setIsLoading(true);
-    setApiError('');
 
     try {
       const especialidadeFinal =
-        data.specialty === OUTRO_VALUE
-          ? (data.outroEspecialidade ?? '').trim()
-          : data.specialty;
+        raw.specialty === OUTRO_VALUE
+          ? (raw.outroEspecialidade ?? '').trim()
+          : raw.specialty.trim();
 
       // A autenticacao e resolvida dentro da server action (le a sessao dos
       // cookies). Nao dependemos mais do browser getUser, que estava retornando
       // vazio no passo 2 e derrubava o cadastro.
       console.log('[onboarding] chamando completeOnboarding');
       const result = await completeOnboarding({
-        fullName: data.fullName,
+        fullName: raw.fullName.trim(),
         specialty: especialidadeFinal,
-        professionalRegistry: data.professionalRegistry,
-        phone: cleanPhone(data.phone),
-        companyName: data.companyName,
-        companyPhone: data.companyPhone ? cleanPhone(data.companyPhone) : undefined,
-        city: data.city,
-        state: data.state,
+        professionalRegistry: raw.professionalRegistry,
+        phone: cleanPhone(raw.phone),
+        companyName: step2Data.companyName,
+        companyPhone: step2Data.companyPhone ? cleanPhone(step2Data.companyPhone) : undefined,
+        city: step2Data.city,
+        state: step2Data.state,
       });
 
       console.log('[onboarding] resultado:', result);
@@ -270,7 +276,7 @@ export default function OnboardingPage() {
       <FormStepper steps={stepperItems} />
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4" autoComplete="off">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
         {step === 1 ? (
           <>
             {/* Full Name */}
