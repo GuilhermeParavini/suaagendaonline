@@ -220,8 +220,7 @@ export default function OnboardingPage() {
       // A autenticacao e resolvida dentro da server action (le a sessao dos
       // cookies). Nao dependemos mais do browser getUser, que estava retornando
       // vazio no passo 2 e derrubava o cadastro.
-      console.log('[onboarding] chamando completeOnboarding');
-      const result = await completeOnboarding({
+      const dados = {
         fullName: raw.fullName.trim(),
         specialty: especialidadeFinal,
         professionalRegistry: raw.professionalRegistry,
@@ -230,22 +229,29 @@ export default function OnboardingPage() {
         companyPhone: step2Data.companyPhone ? cleanPhone(step2Data.companyPhone) : undefined,
         city: step2Data.city,
         state: step2Data.state,
-      });
+      };
 
+      console.log('[onboarding] dados enviados:', dados);
+      const result = await completeOnboarding(dados);
       console.log('[onboarding] resultado:', result);
 
       if (result.error) {
+        // NUNCA voltar pro passo 1: ficar no passo 2 e mostrar o erro
+        // (na tela E em alert, para que nunca passe despercebido).
         setApiError(result.error);
+        alert(result.error);
         return;
       }
 
-      // Navegacao "hard" para garantir que o proxy reavalie o gate de onboarding
-      // com o perfil profissional recem-criado (router.push pode usar cache do
-      // cliente e o gate continuaria sem ver o perfil).
+      // Sucesso (result.error === null): navegacao "hard" para o proxy reavaliar
+      // o gate de onboarding com o perfil profissional recem-criado.
       window.location.href = '/inicio';
     } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
       console.error('[onboarding] erro:', error);
-      setApiError('Erro ao completar cadastro. Tente novamente.');
+      // NUNCA voltar pro passo 1: ficar no passo 2 e mostrar o erro.
+      setApiError('Erro: ' + msg);
+      alert('Erro: ' + msg);
     } finally {
       setIsLoading(false);
     }

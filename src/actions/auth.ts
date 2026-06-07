@@ -28,6 +28,7 @@ export async function completeOnboarding(data: {
 }) {
   try {
     console.log('=== Iniciando completeOnboarding ===');
+    console.log('[completeOnboarding] recebendo:', JSON.stringify(data));
 
     // Autenticacao: ler a sessao dos cookies AGORA (no momento da chamada da
     // server action), via server client. Esta e a fonte de verdade confiavel —
@@ -114,6 +115,7 @@ export async function completeOnboarding(data: {
     }
 
     // Criar tenant
+    console.log('[completeOnboarding] criando tenant para user:', userId);
     console.log('Criando tenant com dados:', {
       nome_empresa: data.companyName,
       slug,
@@ -140,6 +142,8 @@ export async function completeOnboarding(data: {
       .select()
       .single();
 
+    console.log('[completeOnboarding] resultado tenant:', { tenant, tenantError });
+
     if (tenantError || !tenant) {
       console.error('❌ Erro ao criar tenant:');
       console.error('  Código:', tenantError?.code);
@@ -148,7 +152,9 @@ export async function completeOnboarding(data: {
       console.error('  Hint:', tenantError?.hint);
       console.error('  Erro completo (JSON):', JSON.stringify(tenantError, null, 2));
       console.error('  Tenant retornado:', tenant);
-      return { error: 'Erro ao criar empresa. Tente novamente.' };
+      return {
+        error: `Falha ao criar empresa: ${tenantError?.message ?? 'erro desconhecido'}`,
+      };
     }
 
     console.log('✅ Tenant criado com ID:', tenant.id);
@@ -178,6 +184,8 @@ export async function completeOnboarding(data: {
         ativo: true,
       });
 
+    console.log('[completeOnboarding] resultado profissional:', { profissionalError });
+
     if (profissionalError) {
       console.error('❌ Erro ao criar profissional:');
       console.error('  Código:', profissionalError.code);
@@ -191,7 +199,9 @@ export async function completeOnboarding(data: {
       if (profissionalError.code === '23505') {
         return { error: 'Este usuário já possui um cadastro. Faça login.' };
       }
-      return { error: 'Erro ao criar perfil. Tente novamente.' };
+      return {
+        error: `Falha ao criar perfil profissional: ${profissionalError.message ?? 'erro desconhecido'}`,
+      };
     }
 
     console.log('✅ Profissional criado com sucesso');
