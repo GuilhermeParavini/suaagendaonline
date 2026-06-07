@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { completeOnboarding } from '@/actions/auth';
+import { completeOnboarding, usuarioTemPerfilProfissional } from '@/actions/auth';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
 import {
@@ -108,6 +108,21 @@ export default function OnboardingPage() {
     if (token) {
       router.replace(`/convite/${token}`);
     }
+  }, [router]);
+
+  // Se o usuario JA possui perfil profissional, nao deve ver o onboarding de
+  // novo: redireciona imediatamente para a home. Usa a MESMA checagem (anon +
+  // RLS) do proxy, garantindo decisao consistente e sem loop de redirect.
+  useEffect(() => {
+    let cancelado = false;
+    usuarioTemPerfilProfissional().then((tem) => {
+      if (!cancelado && tem) {
+        router.replace('/inicio');
+      }
+    });
+    return () => {
+      cancelado = true;
+    };
   }, [router]);
 
   const {
@@ -235,16 +250,21 @@ export default function OnboardingPage() {
       const result = await completeOnboarding(dados);
       console.log('[onboarding] resultado:', result);
 
-      if (result.error) {
+      if (!result.success) {
         // NUNCA voltar pro passo 1: ficar no passo 2 e mostrar o erro
         // (na tela E em alert, para que nunca passe despercebido).
-        setApiError(result.error);
-        alert(result.error);
+        const msg = result.error ?? 'Não foi possível concluir o cadastro.';
+        setApiError(msg);
+        alert(msg);
         return;
       }
 
-      // Sucesso (result.error === null): navegacao "hard" para o proxy reavaliar
-      // o gate de onboarding com o perfil profissional recem-criado.
+      // Sucesso: redirecionar para a home. router.push primeiro e, como fallback
+      // garantido, navegacao "hard" com window.location — esta forca o proxy a
+      // reavaliar o gate de onboarding com o perfil profissional recem-criado
+      // (router.push sozinho pode usar cache do cliente e o gate nao veria o
+      // perfil novo).
+      router.push('/inicio');
       window.location.href = '/inicio';
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);

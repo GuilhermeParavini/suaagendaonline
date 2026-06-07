@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { seedFeriadosNacionais } from '@/actions/feriados';
 import { seedTemplatesAnamnese } from '@/actions/anamnese';
+import { hasProfessionalProfile } from '@/actions/tenant';
 
 // Função auxiliar para gerar slug
 function generateSlug(text: string): string {
@@ -45,7 +46,7 @@ export async function completeOnboarding(data: {
         '[completeOnboarding] erro auth:',
         authError?.message ?? 'sem usuario na sessao',
       );
-      return { error: 'Sua sessão expirou. Faça login novamente.' };
+      return { success: false, error: 'Sua sessão expirou. Faça login novamente.' };
     }
 
     const userId = user.id;
@@ -67,7 +68,7 @@ export async function completeOnboarding(data: {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !serviceRoleKey) {
       console.error('❌ Variáveis de ambiente Supabase ausentes');
-      return { error: 'Configuração do servidor inválida.' };
+      return { success: false, error: 'Configuração do servidor inválida.' };
     }
 
     // Service role para bypass de RLS nas escritas de banco.
@@ -82,7 +83,7 @@ export async function completeOnboarding(data: {
 
     if (existingProf) {
       console.log('⚠️ Usuário já possui cadastro completo. Tenant:', existingProf.tenant_id);
-      return { error: null };
+      return { success: true, error: null };
     }
 
     // Gerar slug único
@@ -153,6 +154,7 @@ export async function completeOnboarding(data: {
       console.error('  Erro completo (JSON):', JSON.stringify(tenantError, null, 2));
       console.error('  Tenant retornado:', tenant);
       return {
+        success: false,
         error: `Falha ao criar empresa: ${tenantError?.message ?? 'erro desconhecido'}`,
       };
     }
@@ -197,9 +199,10 @@ export async function completeOnboarding(data: {
       console.log('Deletando tenant por falha no profissional...');
       await supabase.from('tenants').delete().eq('id', tenant.id);
       if (profissionalError.code === '23505') {
-        return { error: 'Este usuário já possui um cadastro. Faça login.' };
+        return { success: false, error: 'Este usuário já possui um cadastro. Faça login.' };
       }
       return {
+        success: false,
         error: `Falha ao criar perfil profissional: ${profissionalError.message ?? 'erro desconhecido'}`,
       };
     }
@@ -248,7 +251,7 @@ export async function completeOnboarding(data: {
     }
 
     console.log('=== completeOnboarding finalizado com sucesso ===');
-    return { error: null };
+    return { success: true, error: null };
   } catch (error) {
     console.error('❌ Erro geral em completeOnboarding (catch):');
     console.error('  Tipo:', error instanceof Error ? error.name : typeof error);
@@ -256,6 +259,19 @@ export async function completeOnboarding(data: {
     console.error('  Stack:', error instanceof Error ? error.stack : '');
     console.error('  Erro completo (JSON):', JSON.stringify(error, Object.getOwnPropertyNames(error instanceof Error ? error : {}), 2));
     console.error('  Erro raw:', error);
-    return { error: 'Erro ao processar solicitação. Tente novamente.' };
+    return { success: false, error: 'Erro ao processar solicitação. Tente novamente.' };
   }
+}
+
+// Usado pela pagina de /onboarding para evitar que um usuario que JA concluiu o
+// cadastro veja o onboarding novamente. Usa a MESMA checagem (anon + RLS) do
+// proxy/gate, garantindo decisao consistente e SEM loop de redirect entre
+// /onboarding e as rotas protegidas.
+export async function usuarioTemPerfilProfissional(): Promise<boolean> {
+  const authClient = await createClient();
+  const {
+    data: { user },
+  } = await authClient.auth.getUser();
+  if (!user) return false;
+  return hasProfessionalProfile(user.id);
 }
