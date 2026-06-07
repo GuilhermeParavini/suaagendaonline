@@ -178,7 +178,30 @@ export default function OnboardingPage() {
     }
   };
 
+  // Chamado pelo react-hook-form quando a validacao do schema FALHA. Sem este
+  // callback, um campo invalido do passo 1 (nao renderizado no passo 2) bloqueia
+  // o submit em silencio: nada acontece, sem erro, sem loading. Aqui trazemos o
+  // usuario de volta ao passo do campo invalido e exibimos uma mensagem.
+  const onInvalid = (formErrors: typeof errors) => {
+    console.error('[onboarding] validacao falhou:', formErrors);
+    const camposPasso1 = [
+      'fullName',
+      'specialty',
+      'outroEspecialidade',
+      'professionalRegistry',
+      'phone',
+    ] as const;
+    const temErroNoPasso1 = camposPasso1.some((campo) => formErrors[campo]);
+    if (temErroNoPasso1) {
+      setStep(1);
+      setApiError('Revise os dados do passo 1 antes de continuar.');
+    } else {
+      setApiError('Preencha os campos destacados para continuar.');
+    }
+  };
+
   const onSubmit = async (data: OnboardingFormData) => {
+    console.log('[onboarding] submit passo 2', data);
     setIsLoading(true);
     setApiError('');
 
@@ -191,6 +214,7 @@ export default function OnboardingPage() {
       // A autenticacao e resolvida dentro da server action (le a sessao dos
       // cookies). Nao dependemos mais do browser getUser, que estava retornando
       // vazio no passo 2 e derrubava o cadastro.
+      console.log('[onboarding] chamando completeOnboarding');
       const result = await completeOnboarding({
         fullName: data.fullName,
         specialty: especialidadeFinal,
@@ -202,16 +226,20 @@ export default function OnboardingPage() {
         state: data.state,
       });
 
+      console.log('[onboarding] resultado:', result);
+
       if (result.error) {
         setApiError(result.error);
         return;
       }
 
-      router.push('/inicio');
-      router.refresh();
+      // Navegacao "hard" para garantir que o proxy reavalie o gate de onboarding
+      // com o perfil profissional recem-criado (router.push pode usar cache do
+      // cliente e o gate continuaria sem ver o perfil).
+      window.location.href = '/inicio';
     } catch (error) {
+      console.error('[onboarding] erro:', error);
       setApiError('Erro ao completar cadastro. Tente novamente.');
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -242,7 +270,7 @@ export default function OnboardingPage() {
       <FormStepper steps={stepperItems} />
 
       {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4" autoComplete="off">
         {step === 1 ? (
           <>
             {/* Full Name */}
@@ -461,9 +489,15 @@ export default function OnboardingPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="flex-1 bg-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isLoading ? 'Processando...' : 'Começar a usar'}
+              {isLoading && (
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                  aria-hidden="true"
+                />
+              )}
+              {isLoading ? 'Salvando...' : 'Começar a usar'}
             </button>
           )}
         </div>
