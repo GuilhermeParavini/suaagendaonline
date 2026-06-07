@@ -19,3 +19,4 @@
 ### Regra geral
 - A regra se aplica a QUALQUER arquivo que contenha texto visível ao usuário: componentes React, templates de email, constantes de texto, arquivos de tradução (i18n), landing pages, formulários.
 - Código (variáveis, funções, comentários técnicos) pode estar em inglês sem acentos.
+# deploy trigger v2
