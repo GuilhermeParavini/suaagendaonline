@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
-import type { EmailOtpType } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import type { EmailOtpType, User } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +14,7 @@ const OTP_TYPES: EmailOtpType[] = [
   'email',
 ];
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const tokenHash = url.searchParams.get('token_hash');
@@ -50,7 +51,36 @@ export async function GET(request: Request) {
     return NextResponse.redirect(target);
   }
 
-  const supabase = await createClient();
+  // ============================================================
+  // PADRAO CORRETO Supabase SSR para Route Handlers (Next.js 16):
+  // os cookies da sessao DEVEM ser escritos no objeto `response` que sera
+  // retornado. Setar via cookies() do next/headers e retornar um
+  // NextResponse.redirect() novo PERDE os cookies — por isso a sessao nunca
+  // chegava na server action completeOnboarding.
+  // Aqui: ler de request.cookies, escrever em response.cookies. A Location do
+  // redirect e ajustada no fim, depois de decidir o destino, sem recriar o
+  // response (o que descartaria os cookies recem-setados).
+  // ============================================================
+  const response = NextResponse.redirect(new URL(next, url.origin));
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  let user: User | null = null;
 
   if (tokenHash && typeParam && OTP_TYPES.includes(typeParam)) {
     const { data, error } = await supabase.auth.verifyOtp({
@@ -67,6 +97,7 @@ export async function GET(request: Request) {
       target.searchParams.set('error', error.message);
       return NextResponse.redirect(target);
     }
+    user = data.user;
   } else if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     console.log('[auth/callback] exchangeCodeForSession resultado', {
@@ -79,6 +110,7 @@ export async function GET(request: Request) {
       target.searchParams.set('error', error.message);
       return NextResponse.redirect(target);
     }
+    user = data.user;
   } else {
     // Nao chegou code nem token_hash: provavelmente o token veio no hash da URL
     // (#access_token=...). O servidor nao recebe o hash, mas o cliente JS na
@@ -89,34 +121,32 @@ export async function GET(request: Request) {
     });
   }
 
-  // Apos estabelecer a sessao, decidir o destino final:
+  // Decidir o destino final:
   // - recovery sempre vai para /redefinir-senha (ja refletido em `next`)
   // - usuario SEM perfil profissional -> /onboarding (signup recem-confirmado)
   // - usuario COM perfil -> next (/inicio por padrao)
+  // A checagem de perfil usa o admin client (service role), independente de RLS.
   // Fail-closed: se a query falhar, mandar para /onboarding.
   let destino = next;
-  if (!isRecovery) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const { data: prof, error: profError } = await supabase
-        .from('profissionais')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profError) {
-        console.error(
-          '[auth/callback] erro ao verificar perfil profissional:',
-          profError.message,
-        );
-      }
-      if (profError || !prof) {
-        destino = '/onboarding';
-      }
+  if (!isRecovery && user) {
+    const admin = createAdminClient();
+    const { data: prof, error: profError } = await admin
+      .from('profissionais')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (profError) {
+      console.error(
+        '[auth/callback] erro ao verificar perfil profissional:',
+        profError.message,
+      );
     }
+    destino = profError || !prof ? '/onboarding' : next;
   }
 
-  console.log('[auth/callback] redirecionando', { destino });
-  return NextResponse.redirect(new URL(destino, url.origin));
+  console.log('[auth/callback] token exchange success, redirect to:', destino);
+
+  // Atualizar a Location no MESMO response (que ja carrega os cookies da sessao).
+  response.headers.set('Location', new URL(destino, url.origin).toString());
+  return response;
 }
