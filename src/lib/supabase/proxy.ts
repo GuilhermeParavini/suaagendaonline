@@ -1,5 +1,43 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { createAdminClient } from "./admin";
+
+// Verifica se o usuario tem perfil profissional usando o ADMIN client (service
+// role, sem RLS). O contexto server-side do proxy nao resolve auth.uid() de
+// forma confiavel, entao a checagem via anon+RLS falhava (nao via a linha recem
+// criada no onboarding) e derrubava o usuario de volta ao /onboarding mesmo com
+// o perfil ja salvo. O service role le a tabela direto, sem depender de RLS.
+// Fail-closed: qualquer erro/excecao conta como "sem perfil".
+async function temPerfilProfissional(userId: string): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const { data: perfil, error } = await admin
+      .from('profissionais')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) {
+      console.error(
+        '[proxy] Falha ao verificar perfil profissional — tratando como sem perfil:',
+        error.message,
+      );
+      return false;
+    }
+    console.log(
+      '[proxy] verificacao perfil - userId:',
+      userId,
+      'temPerfil:',
+      !!perfil,
+    );
+    return !!perfil;
+  } catch (e) {
+    console.error(
+      '[proxy] Excecao ao verificar perfil profissional — tratando como sem perfil:',
+      e instanceof Error ? e.message : e,
+    );
+    return false;
+  }
+}
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -139,45 +177,20 @@ export async function updateSession(request: NextRequest) {
     ) {
       return NextResponse.redirect(new URL('/inicio', request.url));
     }
-    // /onboarding fica livre — a propria pagina decide.
+    // /onboarding: se o usuario JA tem perfil, nao deve refazer o onboarding —
+    // redirecionar para /inicio. Sem perfil, deixar a pagina renderizar.
+    if (await temPerfilProfissional(user.id)) {
+      return NextResponse.redirect(new URL('/inicio', request.url));
+    }
     return supabaseResponse;
   }
 
   // GATE DE ONBOARDING: usuario logado SEM perfil profissional ainda nao
   // concluiu o cadastro. Em QUALQUER rota protegida do dashboard, forcar
-  // /onboarding. O RLS de `profissionais` permite o proprio usuario ler seu
-  // registro (user_id = auth.uid()), entao o cliente anon resolve a checagem.
-  // Fail-closed: se a query falhar, tratar como "sem perfil" e redirecionar.
+  // /onboarding. A checagem usa o ADMIN client (service role, sem RLS) — ver
+  // temPerfilProfissional. Fail-closed: erro/excecao conta como "sem perfil".
   if (isDashboardRoute) {
-    // Fail-closed em TODOS os cenarios: erro de query OU excecao de rede
-    // contam como "sem perfil" e redirecionam (nunca deixa o 500 passar reto).
-    let temPerfil = false;
-    try {
-      const { data: prof, error: profError } = await supabase
-        .from('profissionais')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (profError) {
-        console.error(
-          '[proxy] Falha ao verificar perfil profissional — tratando como sem perfil:',
-          profError.message,
-        );
-      }
-      temPerfil = !profError && !!prof;
-    } catch (e) {
-      console.error(
-        '[proxy] Excecao ao verificar perfil profissional — tratando como sem perfil:',
-        e instanceof Error ? e.message : e,
-      );
-      temPerfil = false;
-    }
-
-    console.log('[proxy] gate dashboard', {
-      pathname,
-      userId: user.id,
-      temPerfil,
-    });
+    const temPerfil = await temPerfilProfissional(user.id);
 
     if (!temPerfil) {
       const onboardingUrl = new URL('/onboarding', request.url);

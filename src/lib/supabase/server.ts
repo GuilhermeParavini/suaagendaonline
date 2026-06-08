@@ -1,6 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+
+// Re-export para compatibilidade: consumidores Node (server actions, route
+// handlers, server components) continuam importando de '@/lib/supabase/server'.
+// A implementacao vive em './admin' (sem next/headers) para ser usavel no proxy.
+export { createAdminClient } from "./admin";
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -22,22 +26,6 @@ export async function createClient() {
             // Called from a Server Component — middleware will refresh sessions.
           }
         },
-      },
-    },
-  );
-}
-
-// Admin client com service role key — bypassa RLS.
-// Uso: APENAS em Server Components / Server Actions / Route Handlers.
-// Nunca importar de Client Components.
-export function createAdminClient() {
-  return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
       },
     },
   );

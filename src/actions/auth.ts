@@ -3,7 +3,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { seedFeriadosNacionais } from '@/actions/feriados';
 import { seedTemplatesAnamnese } from '@/actions/anamnese';
-import { hasProfessionalProfile } from '@/actions/tenant';
 
 // Função auxiliar para gerar slug
 function generateSlug(text: string): string {
@@ -322,14 +321,29 @@ export async function completeOnboarding(data: {
 }
 
 // Usado pela pagina de /onboarding para evitar que um usuario que JA concluiu o
-// cadastro veja o onboarding novamente. Usa a MESMA checagem (anon + RLS) do
-// proxy/gate, garantindo decisao consistente e SEM loop de redirect entre
-// /onboarding e as rotas protegidas.
+// cadastro veja o onboarding novamente. getUser vem do client com sessao
+// (cookies); a checagem de perfil usa o ADMIN client (service role, sem RLS) —
+// MESMA estrategia do proxy, para decisao consistente e sem depender de
+// auth.uid() server-side (que estava retornando NULL e quebrando o gate).
 export async function usuarioTemPerfilProfissional(): Promise<boolean> {
   const authClient = await createClient();
   const {
     data: { user },
   } = await authClient.auth.getUser();
   if (!user) return false;
-  return hasProfessionalProfile(user.id);
+
+  const admin = createAdminClient();
+  const { data: perfil, error } = await admin
+    .from('profissionais')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (error) {
+    console.error(
+      '[usuarioTemPerfilProfissional] erro ao verificar perfil profissional:',
+      error.message,
+    );
+    return false;
+  }
+  return !!perfil;
 }
