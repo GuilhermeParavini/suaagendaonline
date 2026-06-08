@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { completeOnboarding, usuarioTemPerfilProfissional } from '@/actions/auth';
+import { createClient } from '@/lib/supabase/client';
 import { cleanPhone, formatPhone } from '@/lib/masks';
 import { getRegistroSugestao } from '@/lib/registro-profissional';
 import {
@@ -20,87 +19,44 @@ import FormStepper, {
 const brazilianStates = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
   'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
-  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+  'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
 ];
 
-const trimmedString = (min: number, msg: string) =>
-  z.string().transform((s) => s.trim()).refine((s) => s.length >= min, { message: msg });
+const TIPOS_ATENDIMENTO = [
+  { value: 'consultorio', label: 'Em consultório ou clínica própria' },
+  { value: 'domicilio', label: 'Na residência dos pacientes/clientes' },
+  { value: 'residencia', label: 'No meu endereço residencial' },
+  { value: 'sem_local', label: 'Ainda não tenho local fixo' },
+];
 
-const phoneSchema = z
-  .string()
-  .refine((s) => {
-    const digits = cleanPhone(s);
-    return digits.length === 10 || digits.length === 11;
-  }, { message: 'Telefone inválido' });
-
-const optionalPhoneSchema = z
-  .string()
-  .optional()
-  .refine((s) => {
-    if (!s) return true;
-    const digits = cleanPhone(s);
-    return digits.length === 0 || digits.length === 10 || digits.length === 11;
-  }, { message: 'Telefone inválido' });
-
-// Schema do passo 1 (dados do profissional). E validado isoladamente ao clicar
-// "Próximo", para que o usuario nao consiga avançar com campos invalidos.
-const step1Schema = z
-  .object({
-    fullName: trimmedString(3, 'Nome deve ter no mínimo 3 caracteres'),
-    specialty: trimmedString(1, 'Selecione uma especialidade'),
-    outroEspecialidade: z.string().optional(),
-    professionalRegistry: z.string(),
-    phone: phoneSchema,
-  })
-  .superRefine((data, ctx) => {
-    // Quando "Outro" e selecionado, exigir o texto livre
-    if (data.specialty === OUTRO_VALUE) {
-      const livre = (data.outroEspecialidade ?? '').trim();
-      if (livre.length < 2) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['outroEspecialidade'],
-          message: 'Informe sua especialidade ou profissão',
-        });
-      }
-    }
-
-    // Registro profissional so e obrigatorio quando a especialidade tem conselho
-    if (especialidadeTemConselho(data.specialty)) {
-      const sug = getRegistroSugestao(data.specialty);
-      const valor = (data.professionalRegistry ?? '').trim();
-      const sufixo = valor.startsWith(sug.prefixo)
-        ? valor.slice(sug.prefixo.length).trim()
-        : valor;
-      if (sufixo.length < 2) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['professionalRegistry'],
-          message: 'Registro profissional obrigatório',
-        });
-      }
-    }
-  });
-
-// Schema do passo 2 (dados da clinica). E validado isoladamente ao submeter,
-// sem revalidar os campos do passo 1 (que ja foram validados ao avançar).
-const step2Schema = z.object({
-  companyName: trimmedString(3, 'Nome da empresa deve ter no mínimo 3 caracteres'),
-  companyPhone: optionalPhoneSchema,
-  city: trimmedString(2, 'Cidade deve ter no mínimo 2 caracteres'),
-  state: trimmedString(2, 'Selecione um estado'),
-});
-
-type Step1Data = z.infer<typeof step1Schema>;
-type Step2Data = z.infer<typeof step2Schema>;
-type OnboardingFormData = Step1Data & Step2Data;
+const inputClass =
+  'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition';
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState('');
   const router = useRouter();
 
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Passo 1 — dados do profissional
+  const [nome, setNome] = useState('');
+  const [especialidade, setEspecialidade] = useState('');
+  const [outroEspecialidade, setOutroEspecialidade] = useState('');
+  const [registro, setRegistro] = useState('');
+  const [telefone, setTelefone] = useState('');
+
+  // Passo 2 — atendimento / clinica
+  const [tipoAtendimento, setTipoAtendimento] = useState('');
+  const [nomeEmpresa, setNomeEmpresa] = useState('');
+  const [telefoneConsultorio, setTelefoneConsultorio] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [estado, setEstado] = useState('');
+
+  const isOutro = especialidade === OUTRO_VALUE;
+  const registroObrigatorio = especialidadeTemConselho(especialidade);
+
+  // Redireciona convites para o fluxo de convite.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -111,8 +67,7 @@ export default function OnboardingPage() {
   }, [router]);
 
   // Se o usuario JA possui perfil profissional, nao deve ver o onboarding de
-  // novo: redireciona imediatamente para a home. Usa a MESMA checagem (anon +
-  // RLS) do proxy, garantindo decisao consistente e sem loop de redirect.
+  // novo: redireciona para a home. Mesma checagem (anon + RLS) do proxy.
   useEffect(() => {
     let cancelado = false;
     usuarioTemPerfilProfissional().then((tem) => {
@@ -125,125 +80,140 @@ export default function OnboardingPage() {
     };
   }, [router]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-    watch,
-    getValues,
-    setError,
-    clearErrors,
-  } = useForm<OnboardingFormData>({
-    defaultValues: {
-      fullName: '',
-      specialty: '',
+  // Pre-preenche nome e especialidade a partir do user_metadata salvo no signup.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const nomeMeta = (meta.nome_completo ?? meta.full_name) as
+        | string
+        | undefined;
+      const espMeta = (meta.especialidade ?? meta.specialty) as
+        | string
+        | undefined;
+
+      if (nomeMeta) setNome((prev) => prev || nomeMeta);
+      if (espMeta) {
+        // Se a especialidade do metadata estiver na lista, seleciona direto;
+        // caso contrario, trata como "Outro" com o texto livre.
+        const naLista = ESPECIALIDADES.some((e) => e.value === espMeta);
+        if (naLista) {
+          setEspecialidade((prev) => prev || espMeta);
+        } else {
+          setEspecialidade((prev) => prev || OUTRO_VALUE);
+          setOutroEspecialidade((prev) => prev || espMeta);
+        }
+      }
+    });
+  }, []);
+
+  const handleEspecialidadeChange = (nova: string) => {
+    setEspecialidade(nova);
+    // Limpa o registro ao trocar de especialidade e o texto livre ao sair de "Outro".
+    setRegistro('');
+    if (nova !== OUTRO_VALUE) setOutroEspecialidade('');
+    setErrors((e) => ({
+      ...e,
+      especialidade: '',
       outroEspecialidade: '',
-      professionalRegistry: '',
-      phone: '',
-      companyName: '',
-      companyPhone: '',
-      city: '',
-      state: '',
-    },
-  });
+      registro: '',
+    }));
+  };
 
-  const selectedSpecialty = watch('specialty');
-  const professionalRegistry = watch('professionalRegistry');
-  const isOutro = selectedSpecialty === OUTRO_VALUE;
-  const registroObrigatorio = especialidadeTemConselho(selectedSpecialty);
+  // Passo 1: validacao manual. So avança se valido.
+  const handleNext = () => {
+    const novos: Record<string, string> = {};
 
-  const handleSpecialtyChange = (
-    e: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const nova = e.target.value;
-    setValue('specialty', nova, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
-    // Limpa o registro ao trocar de especialidade
-    setValue('professionalRegistry', '', {
-      shouldValidate: false,
-      shouldDirty: true,
-    });
-    // Limpa o campo livre quando sai de "Outro"
-    if (nova !== OUTRO_VALUE) {
-      setValue('outroEspecialidade', '', {
-        shouldValidate: false,
-        shouldDirty: true,
-      });
+    if (nome.trim().length < 3) {
+      novos.nome = 'Nome deve ter no mínimo 3 caracteres';
     }
-  };
-
-  const handlePhoneChange = (
-    field: 'phone' | 'companyPhone',
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const formatted = formatPhone(e.target.value);
-    setValue(field, formatted, { shouldValidate: false, shouldDirty: true });
-  };
-
-  // Aplica as mensagens de um ZodError nos campos correspondentes, para que
-  // apareçam destacadas abaixo de cada input.
-  const applyZodErrors = (error: z.ZodError) => {
-    for (const issue of error.issues) {
-      const field = issue.path[0] as keyof OnboardingFormData | undefined;
-      if (field) {
-        setError(field, { type: 'manual', message: issue.message });
+    if (!especialidade) {
+      novos.especialidade = 'Selecione uma especialidade';
+    }
+    if (isOutro && outroEspecialidade.trim().length < 2) {
+      novos.outroEspecialidade = 'Informe sua especialidade ou profissão';
+    }
+    if (registroObrigatorio) {
+      const sug = getRegistroSugestao(especialidade);
+      const valor = registro.trim();
+      const sufixo = valor.startsWith(sug.prefixo)
+        ? valor.slice(sug.prefixo.length).trim()
+        : valor;
+      if (sufixo.length < 2) {
+        novos.registro = 'Registro profissional obrigatório';
       }
     }
-  };
+    const tel = cleanPhone(telefone);
+    if (!tel) {
+      novos.telefone = 'Telefone é obrigatório';
+    } else if (tel.length !== 10 && tel.length !== 11) {
+      novos.telefone = 'Telefone inválido';
+    }
 
-  // Passo 1: valida APENAS os campos do passo 1. So avança se estiverem validos;
-  // caso contrario, exibe os erros ali mesmo e nao deixa ir pro passo 2.
-  const handleNextStep = () => {
-    setApiError('');
-    clearErrors();
-
-    const result = step1Schema.safeParse(getValues());
-    if (!result.success) {
-      applyZodErrors(result.error);
+    if (Object.keys(novos).length > 0) {
+      setErrors(novos);
       return;
     }
 
+    setErrors({});
     setStep(2);
   };
 
-  // Passo 2: valida APENAS os campos do passo 2 (os do passo 1 ja foram
-  // validados ao avançar). Junta os dados dos dois passos e envia.
-  const onSubmit = async () => {
-    setApiError('');
-    clearErrors();
+  // Passo 2: validacao manual e submit. onClick — nunca onSubmit.
+  const handleComecar = async () => {
+    console.log('[onboarding] botao comecar clicado');
 
-    const raw = getValues();
-    const parsed = step2Schema.safeParse(raw);
-    if (!parsed.success) {
-      applyZodErrors(parsed.error);
+    const novos: Record<string, string> = {};
+    if (!tipoAtendimento) {
+      novos.tipoAtendimento = 'Selecione onde você atende';
+    }
+    if (tipoAtendimento === 'consultorio' && nomeEmpresa.trim().length < 3) {
+      novos.nomeEmpresa = 'Nome da empresa deve ter no mínimo 3 caracteres';
+    }
+    if (cidade.trim().length < 2) {
+      novos.cidade = 'Cidade deve ter no mínimo 2 caracteres';
+    }
+    if (!estado) {
+      novos.estado = 'Selecione um estado';
+    }
+    if (tipoAtendimento === 'consultorio' && telefoneConsultorio) {
+      const t = cleanPhone(telefoneConsultorio);
+      if (t.length !== 10 && t.length !== 11) {
+        novos.telefoneConsultorio = 'Telefone inválido';
+      }
+    }
+
+    if (Object.keys(novos).length > 0) {
+      setErrors(novos);
       return;
     }
 
-    const step2Data = parsed.data;
-    console.log('[onboarding] submit passo 2', { ...raw, ...step2Data });
-    setIsLoading(true);
+    setErrors({});
+    setLoading(true);
 
     try {
-      const especialidadeFinal =
-        raw.specialty === OUTRO_VALUE
-          ? (raw.outroEspecialidade ?? '').trim()
-          : raw.specialty.trim();
+      const especialidadeFinal = isOutro
+        ? outroEspecialidade.trim()
+        : especialidade.trim();
+      // Sem consultorio nao ha nome de empresa: usar o nome do profissional como
+      // nome da "empresa"/tenant (profissional autonomo).
+      const companyName =
+        tipoAtendimento === 'consultorio' ? nomeEmpresa.trim() : nome.trim();
 
-      // A autenticacao e resolvida dentro da server action (le a sessao dos
-      // cookies). Nao dependemos mais do browser getUser, que estava retornando
-      // vazio no passo 2 e derrubava o cadastro.
       const dados = {
-        fullName: raw.fullName.trim(),
+        fullName: nome.trim(),
         specialty: especialidadeFinal,
-        professionalRegistry: raw.professionalRegistry,
-        phone: cleanPhone(raw.phone),
-        companyName: step2Data.companyName,
-        companyPhone: step2Data.companyPhone ? cleanPhone(step2Data.companyPhone) : undefined,
-        city: step2Data.city,
-        state: step2Data.state,
+        professionalRegistry: registro,
+        phone: cleanPhone(telefone),
+        companyName,
+        companyPhone:
+          tipoAtendimento === 'consultorio' && telefoneConsultorio
+            ? cleanPhone(telefoneConsultorio)
+            : undefined,
+        city: cidade.trim(),
+        state: estado,
+        tipoAtendimento,
       };
 
       console.log('[onboarding] dados enviados:', dados);
@@ -251,29 +221,19 @@ export default function OnboardingPage() {
       console.log('[onboarding] resultado:', result);
 
       if (!result.success) {
-        // NUNCA voltar pro passo 1: ficar no passo 2 e mostrar o erro
-        // (na tela E em alert, para que nunca passe despercebido).
         const msg = result.error ?? 'Não foi possível concluir o cadastro.';
-        setApiError(msg);
         alert(msg);
+        setLoading(false);
         return;
       }
 
-      // Sucesso: redirecionar para a home. router.push primeiro e, como fallback
-      // garantido, navegacao "hard" com window.location — esta forca o proxy a
-      // reavaliar o gate de onboarding com o perfil profissional recem-criado
-      // (router.push sozinho pode usar cache do cliente e o gate nao veria o
-      // perfil novo).
-      router.push('/inicio');
+      // Sucesso: navegacao "hard" para o proxy reavaliar o gate com o perfil novo.
       window.location.href = '/inicio';
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       console.error('[onboarding] erro:', error);
-      // NUNCA voltar pro passo 1: ficar no passo 2 e mostrar o erro.
-      setApiError('Erro: ' + msg);
       alert('Erro: ' + msg);
-    } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -284,8 +244,8 @@ export default function OnboardingPage() {
       status: step === 1 ? 'atual' : 'concluido',
     },
     {
-      id: 'sua-clinica',
-      label: 'Sua clinica',
+      id: 'seu-atendimento',
+      label: 'Seu atendimento',
       status: step === 2 ? 'atual' : 'futuro',
     },
   ];
@@ -301,37 +261,38 @@ export default function OnboardingPage() {
 
       <FormStepper steps={stepperItems} />
 
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+      {/* Container (sem tag <form>) */}
+      <div className="space-y-4">
         {step === 1 ? (
           <>
-            {/* Full Name */}
+            {/* Nome completo */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Nome completo
               </label>
               <input
-                {...register('fullName')}
                 type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
                 autoComplete="name"
                 placeholder="Maria Silva"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+                className={inputClass}
               />
-              {errors.fullName && (
-                <p className="text-xs text-red-500">{errors.fullName.message}</p>
+              {errors.nome && (
+                <p className="text-xs text-red-500">{errors.nome}</p>
               )}
             </div>
 
-            {/* Specialty */}
+            {/* Especialidade */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Especialidade
               </label>
               <select
-                value={selectedSpecialty ?? ''}
-                onChange={handleSpecialtyChange}
+                value={especialidade}
+                onChange={(e) => handleEspecialidadeChange(e.target.value)}
                 autoComplete="off"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition bg-white"
+                className={`${inputClass} bg-white`}
               >
                 <option value="">Selecione uma especialidade</option>
                 {ESPECIALIDADES.map((esp) => (
@@ -340,8 +301,8 @@ export default function OnboardingPage() {
                   </option>
                 ))}
               </select>
-              {errors.specialty && (
-                <p className="text-xs text-red-500">{errors.specialty.message}</p>
+              {errors.especialidade && (
+                <p className="text-xs text-red-500">{errors.especialidade}</p>
               )}
             </div>
 
@@ -352,150 +313,177 @@ export default function OnboardingPage() {
                   Qual sua especialidade/profissão?
                 </label>
                 <input
-                  {...register('outroEspecialidade')}
                   type="text"
+                  value={outroEspecialidade}
+                  onChange={(e) => setOutroEspecialidade(e.target.value)}
                   autoComplete="off"
                   placeholder="Ex: Acupuntura, Quiropraxia, Coaching..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+                  className={inputClass}
                 />
                 {errors.outroEspecialidade && (
                   <p className="text-xs text-red-500">
-                    {errors.outroEspecialidade.message}
+                    {errors.outroEspecialidade}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Professional Registry */}
+            {/* Registro profissional */}
             <div>
               <RegistroInput
-                especialidade={selectedSpecialty}
-                value={professionalRegistry ?? ''}
-                onChange={(v) =>
-                  setValue('professionalRegistry', v, {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  })
-                }
+                especialidade={especialidade}
+                value={registro}
+                onChange={(v) => setRegistro(v)}
                 required={registroObrigatorio}
               />
-              {errors.professionalRegistry && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.professionalRegistry.message}
-                </p>
+              {errors.registro && (
+                <p className="mt-1 text-xs text-red-500">{errors.registro}</p>
               )}
             </div>
 
-            {/* Phone */}
+            {/* Telefone */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Telefone
               </label>
               <input
-                {...register('phone', {
-                  onChange: (e) => handlePhoneChange('phone', e),
-                })}
                 type="tel"
                 inputMode="tel"
+                value={telefone}
+                onChange={(e) => setTelefone(formatPhone(e.target.value))}
                 autoComplete="tel"
                 maxLength={15}
                 placeholder="(11) 99999-9999"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+                className={inputClass}
               />
-              {errors.phone && (
-                <p className="text-xs text-red-500">{errors.phone.message}</p>
+              {errors.telefone && (
+                <p className="text-xs text-red-500">{errors.telefone}</p>
               )}
             </div>
           </>
         ) : (
           <>
-            {/* Company Name */}
+            {/* Onde voce atende? (radio) — primeiro campo do passo 2 */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
-                Nome da empresa/consultório
+                Onde você atende?
               </label>
-              <input
-                {...register('companyName')}
-                type="text"
-                autoComplete="organization"
-                placeholder="Clínica Silva"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
-              />
-              {errors.companyName && (
-                <p className="text-xs text-red-500">{errors.companyName.message}</p>
+              <div className="space-y-2">
+                {TIPOS_ATENDIMENTO.map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-center gap-3 px-3 py-2.5 border rounded-lg text-sm cursor-pointer transition ${
+                      tipoAtendimento === opt.value
+                        ? 'border-teal-600 bg-teal-50 ring-3 ring-teal-100'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tipoAtendimento"
+                      value={opt.value}
+                      checked={tipoAtendimento === opt.value}
+                      onChange={() => {
+                        setTipoAtendimento(opt.value);
+                        setErrors((e) => ({ ...e, tipoAtendimento: '' }));
+                      }}
+                      className="h-4 w-4 accent-teal-600"
+                    />
+                    <span className="text-slate-700">{opt.label}</span>
+                  </label>
+                ))}
+              </div>
+              {errors.tipoAtendimento && (
+                <p className="text-xs text-red-500">{errors.tipoAtendimento}</p>
               )}
             </div>
 
-            {/* Company Phone */}
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-700">
-                Telefone do consultório (opcional)
-              </label>
-              <input
-                {...register('companyPhone', {
-                  onChange: (e) => handlePhoneChange('companyPhone', e),
-                })}
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                maxLength={15}
-                placeholder="(11) 3333-3333"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
-              />
-              {errors.companyPhone && (
-                <p className="text-xs text-red-500">{errors.companyPhone.message}</p>
-              )}
-            </div>
+            {/* Nome da empresa + telefone do consultorio — apenas para consultorio */}
+            {tipoAtendimento === 'consultorio' && (
+              <>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Nome da empresa/consultório
+                  </label>
+                  <input
+                    type="text"
+                    value={nomeEmpresa}
+                    onChange={(e) => setNomeEmpresa(e.target.value)}
+                    autoComplete="organization"
+                    placeholder="Clínica Silva"
+                    className={inputClass}
+                  />
+                  {errors.nomeEmpresa && (
+                    <p className="text-xs text-red-500">{errors.nomeEmpresa}</p>
+                  )}
+                </div>
 
-            {/* City */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Telefone do consultório (opcional)
+                  </label>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={telefoneConsultorio}
+                    onChange={(e) =>
+                      setTelefoneConsultorio(formatPhone(e.target.value))
+                    }
+                    autoComplete="tel"
+                    maxLength={15}
+                    placeholder="(11) 3333-3333"
+                    className={inputClass}
+                  />
+                  {errors.telefoneConsultorio && (
+                    <p className="text-xs text-red-500">
+                      {errors.telefoneConsultorio}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Cidade */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Cidade
               </label>
               <input
-                {...register('city')}
                 type="text"
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
                 autoComplete="address-level2"
                 placeholder="São Paulo"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition"
+                className={inputClass}
               />
-              {errors.city && (
-                <p className="text-xs text-red-500">{errors.city.message}</p>
+              {errors.cidade && (
+                <p className="text-xs text-red-500">{errors.cidade}</p>
               )}
             </div>
 
-            {/* State */}
+            {/* Estado */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-slate-700">
                 Estado
               </label>
               <select
-                {...register('state')}
+                value={estado}
+                onChange={(e) => setEstado(e.target.value)}
                 autoComplete="address-level1"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:border-teal-600 focus:outline-none focus:ring-3 focus:ring-teal-100 transition bg-white"
+                className={`${inputClass} bg-white`}
               >
                 <option value="">Selecione um estado</option>
-                {brazilianStates.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
+                {brazilianStates.map((uf) => (
+                  <option key={uf} value={uf}>
+                    {uf}
                   </option>
                 ))}
               </select>
-              {errors.state && (
-                <p className="text-xs text-red-500">{errors.state.message}</p>
+              {errors.estado && (
+                <p className="text-xs text-red-500">{errors.estado}</p>
               )}
             </div>
           </>
-        )}
-
-        {/* API Error */}
-        {apiError && (
-          <p
-            key={apiError}
-            className="sao-shake text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
-          >
-            {apiError}
-          </p>
         )}
 
         {/* Buttons */}
@@ -512,28 +500,29 @@ export default function OnboardingPage() {
           {step === 1 ? (
             <button
               type="button"
-              onClick={handleNextStep}
+              onClick={handleNext}
               className="flex-1 bg-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               Próximo
             </button>
           ) : (
             <button
-              type="submit"
-              disabled={isLoading}
+              type="button"
+              onClick={handleComecar}
+              disabled={loading}
               className="flex-1 inline-flex items-center justify-center gap-2 bg-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
-              {isLoading && (
+              {loading && (
                 <span
                   className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
                   aria-hidden="true"
                 />
               )}
-              {isLoading ? 'Salvando...' : 'Começar a usar'}
+              {loading ? 'Salvando...' : 'Começar a usar'}
             </button>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 }

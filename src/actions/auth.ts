@@ -26,6 +26,7 @@ export async function completeOnboarding(data: {
   companyPhone?: string;
   city: string;
   state: string;
+  tipoAtendimento?: string;
 }) {
   try {
     console.log('=== Iniciando completeOnboarding ===');
@@ -243,6 +244,28 @@ export async function completeOnboarding(data: {
     }
 
     console.log('✅ Profissional criado com sucesso');
+
+    // tipo_atendimento e melhor-esforco: a coluna pode ainda nao existir no
+    // banco. Para NUNCA derrubar o onboarding, gravamos via update separado e,
+    // se falhar (coluna inexistente), apenas logamos um aviso e seguimos.
+    if (data.tipoAtendimento) {
+      const { error: tipoError } = await supabase
+        .from('profissionais')
+        .update({ tipo_atendimento: data.tipoAtendimento })
+        .eq('user_id', userId);
+      if (tipoError) {
+        console.warn(
+          '[completeOnboarding] nao foi possivel salvar tipo_atendimento ' +
+            '(rode a migration da coluna em profissionais):',
+          tipoError.message,
+        );
+      } else {
+        console.log(
+          '[completeOnboarding] tipo_atendimento salvo:',
+          data.tipoAtendimento,
+        );
+      }
+    }
 
     // Seed de feriados nacionais (nao bloqueia o onboarding em caso de falha).
     try {
