@@ -36,19 +36,54 @@ export async function completeOnboarding(data: {
     // os mesmos cookies que o proxy ja valida. Nao confiar em userId vindo do
     // cliente (browser getUser e fragil e estava retornando vazio no passo 2).
     const authClient = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await authClient.auth.getUser();
+    console.log('[completeOnboarding] inicio');
 
-    if (authError || !user) {
-      console.error(
-        '[completeOnboarding] erro auth:',
-        authError?.message ?? 'sem usuario na sessao',
+    // 1a tentativa: ler o usuario da sessao (cookies).
+    const primeira = await authClient.auth.getUser();
+    console.log(
+      '[completeOnboarding] getUser result:',
+      JSON.stringify({
+        user: !!primeira.data.user,
+        error: primeira.error?.message ?? null,
+      }),
+    );
+
+    let user = primeira.data.user;
+
+    // Se nao houver usuario, tentar refrescar a sessao ANTES de desistir. O token
+    // de acesso pode ter expirado enquanto o usuario preenchia o onboarding; o
+    // refresh token (ainda nos cookies) permite renovar a sessao sem novo login.
+    if (!user) {
+      console.warn(
+        '[completeOnboarding] getUser sem usuario — tentando refreshSession',
       );
-      return { success: false, error: 'Sua sessão expirou. Faça login novamente.' };
+      const refresh = await authClient.auth.refreshSession();
+      console.log(
+        '[completeOnboarding] refreshSession result:',
+        JSON.stringify({
+          user: !!refresh.data.user,
+          session: !!refresh.data.session,
+          error: refresh.error?.message ?? null,
+        }),
+      );
+      user = refresh.data.user;
+
+      if (!user) {
+        console.error(
+          '[completeOnboarding] sessao expirada — getUser E refreshSession falharam:',
+          {
+            getUserError: primeira.error?.message ?? 'sem usuario na sessao',
+            refreshError: refresh.error?.message ?? 'sem sessao para refrescar',
+          },
+        );
+        return {
+          success: false,
+          error: 'Sessão expirada. Por favor, faça login novamente.',
+        };
+      }
     }
 
+    // A partir daqui `user` e garantidamente nao-nulo.
     const userId = user.id;
     const email = user.email!;
 

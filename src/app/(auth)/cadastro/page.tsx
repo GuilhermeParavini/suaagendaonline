@@ -85,9 +85,15 @@ export default function SignupPage() {
         email: data.email,
         password: data.password,
         options: {
+          // Salvar nome e especialidade no user_metadata para pre-preencher o
+          // onboarding apos a confirmacao de email. Mantemos as chaves em ingles
+          // (full_name/specialty) por compatibilidade e adicionamos as chaves em
+          // PT-BR (nome_completo/especialidade) usadas no pre-preenchimento.
           data: {
             full_name: data.fullName,
             specialty: especialidadeFinal,
+            nome_completo: data.fullName,
+            especialidade: especialidadeFinal,
           },
         },
       });
