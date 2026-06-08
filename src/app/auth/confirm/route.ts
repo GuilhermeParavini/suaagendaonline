@@ -64,11 +64,6 @@ export async function GET(request: NextRequest) {
     token_hash: tokenHash,
     type: typeParam,
   });
-  console.log('[auth/confirm] verifyOtp resultado', {
-    ok: !error,
-    userId: data?.user?.id ?? null,
-    error: error?.message ?? null,
-  });
   if (error) {
     const target = new URL('/login', url.origin);
     target.searchParams.set('error', error.message);
@@ -93,14 +88,12 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (profError) {
       console.error(
-        '[auth/confirm] erro ao verificar perfil profissional:',
+        'Erro ao verificar perfil profissional:',
         profError.message,
       );
     }
     destino = profError || !prof ? '/onboarding' : next;
   }
-
-  console.log('[auth/confirm] token exchange success, redirect to:', destino);
 
   // Atualizar a Location no MESMO response (que ja carrega os cookies da sessao).
   response.headers.set('Location', new URL(destino, url.origin).toString());

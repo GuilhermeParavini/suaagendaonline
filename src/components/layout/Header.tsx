@@ -1,16 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Search } from "lucide-react";
+import { Bell, Clock, Search } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 
 interface HeaderProps {
   userName?: string;
+  plano?: string;
+  trialExpiraEm?: string | null;
 }
 
-function Header({ userName = "Profissional" }: HeaderProps) {
+function Header({
+  userName = "Profissional",
+  plano,
+  trialExpiraEm,
+}: HeaderProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isMac, setIsMac] = useState(false);
+
+  // Badge de trial: dias restantes ate o fim do periodo de teste. Trial
+  // expirado nao mostra badge (o usuario ja e levado a /plano-expirado).
+  const diasTrial =
+    plano === "trial" && trialExpiraEm
+      ? Math.ceil(
+          (new Date(trialExpiraEm).getTime() - Date.now()) / 86_400_000,
+        )
+      : null;
+  const mostrarBadgeTrial =
+    diasTrial !== null && Number.isFinite(diasTrial) && diasTrial > 0;
+  const trialUrgente = diasTrial !== null && diasTrial < 3;
 
   // Listener global de Ctrl+K / Cmd+K para abrir o palette.
   useEffect(() => {
@@ -41,6 +59,19 @@ function Header({ userName = "Profissional" }: HeaderProps) {
           <div className="hidden lg:block" aria-hidden="true" />
 
           <div className="flex items-center gap-1 sm:gap-2">
+            {mostrarBadgeTrial ? (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium ${
+                  trialUrgente
+                    ? "bg-red-50 text-red-700"
+                    : "bg-amber-50 text-amber-700"
+                }`}
+              >
+                <Clock size={13} strokeWidth={1.5} aria-hidden="true" />
+                Trial: {diasTrial} {diasTrial === 1 ? "dia" : "dias"} restantes
+              </span>
+            ) : null}
+
             <button
               type="button"
               aria-label="Buscar"

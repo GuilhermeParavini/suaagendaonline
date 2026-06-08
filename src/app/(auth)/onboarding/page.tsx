@@ -38,6 +38,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState('');
 
   // Passo 1 — dados do profissional
   const [nome, setNome] = useState('');
@@ -162,7 +163,7 @@ export default function OnboardingPage() {
 
   // Passo 2: validacao manual e submit. onClick — nunca onSubmit.
   const handleComecar = async () => {
-    console.log('[onboarding] botao comecar clicado');
+    setApiError('');
 
     const novos: Record<string, string> = {};
     if (!tipoAtendimento) {
@@ -216,13 +217,10 @@ export default function OnboardingPage() {
         tipoAtendimento,
       };
 
-      console.log('[onboarding] dados enviados:', dados);
       const result = await completeOnboarding(dados);
-      console.log('[onboarding] resultado:', result);
 
       if (!result.success) {
-        const msg = result.error ?? 'Não foi possível concluir o cadastro.';
-        alert(msg);
+        setApiError(result.error ?? 'Não foi possível concluir o cadastro.');
         setLoading(false);
         return;
       }
@@ -231,8 +229,8 @@ export default function OnboardingPage() {
       window.location.href = '/inicio';
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      console.error('[onboarding] erro:', error);
-      alert('Erro: ' + msg);
+      console.error('Erro ao concluir onboarding:', error);
+      setApiError('Erro: ' + msg);
       setLoading(false);
     }
   };
@@ -484,6 +482,16 @@ export default function OnboardingPage() {
               )}
             </div>
           </>
+        )}
+
+        {/* Erro de API */}
+        {apiError && (
+          <p
+            key={apiError}
+            className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
+          >
+            {apiError}
+          </p>
         )}
 
         {/* Buttons */}

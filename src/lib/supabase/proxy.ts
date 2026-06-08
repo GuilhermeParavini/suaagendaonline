@@ -18,24 +18,56 @@ async function temPerfilProfissional(userId: string): Promise<boolean> {
       .maybeSingle();
     if (error) {
       console.error(
-        '[proxy] Falha ao verificar perfil profissional — tratando como sem perfil:',
+        'Falha ao verificar perfil profissional — tratando como sem perfil:',
         error.message,
       );
       return false;
     }
-    console.log(
-      '[proxy] verificacao perfil - userId:',
-      userId,
-      'temPerfil:',
-      !!perfil,
-    );
     return !!perfil;
   } catch (e) {
     console.error(
-      '[proxy] Excecao ao verificar perfil profissional — tratando como sem perfil:',
+      'Excecao ao verificar perfil profissional — tratando como sem perfil:',
       e instanceof Error ? e.message : e,
     );
     return false;
+  }
+}
+
+// Para rotas do dashboard: alem de checar perfil, verifica se o trial expirou.
+// Fail-CLOSED para perfil (seguranca: na duvida, manda ao onboarding) e
+// fail-OPEN para trial (disponibilidade: um erro transitorio nao deve bloquear
+// quem ainda esta no periodo valido ou ja assinou).
+async function getGateInfo(
+  userId: string,
+): Promise<{ temPerfil: boolean; trialExpirado: boolean }> {
+  try {
+    const admin = createAdminClient();
+    const { data: prof, error } = await admin
+      .from('profissionais')
+      .select('tenant_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error || !prof) return { temPerfil: false, trialExpirado: false };
+
+    const { data: tenant } = await admin
+      .from('tenants')
+      .select('status_assinatura, trial_expira_em')
+      .eq('id', prof.tenant_id as string)
+      .maybeSingle();
+
+    let trialExpirado = false;
+    if (
+      tenant &&
+      tenant.status_assinatura === 'trial' &&
+      tenant.trial_expira_em
+    ) {
+      const fim = new Date(tenant.trial_expira_em as string).getTime();
+      trialExpirado = Number.isFinite(fim) && fim < Date.now();
+    }
+    return { temPerfil: true, trialExpirado };
+  } catch {
+    // Fail-closed para perfil: na duvida, manda para onboarding.
+    return { temPerfil: false, trialExpirado: false };
   }
 }
 
@@ -190,7 +222,7 @@ export async function updateSession(request: NextRequest) {
   // /onboarding. A checagem usa o ADMIN client (service role, sem RLS) — ver
   // temPerfilProfissional. Fail-closed: erro/excecao conta como "sem perfil".
   if (isDashboardRoute) {
-    const temPerfil = await temPerfilProfissional(user.id);
+    const { temPerfil, trialExpirado } = await getGateInfo(user.id);
 
     if (!temPerfil) {
       const onboardingUrl = new URL('/onboarding', request.url);
@@ -201,6 +233,16 @@ export async function updateSession(request: NextRequest) {
         .getAll()
         .forEach((cookie) => redirectResponse.cookies.set(cookie));
       return redirectResponse;
+    }
+
+    // GATE DE TRIAL EXPIRADO: trial vencido bloqueia o dashboard, EXCETO
+    // /configuracoes (onde o usuario assina). /plano-expirado nao e rota de
+    // dashboard, entao ja passa livre por aqui.
+    const ehConfiguracoes =
+      pathname === '/configuracoes' ||
+      pathname.startsWith('/configuracoes/');
+    if (trialExpirado && !ehConfiguracoes) {
+      return NextResponse.redirect(new URL('/plano-expirado', request.url));
     }
   }
 

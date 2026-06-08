@@ -23,6 +23,7 @@ type ProfissionalInfo = {
   logoUrl?: string | null;
   plano?: string;
   modulos?: ModulosAtivos;
+  trialExpiraEm?: string | null;
 };
 
 async function getProfissionalInfo(): Promise<ProfissionalInfo> {
@@ -39,19 +40,13 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  console.log("[DashboardLayout] perfil", {
-    userId: user.id,
-    temPerfil: !!prof,
-    erro: error?.message ?? null,
-  });
-
   // Rede de seguranca: o proxy ja deveria barrar usuarios sem perfil, mas se
   // chegou aqui sem profissional (ou a query falhou), redirecionar para o
   // /onboarding em vez de renderizar o dashboard com "Profissional nao
   // encontrado". Fail-closed: erro tambem cai no onboarding.
   if (error) {
     console.error(
-      "[DashboardLayout] Erro ao buscar profissional — redirecionando para /onboarding:",
+      "Erro ao buscar profissional — redirecionando para /onboarding:",
       error.message,
     );
     redirect("/onboarding");
@@ -60,7 +55,7 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
 
   const { data: tenant } = await admin
     .from("tenants")
-    .select("plano, modulos_ativos")
+    .select("plano, modulos_ativos, trial_expira_em")
     .eq("id", prof.tenant_id as string)
     .maybeSingle();
 
@@ -71,6 +66,7 @@ async function getProfissionalInfo(): Promise<ProfissionalInfo> {
     logoUrl: (prof.logo_url as string | null | undefined) ?? null,
     plano,
     modulos: normalizarModulosAtivos(tenant?.modulos_ativos, plano),
+    trialExpiraEm: (tenant?.trial_expira_em as string | null | undefined) ?? null,
   };
 }
 
@@ -95,17 +91,11 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const adminGate = createAdminClient();
-  const { data: profissionalGate, error: erroGate } = await adminGate
+  const { data: profissionalGate } = await adminGate
     .from("profissionais")
     .select("id")
     .eq("user_id", user.id)
     .maybeSingle();
-
-  console.log("[DashboardLayout] GATE", {
-    userId: user.id,
-    temPerfil: !!profissionalGate,
-    erro: erroGate?.message ?? null,
-  });
 
   // Fail-closed: sem perfil OU query com erro -> onboarding.
   if (!profissionalGate) redirect("/onboarding");
@@ -113,7 +103,7 @@ export default async function DashboardLayout({
   // ============================================================
 
   const [
-    { id: profId, nome: userName, logoUrl, plano, modulos },
+    { id: profId, nome: userName, logoUrl, plano, modulos, trialExpiraEm },
     contagemRes,
     progresso,
   ] = await Promise.all([
@@ -137,7 +127,11 @@ export default async function DashboardLayout({
         onboardingCompleto={onboardingCompleto}
       />
       <div className="flex-1 flex flex-col min-w-0">
-        <Header userName={userName} />
+        <Header
+          userName={userName}
+          plano={plano}
+          trialExpiraEm={trialExpiraEm}
+        />
         <main
           id="main-content"
           className="flex-1 px-4 py-4 lg:px-6 lg:py-6 mb-20 lg:mb-0"

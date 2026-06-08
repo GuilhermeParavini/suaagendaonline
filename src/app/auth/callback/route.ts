@@ -23,18 +23,6 @@ export async function GET(request: NextRequest) {
   const errorParam = url.searchParams.get('error');
   const errorDescription = url.searchParams.get('error_description');
 
-  const allParams = Object.fromEntries(url.searchParams.entries());
-  console.log('[auth/callback] entrada', {
-    url: url.toString(),
-    code: code ? `${code.slice(0, 8)}...` : null,
-    tokenHash: tokenHash ? `${tokenHash.slice(0, 8)}...` : null,
-    type: typeParam,
-    next: nextParam,
-    error: errorParam,
-    errorDescription,
-    todosParams: Object.keys(allParams),
-  });
-
   const nextSafe = nextParam.startsWith('/') ? nextParam : '/inicio';
   // Recovery sempre cai em /redefinir-senha, ignorando next se necessario.
   const isRecovery =
@@ -42,7 +30,7 @@ export async function GET(request: NextRequest) {
   const next = isRecovery ? '/redefinir-senha' : nextSafe;
 
   if (errorParam) {
-    console.error('[auth/callback] erro Supabase no redirect', {
+    console.error('Erro do Supabase no callback de auth:', {
       errorParam,
       errorDescription,
     });
@@ -87,11 +75,6 @@ export async function GET(request: NextRequest) {
       token_hash: tokenHash,
       type: typeParam,
     });
-    console.log('[auth/callback] verifyOtp resultado', {
-      ok: !error,
-      userId: data?.user?.id ?? null,
-      error: error?.message ?? null,
-    });
     if (error) {
       const target = new URL('/login', url.origin);
       target.searchParams.set('error', error.message);
@@ -100,26 +83,16 @@ export async function GET(request: NextRequest) {
     user = data.user;
   } else if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    console.log('[auth/callback] exchangeCodeForSession resultado', {
-      ok: !error,
-      userId: data?.user?.id ?? null,
-      error: error?.message ?? null,
-    });
     if (error) {
       const target = new URL('/login', url.origin);
       target.searchParams.set('error', error.message);
       return NextResponse.redirect(target);
     }
     user = data.user;
-  } else {
-    // Nao chegou code nem token_hash: provavelmente o token veio no hash da URL
-    // (#access_token=...). O servidor nao recebe o hash, mas o cliente JS na
-    // proxima pagina detecta. Para recovery, deixar /redefinir-senha tratar.
-    console.warn('[auth/callback] sem code/tokenHash', {
-      typeParam,
-      nextParam,
-    });
   }
+  // Sem code nem token_hash: provavelmente o token veio no hash da URL
+  // (#access_token=...). O servidor nao recebe o hash, mas o cliente JS na
+  // proxima pagina detecta. Para recovery, /redefinir-senha trata.
 
   // Decidir o destino final:
   // - recovery sempre vai para /redefinir-senha (ja refletido em `next`)
@@ -137,14 +110,12 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (profError) {
       console.error(
-        '[auth/callback] erro ao verificar perfil profissional:',
+        'Erro ao verificar perfil profissional:',
         profError.message,
       );
     }
     destino = profError || !prof ? '/onboarding' : next;
   }
-
-  console.log('[auth/callback] token exchange success, redirect to:', destino);
 
   // Atualizar a Location no MESMO response (que ja carrega os cookies da sessao).
   response.headers.set('Location', new URL(destino, url.origin).toString());
