@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ModuloId, ModulosAtivos } from "@/lib/planos";
+import LogoutButton from "./LogoutButton";
 
 interface BottomNavProps {
   contagemListaEspera?: number;
@@ -240,6 +241,9 @@ function BottomNav({
                     },
                   )}
                 </ul>
+                <div className="mt-3 rounded-lg border border-slate-200">
+                  <LogoutButton variant="mobile" />
+                </div>
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog.Root>

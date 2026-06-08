@@ -1,5 +1,6 @@
 'use server';
 
+import { redirect } from 'next/navigation';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { seedFeriadosNacionais } from '@/actions/feriados';
 import { seedTemplatesAnamnese } from '@/actions/anamnese';
@@ -346,4 +347,13 @@ export async function usuarioTemPerfilProfissional(): Promise<boolean> {
     return false;
   }
   return !!perfil;
+}
+
+// Encerra a sessao do usuario: signOut limpa os cookies de sessao (via o client
+// server-side) e em seguida redireciona para /login. redirect() e chamado fora
+// de try/catch para o NEXT_REDIRECT propagar corretamente.
+export async function logout() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect('/login');
 }

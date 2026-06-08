@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ModuloId, ModulosAtivos } from "@/lib/planos";
+import LogoutButton from "./LogoutButton";
 
 interface SidebarProps {
   logoUrl?: string | null;
@@ -207,6 +208,9 @@ function Sidebar({
           )}
         </ul>
       </nav>
+      <div className="px-3 py-4 border-t border-slate-200">
+        <LogoutButton />
+      </div>
     </aside>
   );
 }
