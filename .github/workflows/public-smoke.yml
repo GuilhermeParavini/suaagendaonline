@@ -16,6 +16,8 @@ jobs:
     env:
       CI: true
       PLAYWRIGHT_BASE_URL: https://www.appagenda4u.com
+      NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
     steps:
       - name: Checkout
         uses: actions/checkout@v4
